@@ -7,6 +7,7 @@ dotenv.config();
 import productsRouter from './routes/products';
 import salesRouter from './routes/sales';
 import purchasesRouter from './routes/purchases';
+import { apiKeyAuth } from './middleware/apiKeyAuth';
 
 const app = express();
 app.use(cors());
@@ -16,6 +17,7 @@ app.get('/', (_req, res) => {
   res.json({ message: 'La Fundita API funcionando 🚀' });
 });
 
+app.use('/api', apiKeyAuth);
 app.use('/api/products', productsRouter);
 app.use('/api/sales', salesRouter);
 app.use('/api/purchases', purchasesRouter);
