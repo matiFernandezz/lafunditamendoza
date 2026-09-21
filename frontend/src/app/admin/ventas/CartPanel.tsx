@@ -36,7 +36,7 @@ export default function CartPanel({
 
   return (
     <>
-      {/* Barra flotante para abrir el carrito (solo mobile, solo si hay items) */}
+      {/* Barra flotante para abrir la venta actual (solo mobile, solo si hay items) */}
       {!open && itemCount > 0 && (
         <button
           type="button"
@@ -61,15 +61,15 @@ export default function CartPanel({
       <aside
         className={`fixed inset-x-0 bottom-0 z-40 max-h-[85vh] overflow-y-auto rounded-t-2xl border border-zinc-200 bg-white p-4 shadow-2xl transition-transform duration-200 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
-        } md:sticky md:top-20 md:z-auto md:h-[calc(100vh-6rem)] md:max-h-none md:w-72 md:shrink-0 md:translate-y-0 md:rounded-2xl md:border md:shadow-none`}
+        } md:sticky md:top-20 md:z-auto md:h-[calc(100vh-6rem)] md:max-h-none md:w-80 md:shrink-0 lg:w-96 md:translate-y-0 md:rounded-2xl md:border md:shadow-none`}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Carrito</h2>
+          <h2 className="text-lg font-bold">Venta actual</h2>
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="flex h-10 w-10 items-center justify-center rounded-full text-xl text-zinc-500 active:bg-zinc-100 md:hidden"
-            aria-label="Cerrar carrito"
+            className="flex h-11 w-11 items-center justify-center rounded-full text-xl text-zinc-500 active:bg-zinc-100 md:hidden"
+            aria-label="Cerrar venta actual"
           >
             ×
           </button>
@@ -77,15 +77,15 @@ export default function CartPanel({
 
         {items.length === 0 ? (
           <p className="mt-6 text-center text-sm text-zinc-500">
-            Todavía no agregaste productos.
+            Todavía no agregaste productos a la venta.
           </p>
         ) : (
           <ul className="mt-4 space-y-3 divide-y divide-zinc-100">
             {items.map((item) => (
               <li key={item.variantId} className="flex items-start justify-between gap-3 pt-3 first:pt-0">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{item.productName}</p>
-                  <p className="truncate text-xs text-zinc-500">{item.variantLabel}</p>
+                  <p className="break-words text-sm font-semibold">{item.productName}</p>
+                  <p className="break-words text-sm text-zinc-500">{item.variantLabel}</p>
                   <p className="mt-1 text-sm font-medium">{formatPrice(item.price)}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">
@@ -93,7 +93,7 @@ export default function CartPanel({
                     <button
                       type="button"
                       onClick={() => onUpdateQuantity(item.variantId, item.quantity - 1)}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-300 text-lg font-medium active:bg-zinc-100"
+                      className="flex h-11 w-11 items-center justify-center rounded-lg border border-zinc-300 text-lg font-medium active:bg-zinc-100"
                       aria-label="Restar"
                     >
                       −
@@ -103,7 +103,7 @@ export default function CartPanel({
                       type="button"
                       onClick={() => onUpdateQuantity(item.variantId, item.quantity + 1)}
                       disabled={item.quantity >= item.stockQuantity}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-300 text-lg font-medium active:bg-zinc-100 disabled:opacity-30"
+                      className="flex h-11 w-11 items-center justify-center rounded-lg border border-zinc-300 text-lg font-medium active:bg-zinc-100 disabled:opacity-30"
                       aria-label="Sumar"
                     >
                       +
@@ -112,7 +112,7 @@ export default function CartPanel({
                   <button
                     type="button"
                     onClick={() => onRemove(item.variantId)}
-                    className="text-xs text-zinc-400 underline underline-offset-2"
+                    className="min-h-11 px-1 text-sm text-zinc-500 underline underline-offset-2"
                   >
                     Quitar
                   </button>

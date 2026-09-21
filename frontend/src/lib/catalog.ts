@@ -15,6 +15,7 @@ export type IphoneModel = {
 
 export type Variant = {
   id: string;
+  sku: string;
   color: string | null;
   price: number;
   stock_quantity: number;
@@ -57,15 +58,27 @@ export async function getCategory(
 ): Promise<(Category & { parent: { id: string; name: string } | null }) | null> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, parent_id, parent:categories!parent_id(id, name)")
+    .select("id, name, parent_id")
     .eq("id", id)
     .maybeSingle()
-    .overrideTypes<
-      Category & { parent: { id: string; name: string } | null },
-      { merge: false }
-    >();
+    .overrideTypes<Category, { merge: false }>();
   if (error) throw new Error(`No se pudo cargar la categoría: ${error.message}`);
-  return data;
+  if (!data) return null;
+
+  // Consulta aparte: el embed `categories!parent_id` sobre la misma tabla resuelve
+  // hacia los hijos y devuelve [], así que el nombre del padre nunca llegaba.
+  let parent: { id: string; name: string } | null = null;
+  if (data.parent_id) {
+    const { data: parentRow, error: parentError } = await supabase
+      .from("categories")
+      .select("id, name")
+      .eq("id", data.parent_id)
+      .maybeSingle()
+      .overrideTypes<{ id: string; name: string }, { merge: false }>();
+    if (parentError) throw new Error(`No se pudo cargar la categoría: ${parentError.message}`);
+    parent = parentRow;
+  }
+  return { ...data, parent };
 }
 
 export async function getIphoneModels(): Promise<IphoneModel[]> {
@@ -91,7 +104,7 @@ export async function getProductsByCategory(
   let query = supabase
     .from("products")
     .select(
-      "id, name, description, product_variants!inner(id, color, price, stock_quantity, iphone_models(name))",
+      "id, name, description, product_variants!inner(id, sku, color, price, stock_quantity, iphone_models(name))",
     )
     .eq("category_id", categoryId)
     .eq("active", true)
@@ -111,4 +124,20 @@ export async function getProductsByCategory(
     .overrideTypes<Product[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar los productos: ${error.message}`);
   return data;
+}
+
+/** Cantidad de productos activos con al menos una variante activa y con stock, por categoría. */
+export async function getProductCountsByCategory(): Promise<Record<string, number>> {
+  const { data, error } = await supabase
+    .from("products")
+    .select("category_id, product_variants!inner(id)")
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .overrideTypes<{ category_id: string }[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron contar los productos: ${error.message}`);
+
+  const counts: Record<string, number> = {};
+  for (const row of data) counts[row.category_id] = (counts[row.category_id] ?? 0) + 1;
+  return counts;
 }

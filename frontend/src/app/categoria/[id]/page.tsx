@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ArrowMark from "@/components/ArrowMark";
 import ModelFilter from "@/components/ModelFilter";
 import ProductCard from "@/components/ProductCard";
 import {
@@ -27,36 +28,44 @@ export default async function CategoryPage(props: PageProps<"/categoria/[id]">) 
   const selectedModel = models.find((m) => m.id === modelId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 md:space-y-14">
       <div>
-        <Link href="/" className="text-sm text-zinc-500">
-          ← Inicio
+        <Link
+          href="/"
+          className="-my-1 inline-flex min-h-11 items-center gap-2 text-sm text-graphite transition-colors duration-200 hover:text-ink"
+        >
+          <ArrowMark className="h-2.5 w-4 rotate-180" strokeWidth={5} />
+          Inicio
         </Link>
-        <h1 className="mt-1 text-2xl font-bold tracking-tight">
-          {category.parent && (
-            <span className="block text-sm font-medium text-zinc-500">
-              {category.parent.name}
-            </span>
-          )}
+        <h1 className="mt-3 font-display text-[clamp(2.5rem,10vw,4.5rem)] font-semibold leading-[0.98] tracking-[-0.03em]">
+          {category.parent && <span className="text-graphite">{category.parent.name} / </span>}
           {category.name}
         </h1>
+        <p className="mt-3 text-graphite tabular-nums">
+          {products.length === 1 ? "1 producto" : `${products.length} productos`}
+          {selectedModel && <span> para {selectedModel.name}</span>}
+        </p>
       </div>
 
-      <ModelFilter models={models} selected={selectedModel?.id ?? ""} />
+      <div className="grid gap-6 md:grid-cols-[17rem_1fr] md:items-start md:gap-12">
+        <div className="md:sticky md:top-20">
+          <ModelFilter models={models} selected={selectedModel?.id ?? ""} />
+        </div>
 
-      {products.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-center text-zinc-500">
-          {selectedModel
-            ? `No hay productos disponibles para ${selectedModel.name} en esta categoría.`
-            : "No hay productos disponibles en esta categoría por el momento."}
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </ul>
-      )}
+        {products.length === 0 ? (
+          <p className="rounded-[28px] border border-dashed border-rule p-8 text-center text-graphite">
+            {selectedModel
+              ? `No hay productos disponibles para ${selectedModel.name} en esta categoría.`
+              : "No hay productos disponibles en esta categoría por el momento."}
+          </p>
+        ) : (
+          <ul className="grid items-start gap-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

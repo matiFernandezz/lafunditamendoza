@@ -230,11 +230,11 @@ export default function VentasPage() {
         </div>
 
         {categories.length > 0 && (
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
-              className={`h-10 shrink-0 rounded-full border px-4 text-sm font-medium ${
+              className={`h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
                 selectedCategory === null
                   ? "border-zinc-900 bg-zinc-900 text-white"
                   : "border-zinc-300 bg-white text-zinc-700"
@@ -247,7 +247,7 @@ export default function VentasPage() {
                 key={c.id}
                 type="button"
                 onClick={() => setSelectedCategory(c.id)}
-                className={`h-10 shrink-0 rounded-full border px-4 text-sm font-medium ${
+                className={`h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
                   selectedCategory === c.id
                     ? "border-zinc-900 bg-zinc-900 text-white"
                     : "border-zinc-300 bg-white text-zinc-700"

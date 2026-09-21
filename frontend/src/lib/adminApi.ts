@@ -85,3 +85,114 @@ export function createSale(payload: CreateSalePayload): Promise<{ data: CreatedS
     body: JSON.stringify(payload),
   });
 }
+
+export type Supplier = {
+  id: string;
+  name: string;
+  contact_info: string | null;
+};
+
+export function getSuppliers(): Promise<{ data: Supplier[] }> {
+  return adminFetch("/api/suppliers");
+}
+
+export function createSupplier(payload: {
+  name: string;
+  contact_info?: string;
+}): Promise<{ data: Supplier }> {
+  return adminFetch("/api/suppliers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type PurchaseItemInput = {
+  variant_id: string;
+  quantity: number;
+  unit_cost: number;
+};
+
+export type CreatePurchasePayload = {
+  supplier_id: string;
+  purchase_date?: string;
+  items: PurchaseItemInput[];
+};
+
+export type CreatedPurchase = {
+  id: string;
+  supplier_id: string;
+  purchase_date: string;
+  total_amount: number;
+};
+
+export function createPurchase(
+  payload: CreatePurchasePayload,
+): Promise<{ data: CreatedPurchase }> {
+  return adminFetch("/api/purchases", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type AdminCategory = {
+  id: string;
+  name: string;
+  parent_id: string | null;
+};
+
+export function getAdminCategories(): Promise<{ data: AdminCategory[] }> {
+  return adminFetch("/api/categories");
+}
+
+export type AdminIphoneModel = {
+  id: string;
+  name: string;
+  sort_order: number;
+};
+
+export function getAdminIphoneModels(): Promise<{ data: AdminIphoneModel[] }> {
+  return adminFetch("/api/iphone-models");
+}
+
+export type CreatedProduct = {
+  id: string;
+  category_id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+};
+
+export function createProduct(payload: {
+  category_id: string;
+  name: string;
+  description?: string;
+}): Promise<{ data: CreatedProduct }> {
+  return adminFetch("/api/products", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type CreatedVariant = {
+  id: string;
+  product_id: string;
+  iphone_model_id: string | null;
+  color: string | null;
+  sku: string;
+  price: number;
+  stock_quantity: number;
+};
+
+export function createProductVariant(payload: {
+  product_id: string;
+  iphone_model_id: string | null;
+  color?: string;
+  sku: string;
+  price: number;
+  stock_quantity: number;
+}): Promise<{ data: CreatedVariant }> {
+  return adminFetch("/api/product-variants", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

@@ -37,7 +37,7 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="flex min-h-[70vh] flex-col justify-center space-y-6">
+    <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Acceso al panel</h1>
         <p className="mt-1 text-zinc-600">Ingresá con tu cuenta de administrador.</p>

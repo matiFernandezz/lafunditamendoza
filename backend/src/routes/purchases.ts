@@ -54,6 +54,10 @@ router.post('/', async (req, res) => {
     .select()
     .single();
 
+  if (purchaseError?.code === '23503') {
+    return res.status(400).json({ error: 'El proveedor indicado no existe' });
+  }
+
   if (purchaseError || !purchase) {
     return res.status(500).json({ error: purchaseError?.message ?? 'No se pudo crear la compra' });
   }

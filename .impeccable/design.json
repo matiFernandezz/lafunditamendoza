@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-20T00:00:00Z",
+  "title": "Design System: La Fundita",
+  "extensions": {
+    "colorMeta": {
+      "paper": { "role": "neutral", "displayName": "Papel", "canonical": "#fafaf8", "tonalRamp": ["#121212", "#2e2e2c", "#4a4a48", "#6b6b68", "#a3a39f", "#e5e3dd", "#f1f0ec", "#fafaf8"] },
+      "ink": { "role": "neutral", "displayName": "Tinta", "canonical": "#121212", "tonalRamp": ["#121212", "#242424", "#363636", "#4a4a4a", "#6b6b68", "#8f8f8c", "#b8b8b4", "#e5e3dd"] },
+      "graphite": { "role": "neutral", "displayName": "Grafito", "canonical": "#6b6b68", "tonalRamp": ["#121212", "#2b2b2a", "#444443", "#6b6b68", "#8a8a87", "#a9a9a5", "#c9c8c3", "#e5e3dd"] },
+      "rule": { "role": "neutral", "displayName": "Regla", "canonical": "#e5e3dd", "tonalRamp": ["#6b6b68", "#8f8e89", "#b0aea8", "#c9c7c0", "#e5e3dd", "#eeece7", "#f4f3ef", "#fafaf8"] }
+    },
+    "typographyMeta": {
+      "display-hero": { "displayName": "Display hero", "purpose": "H1 de la home: rango de modelos en dos líneas." },
+      "display-page": { "displayName": "Display page", "purpose": "H1 de categoría." },
+      "headline": { "displayName": "Headline", "purpose": "Nombres de grupo en la home." },
+      "title": { "displayName": "Title", "purpose": "Etiquetas de mosaico, nombres de producto, títulos de error y 404." },
+      "body": { "displayName": "Body", "purpose": "Texto corrido, descripciones y apoyo." },
+      "data": { "displayName": "Data", "purpose": "Precios y SKU en Plex Mono con cifras tabulares." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "ease-hero", "value": "cubic-bezier(0.22, 1, 0.36, 1)", "purpose": "Subida enmascarada (700ms) y dibujo de la flecha (600ms, 300ms de retraso) del hero; única animación del catálogo." },
+      { "name": "state-transition", "value": "200ms ease-out", "purpose": "Inversión hover/active de mosaicos, borde del select y color de enlaces." },
+      { "name": "press", "value": "scale(0.98)", "purpose": "Feedback al presionar mosaicos y botones." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Category Tile",
+      "kind": "card",
+      "refersTo": "tile",
+      "description": "Mosaico 4/5 de categoría que se invierte a tinta en hover.",
+      "html": "<a class=\"ds-tile\" href=\"#\"><span class=\"ds-tile-top\"><span class=\"ds-tile-count\">12 productos</span><svg viewBox=\"0 0 64 40\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"6\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\" width=\"24\" height=\"16\"><path d=\"M4 20H58M42 4L58 20L42 36\"/></svg></span><span class=\"ds-tile-label\">Fundas de silicona</span></a>",
+      "css": ".ds-tile { display: flex; flex-direction: column; justify-content: space-between; aspect-ratio: 4/5; width: 180px; padding: 20px; border: 1px solid var(--rule, #e5e3dd); border-radius: 28px; color: var(--ink, #121212); background: var(--paper, #fafaf8); text-decoration: none; transition: background-color .2s ease-out, border-color .2s ease-out, color .2s ease-out, transform .2s ease-out; } .ds-tile-top { display: flex; justify-content: space-between; align-items: flex-start; } .ds-tile-count { font-size: 14px; color: var(--graphite, #6b6b68); font-variant-numeric: tabular-nums; } .ds-tile-label { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 20px; font-weight: 500; line-height: 1.25; letter-spacing: -0.025em; } .ds-tile:hover, .ds-tile:active { background: var(--ink, #121212); border-color: var(--ink, #121212); color: var(--paper, #fafaf8); } .ds-tile:hover .ds-tile-count { color: rgba(250,250,248,.7); } .ds-tile:active { transform: scale(.98); } .ds-tile:focus-visible { outline: 2px solid var(--ink, #121212); outline-offset: 3px; }"
+    },
+    {
+      "name": "Product Card",
+      "kind": "card",
+      "refersTo": "product-card",
+      "description": "Ficha de producto con variantes como filas separadas por reglas.",
+      "html": "<div class=\"ds-card\"><h3 class=\"ds-card-title\">Funda Silicona</h3><p class=\"ds-card-desc\">Interior de microfibra.</p><ul class=\"ds-rows\"><li><div><p class=\"ds-model\">iPhone 15 Pro</p><p class=\"ds-meta\">Negro · <span class=\"ds-sku\">SIL-15P-NG</span></p></div><div class=\"ds-price-col\"><p class=\"ds-price\">$ 12.500</p><p class=\"ds-low\"><span class=\"ds-dot\"></span>Quedan 2</p></div></li></ul></div>",
+      "css": ".ds-card { width: 360px; padding: 20px; border: 1px solid #e5e3dd; border-radius: 28px; color: #121212; } .ds-card-title { margin: 0; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 20px; font-weight: 600; line-height: 1.25; letter-spacing: -0.025em; } .ds-card-desc { margin: 6px 0 0; font-size: 15px; line-height: 1.35; color: #6b6b68; } .ds-rows { list-style: none; margin: 16px 0 0; padding: 0; } .ds-rows li { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid #e5e3dd; } .ds-rows li:first-child { border-top: 0; } .ds-model { margin: 0; font-weight: 500; } .ds-meta { margin: 2px 0 0; font-size: 14px; color: #6b6b68; } .ds-sku { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; white-space: nowrap; } .ds-price-col { text-align: right; } .ds-price { margin: 0; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 500; font-variant-numeric: tabular-nums; } .ds-low { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 0; font-size: 12px; font-weight: 500; } .ds-dot { width: 6px; height: 6px; border-radius: 9999px; background: #121212; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botón de tinta de 56px con radio de control.",
+      "html": "<button class=\"ds-btn\">Reintentar</button>",
+      "css": ".ds-btn { height: 56px; padding: 0 24px; border: 0; border-radius: 16px; background: #121212; color: #fafaf8; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 16px; font-weight: 500; transition: transform .2s; cursor: pointer; } .ds-btn:active { transform: scale(.98); } .ds-btn:focus-visible { outline: 2px solid #121212; outline-offset: 3px; }"
+    },
+    {
+      "name": "Model Select",
+      "kind": "input",
+      "refersTo": "select-model",
+      "description": "Select nativo de 56px con etiqueta visible y chevron dibujado.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-label\" for=\"ds-m\">Elegí tu iPhone</label><div class=\"ds-wrap\"><select id=\"ds-m\" class=\"ds-select\"><option>Todos los modelos</option><option>iPhone 15 Pro</option></select><svg viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"square\" width=\"16\" height=\"16\" class=\"ds-chev\"><path d=\"M3 6l5 5 5-5\"/></svg></div></div>",
+      "css": ".ds-field { width: 272px; color: #121212; } .ds-label { display: block; margin-bottom: 8px; font-weight: 500; } .ds-wrap { position: relative; } .ds-select { height: 56px; width: 100%; appearance: none; padding: 0 48px 0 16px; border: 1px solid #6b6b68; border-radius: 16px; background: transparent; color: #121212; font-size: 16px; font-weight: 500; transition: border-color .2s; } .ds-select:hover { border-color: #121212; } .ds-select:focus-visible { outline: 2px solid #121212; outline-offset: 3px; } .ds-chev { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); pointer-events: none; }"
+    },
+    {
+      "name": "Header",
+      "kind": "nav",
+      "refersTo": "header",
+      "description": "Barra sticky de tinta con la marca en display.",
+      "html": "<header class=\"ds-header\"><a class=\"ds-brand\" href=\"#\">La Fundita</a></header>",
+      "css": ".ds-header { display: flex; align-items: center; height: 56px; padding: 0 20px; background: #121212; } .ds-brand { font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 18px; font-weight: 600; letter-spacing: -0.025em; color: #fafaf8; text-decoration: none; } .ds-brand:focus-visible { outline: 2px solid #fafaf8; outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La ficha técnica",
+    "overview": "El catálogo se lee como la ficha de un objeto: papel casi blanco, tinta casi negra, un gris para lo secundario y una regla fina para separar. La forma del iPhone aparece en el radio de 28px de tarjetas y mosaicos, y el rango real de modelos, \"iPhone 11 → 17 Pro Max\", es el protagonista tipográfico de la home. No hay fotos ni acento de color: la jerarquía sale de la escala, el peso y la inversión papel/tinta.",
+    "keyCharacteristics": [
+      "Cuatro colores y nada más; la interacción invierte papel y tinta.",
+      "Sin sombras: profundidad por borde de 1px y por inversión.",
+      "Radio 28px en contenedores, 16px en controles.",
+      "Display comprimido contra cuerpo neutro y datos en mono.",
+      "Una única animación, la del hero al cargar."
+    ],
+    "rules": [
+      { "name": "The Four Colors Rule", "body": "No entra ningún color fuera de papel, tinta, grafito y regla. El estado se expresa con peso, un punto de tinta o inversión, no con color.", "section": "colors" },
+      { "name": "The Inversion Rule", "body": "Hover y active de una superficie interactiva grande la invierten a tinta con texto papel.", "section": "colors" },
+      { "name": "The Mono For Data Rule", "body": "Precio y SKU van en Plex Mono con cifras tabulares; el resto es sans o display.", "section": "typography" },
+      { "name": "The No Shadow Rule", "body": "Ninguna superficie lleva box-shadow; si necesita jerarquía, usa borde, escala o inversión.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do limitar los colores a papel #FAFAF8, tinta #121212, grafito #6B6B68 y regla #E5E3DD.",
+      "Do usar 28px para contenedores y 16px para controles, y 56px de alto en botones y select.",
+      "Do poner precios y SKU en Plex Mono con tabular-nums.",
+      "Do expresar hover y active invirtiendo a tinta, con transición de 200ms.",
+      "Do mantener el foco visible (2px tinta, offset 3px) y respetar prefers-reduced-motion.",
+      "Do dejar que la animación del hero sea la única del catálogo."
+    ],
+    "donts": [
+      "Don't añadir sombras, ni siquiera suaves.",
+      "Don't introducir un acento de color ni un fondo crema.",
+      "Don't usar mayúsculas con tracking, eyebrows ni kickers sobre los títulos.",
+      "Don't usar animaciones de aparición al hacer scroll.",
+      "Don't anidar paneles dentro de una ficha; las variantes son filas con reglas.",
+      "Don't inventar fotos ni claims comerciales (no hay imágenes en el repo)."
+    ]
+  }
+}

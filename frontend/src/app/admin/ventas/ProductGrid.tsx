@@ -26,9 +26,9 @@ export default function ProductGrid({
   }
 
   return (
-    <ul className="space-y-3">
+    <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
       {products.map((product) => (
-        <li key={product.id} className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <li key={product.id} className="min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-4">
           <h3 className="text-base font-semibold">{product.name}</h3>
           <ul className="mt-2 divide-y divide-zinc-100">
             {product.product_variants.map((variant) => {
@@ -48,7 +48,7 @@ export default function ProductGrid({
                     className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-2 text-left active:bg-zinc-100 disabled:opacity-40"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{variantLabel(variant, modelName)}</p>
+                      <p className="break-words text-sm font-medium">{variantLabel(variant, modelName)}</p>
                       <p className="text-xs text-zinc-500">
                         {outOfStock ? (
                           <span className="font-medium text-red-600">Sin stock</span>
@@ -62,7 +62,7 @@ export default function ProductGrid({
                             {inCart > 0 && (
                               <span>
                                 {variant.stock_quantity <= LOW_STOCK ? " · " : ""}
-                                {inCart} en carrito
+                                {inCart} en la venta
                               </span>
                             )}
                           </>
