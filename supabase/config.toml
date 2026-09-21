@@ -172,7 +172,8 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# Sin registro público: el único usuario admin se crea a mano desde Studio.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
@@ -216,7 +217,9 @@ web3 = 30
 # secret = ""
 
 [auth.email]
-# Allow/disallow new user signups via email to your project.
+# OJO: esto no es "signup" nomás, apaga el proveedor email/password entero
+# (login incluido) si está en false. El bloqueo de alta pública ya lo hace
+# `enable_signup = false` en [auth] más arriba — acá lo dejamos en true.
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
