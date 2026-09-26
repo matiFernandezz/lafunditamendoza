@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/admin/ventas", label: "Ventas" },
   { href: "/admin/compras", label: "Compras" },
   { href: "/admin/productos", label: "Productos" },
+  { href: "/admin/catalogo", label: "Catálogo" },
 ];
 
 export default function AdminTopBar() {

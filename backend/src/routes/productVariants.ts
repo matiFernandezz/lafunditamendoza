@@ -89,4 +89,38 @@ router.post('/', async (req, res) => {
   res.status(201).json({ data });
 });
 
+router.patch('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { stock_quantity } = req.body ?? {};
+
+  if (!isUuid(id)) {
+    return res.status(400).json({ error: 'id debe ser un uuid valido' });
+  }
+
+  if (
+    typeof stock_quantity !== 'number' ||
+    !Number.isInteger(stock_quantity) ||
+    stock_quantity < 0
+  ) {
+    return res.status(400).json({ error: 'stock_quantity debe ser un entero mayor o igual a 0' });
+  }
+
+  const { data, error } = await supabase
+    .from('product_variants')
+    .update({ stock_quantity })
+    .eq('id', id)
+    .select('id, product_id, iphone_model_id, color, sku, price, cost_price, stock_quantity, active')
+    .maybeSingle();
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  if (!data) {
+    return res.status(404).json({ error: 'No existe una variante con ese id' });
+  }
+
+  res.json({ data });
+});
+
 export default router;

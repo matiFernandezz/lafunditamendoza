@@ -196,3 +196,13 @@ export function createProductVariant(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export function updateVariantStock(
+  id: string,
+  stock_quantity: number,
+): Promise<{ data: AdminVariant }> {
+  return adminFetch(`/api/product-variants/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ stock_quantity }),
+  });
+}
