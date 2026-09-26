@@ -14,7 +14,9 @@ import productVariantsRouter from './routes/productVariants';
 import { apiKeyAuth } from './middleware/apiKeyAuth';
 
 const app = express();
-app.use(cors());
+// Sin FRONTEND_URL (ej. en desarrollo) permite cualquier origen; en producción
+// se setea a la URL de Vercel en Railway, sin tocar código.
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json());
 
 app.get('/', (_req, res) => {
