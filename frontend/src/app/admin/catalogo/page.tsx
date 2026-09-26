@@ -60,6 +60,7 @@ export default function CatalogoPage() {
   const [savingVariant, setSavingVariant] = useState(false);
   const [variantError, setVariantError] = useState<string | null>(null);
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
+  const [addModelId, setAddModelId] = useState("");
   const addDialogRef = useRef<HTMLDialogElement>(null);
 
   const sortedModels = useMemo(
@@ -89,15 +90,10 @@ export default function CatalogoPage() {
     };
   }, []);
 
-  // Modelo activo: el elegido, o por default el primero (menor sort_order)
-  // mientras no se haya tocado el selector. Derivado en vez de sincronizado
-  // por efecto, para no depender de un setState en cascada.
-  const activeModelId = selectedModelId !== "" ? selectedModelId : sortedModels[0]?.id ?? "";
-
   // Cambiar cualquier filtro vuelve a la primera página. Se ajusta durante el
   // render (comparando contra el filtro anterior guardado en estado), no en
   // un efecto: https://react.dev/learn/you-might-not-need-an-effect
-  const filterKey = `${activeModelId}|${stockFilter}|${search}`;
+  const filterKey = `${selectedModelId}|${stockFilter}|${search}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
   if (prevFilterKey !== filterKey) {
     setPrevFilterKey(filterKey);
@@ -143,7 +139,7 @@ export default function CatalogoPage() {
     [products],
   );
 
-  const selectedModel = models.find((m) => m.id === activeModelId);
+  const modelNameById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
 
   const filteredEntries = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -155,9 +151,11 @@ export default function CatalogoPage() {
 
       for (const variant of product.product_variants) {
         const modelMatches =
-          activeModelId === UNIVERSAL
-            ? variant.iphone_model_id === null
-            : variant.iphone_model_id === activeModelId;
+          selectedModelId === ""
+            ? true
+            : selectedModelId === UNIVERSAL
+              ? variant.iphone_model_id === null
+              : variant.iphone_model_id === selectedModelId;
         if (!modelMatches) continue;
 
         if (stockFilter === "zero" && variant.stock_quantity !== 0) continue;
@@ -174,7 +172,7 @@ export default function CatalogoPage() {
     });
 
     return entries;
-  }, [products, activeModelId, stockFilter, search]);
+  }, [products, selectedModelId, stockFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -197,7 +195,9 @@ export default function CatalogoPage() {
   }, [pageEntries]);
 
   const selectedProduct = products.find((p) => p.id === productId);
-  const suggestedSku = suggestSku(selectedProduct?.name ?? "", selectedModel?.name ?? "", color);
+  const addModelName =
+    addModelId === UNIVERSAL ? "" : modelNameById.get(addModelId) ?? "";
+  const suggestedSku = suggestSku(selectedProduct?.name ?? "", addModelName, color);
   const sku = skuOverride ?? suggestedSku;
 
   const priceNumber = Number(price);
@@ -205,7 +205,12 @@ export default function CatalogoPage() {
   const priceValid = price.trim() !== "" && Number.isFinite(priceNumber) && priceNumber > 0;
   const stockValid = Number.isInteger(stockNumber) && stockNumber >= 0;
   const canSaveVariant =
-    !savingVariant && productId !== "" && sku.trim() !== "" && priceValid && stockValid;
+    !savingVariant &&
+    productId !== "" &&
+    addModelId !== "" &&
+    sku.trim() !== "" &&
+    priceValid &&
+    stockValid;
 
   function openAddDialog() {
     setProductId("");
@@ -214,6 +219,9 @@ export default function CatalogoPage() {
     setPrice("");
     setStock("0");
     setVariantError(null);
+    // Si el filtro de arriba es "Todos los modelos" no hay uno concreto para
+    // preseleccionar: se arranca en el primero y se puede cambiar en el modal.
+    setAddModelId(selectedModelId !== "" ? selectedModelId : sortedModels[0]?.id ?? "");
     addDialogRef.current?.showModal();
   }
 
@@ -228,7 +236,7 @@ export default function CatalogoPage() {
     try {
       const res = await createProductVariant({
         product_id: productId,
-        iphone_model_id: activeModelId === UNIVERSAL ? null : activeModelId,
+        iphone_model_id: addModelId === UNIVERSAL ? null : addModelId,
         ...(color.trim() ? { color: color.trim() } : {}),
         sku: sku.trim(),
         price: priceNumber,
@@ -279,10 +287,11 @@ export default function CatalogoPage() {
           </label>
           <select
             id="catalogo-modelo"
-            value={activeModelId}
+            value={selectedModelId}
             onChange={(e) => setSelectedModelId(e.target.value)}
             className={inputClass}
           >
+            <option value="">Todos los modelos</option>
             {sortedModels.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -328,20 +337,35 @@ export default function CatalogoPage() {
       <dialog
         ref={addDialogRef}
         aria-labelledby="agregar-variante"
-        className="w-full max-w-lg rounded-2xl border border-graphite bg-paper p-6 backdrop:bg-ink/40"
+        className="fixed inset-0 m-auto h-fit w-full max-w-lg rounded-2xl border border-graphite bg-paper p-6 backdrop:bg-ink/40"
       >
         <div className="space-y-4">
           <h2 id="agregar-variante" className="font-display text-xl font-semibold tracking-tight">
             Agregar variante nueva
           </h2>
-          <p className="text-graphite">
-            Modelo:{" "}
-            <span className="font-medium text-ink">
-              {activeModelId === UNIVERSAL
-                ? "Sin modelo (accesorios universales)"
-                : selectedModel?.name ?? "—"}
-            </span>
-          </p>
+
+          <div>
+            <label htmlFor="catalogo-agregar-modelo" className="mb-1 block text-base font-medium">
+              Modelo de iPhone
+            </label>
+            <select
+              id="catalogo-agregar-modelo"
+              value={addModelId}
+              onChange={(e) => {
+                setAddModelId(e.target.value);
+                setSkuOverride(null);
+                setVariantError(null);
+              }}
+              className={inputClass}
+            >
+              {sortedModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+              <option value={UNIVERSAL}>Sin modelo (accesorios universales)</option>
+            </select>
+          </div>
 
           <Combobox
             id="catalogo-producto"
@@ -512,7 +536,17 @@ export default function CatalogoPage() {
                       <span className="min-w-0">
                         <span className="block font-mono text-sm">{v.sku}</span>
                         <span className="block text-graphite">
-                          {[v.color, formatPrice(v.price)].filter(Boolean).join(" · ")}
+                          {[
+                            selectedModelId === ""
+                              ? v.iphone_model_id
+                                ? modelNameById.get(v.iphone_model_id)
+                                : "Sin modelo"
+                              : null,
+                            v.color,
+                            formatPrice(v.price),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
                         </span>
                       </span>
                       <StockInput variantId={v.id} initialStock={v.stock_quantity} />
