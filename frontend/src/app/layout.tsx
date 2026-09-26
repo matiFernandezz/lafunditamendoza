@@ -1,17 +1,13 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import { Archivo, IBM_Plex_Mono } from "next/font/google";
 import AppShell from "@/components/AppShell";
+import { getCategoryGroups, type CategoryGroup } from "@/lib/catalog";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
-});
-
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["500", "600", "700", "800", "900"],
 });
 
 const plexMono = IBM_Plex_Mono({
@@ -25,14 +21,24 @@ export const metadata: Metadata = {
   description: "Fundas y accesorios para tu iPhone. Elegí tu modelo y mirá lo que hay en stock.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // La nav del header necesita las categorías reales en todas las páginas
+  // (incluida /admin, que las ignora). Si falla, el header queda sin links
+  // de categoría en vez de tirar abajo el layout entero.
+  let categories: CategoryGroup[] = [];
+  try {
+    categories = await getCategoryGroups();
+  } catch {
+    categories = [];
+  }
+
   return (
     <html
       lang="es"
-      className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${archivo.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <AppShell>{children}</AppShell>
+        <AppShell categories={categories}>{children}</AppShell>
       </body>
     </html>
   );

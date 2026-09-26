@@ -16,8 +16,8 @@
   --color-ink: var(--ink);
   --color-graphite: var(--graphite);
   --color-rule: var(--rule);
-  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
-  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-sans: var(--font-archivo), system-ui, sans-serif;
+  --font-display: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
