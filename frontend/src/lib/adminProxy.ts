@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { requireEnv } from "@/lib/requireEnv";
 
@@ -41,6 +41,30 @@ export async function forwardToBackend(path: string, init?: RequestInit) {
 
   const body = await res.text();
   return new NextResponse(body, {
+    status: res.status,
+    headers: { "Content-Type": res.headers.get("Content-Type") ?? "application/json" },
+  });
+}
+
+/**
+ * Igual que forwardToBackend, pero para multipart/form-data (subida de
+ * archivos): reenvía los bytes crudos del body y el Content-Type original
+ * (con su boundary) tal cual, en vez de parsear y reconstruir el FormData.
+ */
+export async function forwardMultipartToBackend(path: string, request: NextRequest) {
+  const body = await request.arrayBuffer();
+
+  const res = await fetch(`${BACKEND_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": request.headers.get("content-type") ?? "application/octet-stream",
+      "x-api-key": BACKEND_API_KEY,
+    },
+    body,
+  });
+
+  const responseBody = await res.text();
+  return new NextResponse(responseBody, {
     status: res.status,
     headers: { "Content-Type": res.headers.get("Content-Type") ?? "application/json" },
   });

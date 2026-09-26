@@ -15,6 +15,8 @@ import {
 import { formatPrice } from "@/lib/format";
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
+import ProductImageField from "./ProductImageField";
+import ProductNameEditor from "./ProductNameEditor";
 import StockInput from "./StockInput";
 
 const UNIVERSAL = "__universal__";
@@ -122,6 +124,10 @@ export default function CatalogoPage() {
     } catch {
       // El próximo guardado o "Reintentar" lo refresca.
     }
+  }
+
+  function patchProductInState(productId: string, patch: Partial<AdminProduct>) {
+    setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)));
   }
 
   const categoryPath = useMemo(() => {
@@ -525,8 +531,17 @@ export default function CatalogoPage() {
         ) : (
           <div className="space-y-6">
             {groups.map(({ product, variants }) => (
-              <div key={product.id} className="space-y-2">
-                <h3 className="text-base font-semibold">{product.name}</h3>
+              <div key={product.id} className="space-y-3">
+                <ProductImageField
+                  productId={product.id}
+                  imageUrl={product.image_url}
+                  onUploaded={(url) => patchProductInState(product.id, { image_url: url })}
+                />
+                <ProductNameEditor
+                  productId={product.id}
+                  name={product.name}
+                  onSaved={(name) => patchProductInState(product.id, { name })}
+                />
                 <ul className="divide-y divide-rule rounded-2xl border border-rule">
                   {variants.map((v) => (
                     <li

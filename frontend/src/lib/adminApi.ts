@@ -11,10 +11,14 @@ export class AdminApiError extends Error {
 }
 
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  // FormData (subida de archivos) no lleva Content-Type manual: el browser
+  // pone el suyo con el boundary correcto.
+  const isFormData = init?.body instanceof FormData;
+
   const res = await fetch(path, {
     ...init,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...init?.headers,
     },
   });
@@ -50,6 +54,7 @@ export type AdminProduct = {
   description: string | null;
   active: boolean;
   category_id: string;
+  image_url: string | null;
   created_at: string;
   product_variants: AdminVariant[];
 };
@@ -160,6 +165,7 @@ export type CreatedProduct = {
   name: string;
   description: string | null;
   active: boolean;
+  image_url: string | null;
 };
 
 export function createProduct(payload: {
@@ -204,5 +210,21 @@ export function updateVariantStock(
   return adminFetch(`/api/product-variants/${id}`, {
     method: "PATCH",
     body: JSON.stringify({ stock_quantity }),
+  });
+}
+
+export function updateProductName(id: string, name: string): Promise<{ data: AdminProduct }> {
+  return adminFetch(`/api/products/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function uploadProductImage(id: string, file: File): Promise<{ data: AdminProduct }> {
+  const formData = new FormData();
+  formData.append("image", file);
+  return adminFetch(`/api/products/${id}/image`, {
+    method: "POST",
+    body: formData,
   });
 }
