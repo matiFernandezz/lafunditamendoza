@@ -13,6 +13,7 @@ import {
   type AdminProduct,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import Combobox from "./Combobox";
 import { suggestSku } from "./sku";
 
 const inputClass =
@@ -324,29 +325,23 @@ export default function ProductosPage() {
             Agregar variante
           </h2>
 
-          <div>
-            <label htmlFor="variante-producto" className="mb-1 block text-base font-medium">
-              Producto
-            </label>
-            <select
-              id="variante-producto"
-              value={productId}
-              onChange={(e) => {
-                setProductId(e.target.value);
-                setSkuOverride(null);
-                setVariantError(null);
-                setVariantOk(null);
-              }}
-              className={inputClass}
-            >
-              <option value="">Elegí un producto</option>
-              {sortedProducts.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} ({categoryPath(p.category_id)})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Combobox
+            id="variante-producto"
+            label="Producto"
+            placeholder="Elegí un producto"
+            options={sortedProducts.map((p) => ({
+              id: p.id,
+              label: p.name,
+              sublabel: categoryPath(p.category_id),
+            }))}
+            value={productId}
+            onChange={(id) => {
+              setProductId(id);
+              setSkuOverride(null);
+              setVariantError(null);
+              setVariantOk(null);
+            }}
+          />
 
           <div>
             <label htmlFor="variante-modelo" className="mb-1 block text-base font-medium">
