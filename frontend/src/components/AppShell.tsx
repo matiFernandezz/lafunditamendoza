@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -18,13 +19,12 @@ function toNavLinks(categories: CategoryGroup[]): NavLink[] {
   return [...fromCategories, { key: "nosotros", label: "Nosotros", href: "/nosotros" }];
 }
 
-// El isotipo se recrea en texto (no como imagen) para que el fondo siempre
-// coincida exactamente con el del header, sin recuadro ni borde de logo.
-function Wordmark({ className = "" }: { className?: string }) {
+// El isotipo (design_reference/logo.png) es un jpg cuadrado con fondo negro
+// puro ya "quemado" en la imagen: el header tiene que ser bg-black exacto
+// (no --ink, que es gris muy oscuro) para que el logo se pierda sin recuadro.
+function Logo() {
   return (
-    <span className={`font-display font-black tracking-tight ${className}`}>
-      La <em className="italic">fun</em> dita.
-    </span>
+    <Image src="/logo.jpg" alt="La Fundita" width={44} height={44} priority className="block" />
   );
 }
 
@@ -55,10 +55,10 @@ export default function AppShell({
   if (isAdmin) {
     return (
       <>
-        <header className="sticky top-0 z-20 bg-ink text-paper">
-          <div className={`mx-auto flex h-14 w-full items-center ${width}`}>
-            <Link href="/" className="flex h-11 items-center focus-visible:outline-paper">
-              <Wordmark className="text-lg leading-none" />
+        <header className="sticky top-0 z-20 bg-black text-paper">
+          <div className={`mx-auto flex h-16 w-full items-center ${width}`}>
+            <Link href="/" className="flex items-center focus-visible:outline-paper">
+              <Logo />
             </Link>
           </div>
         </header>
@@ -69,10 +69,10 @@ export default function AppShell({
 
   return (
     <>
-      <header className="sticky top-0 z-20 bg-ink text-paper">
-        <div className={`mx-auto flex w-full flex-col items-center gap-3 py-4 md:py-6 ${width}`}>
-          <Link href="/" className="focus-visible:outline-paper">
-            <Wordmark className="text-2xl leading-none md:text-3xl" />
+      <header className="sticky top-0 z-20 bg-black text-paper">
+        <div className={`mx-auto flex h-20 w-full items-center justify-between gap-4 ${width}`}>
+          <Link href="/" className="flex shrink-0 items-center focus-visible:outline-paper">
+            <Logo />
           </Link>
 
           <nav aria-label="Categorías" className="hidden md:flex md:items-center md:gap-8">
@@ -92,9 +92,9 @@ export default function AppShell({
             onClick={() => setMenuOpen((o) => !o)}
             aria-expanded={menuOpen}
             aria-controls="menu-movil"
-            className="flex h-11 items-center gap-2 text-sm font-semibold tracking-wide text-paper/85 focus-visible:outline-paper md:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-paper md:hidden"
           >
-            {menuOpen ? "Cerrar" : "Menú"}
+            <span className="sr-only">{menuOpen ? "Cerrar menú" : "Abrir menú"}</span>
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -102,7 +102,7 @@ export default function AppShell({
               strokeWidth="2"
               strokeLinecap="round"
               aria-hidden="true"
-              className="size-4"
+              className="size-6"
             >
               {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
             </svg>
@@ -113,12 +113,12 @@ export default function AppShell({
           <nav
             id="menu-movil"
             aria-label="Categorías"
-            className="border-t border-paper/15 px-5 py-2 text-center md:hidden"
+            className="border-t border-paper/15 px-5 py-2 md:hidden"
           >
             <ul>
               {navLinks.map((link) => (
                 <li key={link.key} className="border-b border-paper/10 last:border-0">
-                  <Link href={link.href} className="flex min-h-14 items-center justify-center text-base font-semibold">
+                  <Link href={link.href} className="flex min-h-14 items-center text-base font-semibold">
                     {link.label}
                   </Link>
                 </li>
@@ -127,11 +127,7 @@ export default function AppShell({
           </nav>
         )}
       </header>
-      <main
-        className={`mx-auto w-full flex-1 ${width} pb-20 pt-8 md:pt-14`}
-      >
-        {children}
-      </main>
+      <main className={`mx-auto w-full flex-1 ${width} pb-20 pt-8 md:pt-14`}>{children}</main>
     </>
   );
 }
