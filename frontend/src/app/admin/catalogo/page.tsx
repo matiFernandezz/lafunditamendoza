@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AdminApiError,
   createProductVariant,
@@ -59,7 +59,8 @@ export default function CatalogoPage() {
   const [stock, setStock] = useState("0");
   const [savingVariant, setSavingVariant] = useState(false);
   const [variantError, setVariantError] = useState<string | null>(null);
-  const [variantOk, setVariantOk] = useState<string | null>(null);
+  const [addedNotice, setAddedNotice] = useState<string | null>(null);
+  const addDialogRef = useRef<HTMLDialogElement>(null);
 
   const sortedModels = useMemo(
     () => [...models].sort((a, b) => a.sort_order - b.sort_order),
@@ -88,17 +89,20 @@ export default function CatalogoPage() {
     };
   }, []);
 
-  // Default: el primer modelo (menor sort_order) apenas cargan los datos.
-  useEffect(() => {
-    if (selectedModelId === "" && sortedModels.length > 0) {
-      setSelectedModelId(sortedModels[0].id);
-    }
-  }, [sortedModels, selectedModelId]);
+  // Modelo activo: el elegido, o por default el primero (menor sort_order)
+  // mientras no se haya tocado el selector. Derivado en vez de sincronizado
+  // por efecto, para no depender de un setState en cascada.
+  const activeModelId = selectedModelId !== "" ? selectedModelId : sortedModels[0]?.id ?? "";
 
-  // Cambiar cualquier filtro vuelve a la primera página.
-  useEffect(() => {
-    setPage(1);
-  }, [selectedModelId, stockFilter, search]);
+  // Cambiar cualquier filtro vuelve a la primera página. Se ajusta durante el
+  // render (comparando contra el filtro anterior guardado en estado), no en
+  // un efecto: https://react.dev/learn/you-might-not-need-an-effect
+  const filterKey = `${activeModelId}|${stockFilter}|${search}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (prevFilterKey !== filterKey) {
+    setPrevFilterKey(filterKey);
+    if (page !== 1) setPage(1);
+  }
 
   function retryLoad() {
     setLoading(true);
@@ -139,7 +143,7 @@ export default function CatalogoPage() {
     [products],
   );
 
-  const selectedModel = models.find((m) => m.id === selectedModelId);
+  const selectedModel = models.find((m) => m.id === activeModelId);
 
   const filteredEntries = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -151,9 +155,9 @@ export default function CatalogoPage() {
 
       for (const variant of product.product_variants) {
         const modelMatches =
-          selectedModelId === UNIVERSAL
+          activeModelId === UNIVERSAL
             ? variant.iphone_model_id === null
-            : variant.iphone_model_id === selectedModelId;
+            : variant.iphone_model_id === activeModelId;
         if (!modelMatches) continue;
 
         if (stockFilter === "zero" && variant.stock_quantity !== 0) continue;
@@ -170,7 +174,7 @@ export default function CatalogoPage() {
     });
 
     return entries;
-  }, [products, selectedModelId, stockFilter, search]);
+  }, [products, activeModelId, stockFilter, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -203,23 +207,36 @@ export default function CatalogoPage() {
   const canSaveVariant =
     !savingVariant && productId !== "" && sku.trim() !== "" && priceValid && stockValid;
 
+  function openAddDialog() {
+    setProductId("");
+    setColor("");
+    setSkuOverride(null);
+    setPrice("");
+    setStock("0");
+    setVariantError(null);
+    addDialogRef.current?.showModal();
+  }
+
+  function closeAddDialog() {
+    addDialogRef.current?.close();
+  }
+
   async function handleCreateVariant() {
     if (!canSaveVariant) return;
     setSavingVariant(true);
     setVariantError(null);
-    setVariantOk(null);
     try {
       const res = await createProductVariant({
         product_id: productId,
-        iphone_model_id: selectedModelId === UNIVERSAL ? null : selectedModelId,
+        iphone_model_id: activeModelId === UNIVERSAL ? null : activeModelId,
         ...(color.trim() ? { color: color.trim() } : {}),
         sku: sku.trim(),
         price: priceNumber,
         stock_quantity: stockNumber,
       });
-      setVariantOk(`Variante ${res.data.sku} agregada.`);
-      setColor("");
-      setSkuOverride(null);
+      closeAddDialog();
+      setAddedNotice(`Variante ${res.data.sku} agregada.`);
+      setTimeout(() => setAddedNotice(null), 4000);
       await refreshProducts();
     } catch (err) {
       setVariantError(errorMessage(err));
@@ -262,7 +279,7 @@ export default function CatalogoPage() {
           </label>
           <select
             id="catalogo-modelo"
-            value={selectedModelId}
+            value={activeModelId}
             onChange={(e) => setSelectedModelId(e.target.value)}
             className={inputClass}
           >
@@ -308,155 +325,176 @@ export default function CatalogoPage() {
         </div>
       </section>
 
-      <section aria-labelledby="agregar-variante" className="space-y-4">
-        <h2 id="agregar-variante" className="font-display text-xl font-semibold tracking-tight">
-          Agregar variante nueva
-        </h2>
-        <p className="text-graphite">
-          Modelo:{" "}
-          <span className="font-medium text-ink">
-            {selectedModelId === UNIVERSAL
-              ? "Sin modelo (accesorios universales)"
-              : selectedModel?.name ?? "—"}
-          </span>
-        </p>
+      <dialog
+        ref={addDialogRef}
+        aria-labelledby="agregar-variante"
+        className="w-full max-w-lg rounded-2xl border border-graphite bg-paper p-6 backdrop:bg-ink/40"
+      >
+        <div className="space-y-4">
+          <h2 id="agregar-variante" className="font-display text-xl font-semibold tracking-tight">
+            Agregar variante nueva
+          </h2>
+          <p className="text-graphite">
+            Modelo:{" "}
+            <span className="font-medium text-ink">
+              {activeModelId === UNIVERSAL
+                ? "Sin modelo (accesorios universales)"
+                : selectedModel?.name ?? "—"}
+            </span>
+          </p>
 
-        <Combobox
-          id="catalogo-producto"
-          label="Producto"
-          placeholder="Elegí un producto"
-          options={sortedProducts.map((p) => ({
-            id: p.id,
-            label: p.name,
-            sublabel: categoryPath(p.category_id),
-          }))}
-          value={productId}
-          onChange={(id) => {
-            setProductId(id);
-            setSkuOverride(null);
-            setVariantError(null);
-            setVariantOk(null);
-          }}
-        />
-
-        <div>
-          <label htmlFor="catalogo-color" className="mb-1 block text-base font-medium">
-            Color (opcional)
-          </label>
-          <input
-            id="catalogo-color"
-            type="text"
-            value={color}
-            onChange={(e) => {
-              setColor(e.target.value);
-              setVariantError(null);
-              setVariantOk(null);
-            }}
-            placeholder="rojo"
-            className={inputClass}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="catalogo-sku" className="mb-1 block text-base font-medium">
-            SKU
-          </label>
-          <input
-            id="catalogo-sku"
-            type="text"
-            value={sku}
-            onChange={(e) => {
-              setSkuOverride(e.target.value);
+          <Combobox
+            id="catalogo-producto"
+            label="Producto"
+            placeholder="Elegí un producto"
+            options={sortedProducts.map((p) => ({
+              id: p.id,
+              label: p.name,
+              sublabel: categoryPath(p.category_id),
+            }))}
+            value={productId}
+            onChange={(id) => {
+              setProductId(id);
+              setSkuOverride(null);
               setVariantError(null);
             }}
-            autoCapitalize="characters"
-            className={`${inputClass} font-mono`}
           />
-          <p className="mt-1 text-sm text-graphite">
-            {skuOverride === null ? (
-              "Sugerido según producto, modelo y color. Podés editarlo."
-            ) : (
-              <>
-                Editado a mano.{" "}
-                <button
-                  type="button"
-                  onClick={() => setSkuOverride(null)}
-                  className="min-h-11 font-medium text-ink underline underline-offset-2"
-                >
-                  Volver a la sugerencia
-                </button>
-              </>
-            )}
-          </p>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="catalogo-precio" className="mb-1 block text-base font-medium">
-              Precio
+            <label htmlFor="catalogo-color" className="mb-1 block text-base font-medium">
+              Color (opcional)
             </label>
             <input
-              id="catalogo-precio"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="any"
-              value={price}
+              id="catalogo-color"
+              type="text"
+              value={color}
               onChange={(e) => {
-                setPrice(e.target.value);
+                setColor(e.target.value);
                 setVariantError(null);
               }}
-              placeholder="$"
-              className={`${inputClass} font-mono`}
+              placeholder="rojo"
+              className={inputClass}
             />
           </div>
+
           <div>
-            <label htmlFor="catalogo-stock-inicial" className="mb-1 block text-base font-medium">
-              Stock inicial
+            <label htmlFor="catalogo-sku" className="mb-1 block text-base font-medium">
+              SKU
             </label>
             <input
-              id="catalogo-stock-inicial"
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={stock}
+              id="catalogo-sku"
+              type="text"
+              value={sku}
               onChange={(e) => {
-                setStock(e.target.value);
+                setSkuOverride(e.target.value);
                 setVariantError(null);
               }}
+              autoCapitalize="characters"
               className={`${inputClass} font-mono`}
             />
+            <p className="mt-1 text-sm text-graphite">
+              {skuOverride === null ? (
+                "Sugerido según producto, modelo y color. Podés editarlo."
+              ) : (
+                <>
+                  Editado a mano.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setSkuOverride(null)}
+                    className="min-h-11 font-medium text-ink underline underline-offset-2"
+                  >
+                    Volver a la sugerencia
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="catalogo-precio" className="mb-1 block text-base font-medium">
+                Precio
+              </label>
+              <input
+                id="catalogo-precio"
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step="any"
+                value={price}
+                onChange={(e) => {
+                  setPrice(e.target.value);
+                  setVariantError(null);
+                }}
+                placeholder="$"
+                className={`${inputClass} font-mono`}
+              />
+            </div>
+            <div>
+              <label htmlFor="catalogo-stock-inicial" className="mb-1 block text-base font-medium">
+                Stock inicial
+              </label>
+              <input
+                id="catalogo-stock-inicial"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={stock}
+                onChange={(e) => {
+                  setStock(e.target.value);
+                  setVariantError(null);
+                }}
+                className={`${inputClass} font-mono`}
+              />
+            </div>
+          </div>
+
+          {variantError && (
+            <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
+              {variantError}
+            </p>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={closeAddDialog}
+              className="h-14 rounded-2xl border border-ink text-base font-medium active:bg-rule"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateVariant}
+              disabled={!canSaveVariant}
+              className="h-14 rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
+            >
+              {savingVariant ? "Agregando…" : "Agregar variante"}
+            </button>
           </div>
         </div>
-
-        {variantError && (
-          <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
-            {variantError}
-          </p>
-        )}
-        {variantOk && (
-          <p role="status" className="rounded-2xl bg-ink p-3 text-base font-medium text-paper">
-            {variantOk}
-          </p>
-        )}
-
-        <button
-          type="button"
-          onClick={handleCreateVariant}
-          disabled={!canSaveVariant}
-          className="h-14 w-full rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
-        >
-          {savingVariant ? "Agregando…" : "Agregar variante"}
-        </button>
-      </section>
+      </dialog>
 
       <section aria-labelledby="lista-variantes" className="space-y-4">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="lista-variantes" className="font-display text-xl font-semibold tracking-tight">
             Variantes ({filteredEntries.length})
           </h2>
+          <button
+            type="button"
+            onClick={openAddDialog}
+            className="h-11 shrink-0 rounded-xl bg-ink px-4 text-base font-medium text-paper"
+          >
+            + Agregar variante
+          </button>
         </div>
+
+        {addedNotice && (
+          <p role="status" className="rounded-2xl bg-ink p-3 text-base font-medium text-paper">
+            {addedNotice}
+          </p>
+        )}
 
         {groups.length === 0 ? (
           <p className="text-graphite">No hay variantes que matcheen estos filtros.</p>
