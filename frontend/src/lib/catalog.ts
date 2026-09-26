@@ -101,12 +101,22 @@ export async function getProductsByCategory(
   categoryId: string,
   modelId?: string,
 ): Promise<Product[]> {
+  // Una categoría con subcategorías (ej. "Fundas") no tiene productos propios:
+  // agrega los de sus hijas. Una hoja (ej. "Accesorios") solo trae los suyos.
+  const { data: children, error: childrenError } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("parent_id", categoryId)
+    .overrideTypes<{ id: string }[], { merge: false }>();
+  if (childrenError) throw new Error(`No se pudieron cargar las categorías: ${childrenError.message}`);
+  const categoryIds = children.length > 0 ? children.map((c) => c.id) : [categoryId];
+
   let query = supabase
     .from("products")
     .select(
       "id, name, description, product_variants!inner(id, sku, color, price, stock_quantity, iphone_models(name))",
     )
-    .eq("category_id", categoryId)
+    .in("category_id", categoryIds)
     .eq("active", true)
     .eq("product_variants.active", true)
     .gt("product_variants.stock_quantity", 0);
