@@ -2,6 +2,10 @@
 .branches
 .temp
 
+# Capturas del PDF del catálogo: solo copia de trabajo para leerlo (regenerable
+# con pdftoppm), no versionar. El PDF fuente sí se versiona.
+catalogo_import/pages/
+
 # dotenvx
 .env.keys
 .env.local
