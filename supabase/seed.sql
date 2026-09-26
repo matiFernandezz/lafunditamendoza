@@ -3,15 +3,26 @@
 -- Solo datos reales de catálogo: sin productos, variantes, proveedores ni
 -- movimientos de prueba.
 
--- Categorías (IDs fijos: las referencian los productos).
+-- Categorías (IDs fijos: las referencian los productos). El on conflict
+-- actualiza nombre y padre si cambian, para poder reaplicar el seed tras una
+-- reestructuración sin perder el id (ni las referencias de productos ya cargados).
 insert into categories (id, name, parent_id) values
   ('11111111-1111-1111-1111-111111111111', 'Fundas', null),
   ('11111111-1111-1111-1111-111111111112', 'Accesorios', null),
   ('11111111-1111-1111-1111-111111111121', 'Transparentes', '11111111-1111-1111-1111-111111111111'),
-  ('11111111-1111-1111-1111-111111111122', 'Con diseño', '11111111-1111-1111-1111-111111111111'),
-  ('11111111-1111-1111-1111-111111111131', 'Cargadores', '11111111-1111-1111-1111-111111111112'),
-  ('11111111-1111-1111-1111-111111111132', 'Vidrios templados', '11111111-1111-1111-1111-111111111112')
-on conflict (id) do nothing;
+  ('11111111-1111-1111-1111-111111111122', 'De diseño', '11111111-1111-1111-1111-111111111111'),
+  ('11111111-1111-1111-1111-111111111123', 'De silicona', '11111111-1111-1111-1111-111111111111'),
+  ('11111111-1111-1111-1111-111111111131', 'Cargadores y cables', null)
+on conflict (id) do update set name = excluded.name, parent_id = excluded.parent_id;
+
+-- "Vidrios templados" deja de ser categoría: el vidrio templado pasa a ser un
+-- producto más dentro de Accesorios. Solo se borra si no quedó ningún producto
+-- cargado ahí (si alguna vez se cargó uno, el delete no hace nada y no rompe el seed).
+delete from categories
+  where id = '11111111-1111-1111-1111-111111111132'
+    and not exists (
+      select 1 from products where category_id = '11111111-1111-1111-1111-111111111132'
+    );
 
 -- Modelos de iPhone, de iPhone 11 a iPhone Air, en orden de aparición.
 -- Upsert por nombre (unique en la migración iphone_models_unique_name): re-correrlo
