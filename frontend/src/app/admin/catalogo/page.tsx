@@ -15,7 +15,7 @@ import {
 import { formatPrice } from "@/lib/format";
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
-import ProductImageField from "./ProductImageField";
+import ProductImageGallery from "./ProductImageGallery";
 import ProductNameEditor from "./ProductNameEditor";
 import StockInput from "./StockInput";
 
@@ -532,10 +532,10 @@ export default function CatalogoPage() {
           <div className="space-y-6">
             {groups.map(({ product, variants }) => (
               <div key={product.id} className="space-y-3">
-                <ProductImageField
+                <ProductImageGallery
                   productId={product.id}
-                  imageUrl={product.image_url}
-                  onUploaded={(url) => patchProductInState(product.id, { image_url: url })}
+                  images={product.product_images}
+                  onChange={(images) => patchProductInState(product.id, { product_images: images })}
                 />
                 <ProductNameEditor
                   productId={product.id}
