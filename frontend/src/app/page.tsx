@@ -11,6 +11,7 @@ import {
   getIphoneModels,
   groupModelsByLine,
 } from "@/lib/catalog";
+import { FULL_BLEED } from "@/lib/layout";
 
 // Las categorías y productos vienen de la base: sin esto Next pre-renderiza
 // la home en el build y queda congelada.
@@ -43,7 +44,7 @@ function CategoryTileCard({
   return (
     <Link
       href={href}
-      className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[20px] bg-graphite"
+      className="group relative flex aspect-[4/5] flex-col justify-end overflow-hidden bg-graphite"
     >
       {imageUrl && (
         <Image
@@ -96,7 +97,7 @@ export default async function Home() {
         Todo el bloque es un link a Fundas; el h1 queda oculto solo para
         accesibilidad/SEO.
       */}
-      <section className="relative overflow-hidden rounded-[20px] bg-ink">
+      <section className={`relative overflow-hidden bg-ink ${FULL_BLEED}`}>
         <h1 className="sr-only">Tu iPhone, pero más vos.</h1>
         {fundas && (
           <Link
@@ -105,19 +106,23 @@ export default async function Home() {
             className="absolute inset-0 z-0"
           />
         )}
-        <div className="relative aspect-[1584/722] w-full pointer-events-none">
+        <div className="relative aspect-[4/3] w-full pointer-events-none sm:aspect-[16/9] lg:aspect-[1584/722]">
           <HeroCarousel slides={HERO_SLIDES} />
         </div>
       </section>
 
-      {modelLines.length > 0 && <IphoneModelStrip lines={modelLines} />}
+      {modelLines.length > 0 && (
+        <div className={FULL_BLEED}>
+          <IphoneModelStrip lines={modelLines} />
+        </div>
+      )}
 
       {tiles.length > 0 && (
         <section aria-label="Categorías" className="space-y-5">
           <h2 className="font-display text-2xl font-black tracking-tight">
             Elegí por categoría
           </h2>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+          <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4 ${FULL_BLEED}`}>
             {tiles.map((tile, index) => (
               <CategoryTileCard
                 key={tile.id}

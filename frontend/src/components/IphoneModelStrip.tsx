@@ -3,21 +3,24 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { ModelLine } from "@/lib/catalog";
+import { PAGE_PADDING } from "@/lib/layout";
 
 // 8 botones grandes (una por línea: 11...17, Air) para no abrumar con los
 // 22 modelos reales de una. Un solo modelo por línea (Air) va directo; el
 // resto expande sus variantes (base / Pro / Pro Max) para llegar a los 22.
+// El borde horizontal llega al viewport (el padre cancela el padding de la
+// página); el propio padding vuelve a ponerse acá, en el contenido.
 export default function IphoneModelStrip({ lines }: { lines: ModelLine[] }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
 
   return (
     <div className="border-y border-rule">
-      <div className="flex items-center gap-2 py-4 text-sm font-semibold tracking-wide text-graphite">
+      <div className={`flex items-center gap-2 py-4 text-sm font-semibold tracking-wide text-graphite ${PAGE_PADDING}`}>
         <span>ELEGÍ TU IPHONE</span>
         <span aria-hidden="true">→</span>
       </div>
 
-      <div className="flex flex-wrap gap-x-6 gap-y-4 pb-5 sm:gap-x-10">
+      <div className={`flex flex-wrap gap-x-6 gap-y-4 pb-5 sm:gap-x-10 ${PAGE_PADDING}`}>
         {lines.map((line) => {
           const single = line.models.length === 1;
           const isOpen = openKey === line.key;
@@ -62,7 +65,7 @@ export default function IphoneModelStrip({ lines }: { lines: ModelLine[] }) {
         line.models.length > 1 && openKey === line.key ? (
           <div
             key={line.key}
-            className="flex flex-wrap gap-3 border-t border-rule py-4"
+            className={`flex flex-wrap gap-3 border-t border-rule py-4 ${PAGE_PADDING}`}
           >
             {line.models.map((model) => (
               <Link

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { CategoryGroup } from "@/lib/catalog";
+import { PAGE_PADDING } from "@/lib/layout";
 
 type NavLink = { key: string; label: string; href: string };
 
@@ -30,7 +31,8 @@ function Logo() {
 
 // Header y contenedor compartidos. /admin usa un ancho generoso (hasta 1400px, centrado) para
 // que ventas aproveche la pantalla; las pantallas de formularios se acotan solas.
-// El catálogo público usa uno más angosto.
+// El catálogo público ocupa el 100% del viewport (como design_reference/home_mockup.png),
+// sin max-width: solo el padding lateral compartido con las secciones full-bleed de la home.
 export default function AppShell({
   children,
   categories,
@@ -40,7 +42,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
-  const width = isAdmin ? "max-w-[1400px] px-4 md:px-6" : "max-w-5xl px-5 md:px-8";
+  const width = isAdmin ? "max-w-[1400px] px-4 md:px-6" : `w-full ${PAGE_PADDING}`;
   const [menuOpen, setMenuOpen] = useState(false);
   const navLinks = toNavLinks(categories);
 

@@ -14,7 +14,11 @@ const AUTO_ADVANCE_MS = 6000;
 // vienen con su propio contraste resuelto (ver comentario en page.tsx). El
 // contenedor llega con pointer-events-none (hay un link de "ver todo" atrás
 // cubriendo todo el bloque), así que los controles reactivan pointer-events
-// puntualmente para seguir siendo clickeables.
+// puntualmente para seguir siendo clickeables. object-left: en mobile el
+// contenedor es más angosto que la foto (16:9/4:3 vs. el 2.19:1 original) y
+// el texto de la pieza vive en el tercio izquierdo -- object-cover sin esto
+// recorta centrado y se lo come. Si algún render futuro tiene el contenido
+// importante centrado o a la derecha, esto habría que hacerlo por slide.
 export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
 
@@ -36,7 +40,7 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           fill
           priority={i === 0}
           sizes="100vw"
-          className={`object-cover transition-opacity duration-700 ${
+          className={`object-cover object-left transition-opacity duration-700 ${
             i === index ? "opacity-100" : "opacity-0"
           }`}
         />
