@@ -13,17 +13,28 @@ import {
   type AdminVariant,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import {
+  ADMIN_ALERT_ERROR,
+  ADMIN_ALERT_OK,
+  ADMIN_BUTTON_PRIMARY,
+  ADMIN_BUTTON_SECONDARY,
+  ADMIN_CARD,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_PAGE_TITLE,
+  ADMIN_ROW_LIST,
+  ADMIN_SECTION_TITLE,
+  ADMIN_TEXT_MUTED,
+} from "../adminStyles";
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
+import { displayColor } from "../ventas/utils";
 import ProductImageGallery from "./ProductImageGallery";
 import ProductNameEditor from "./ProductNameEditor";
 import StockInput from "./StockInput";
 
 const UNIVERSAL = "__universal__";
 const PAGE_SIZE = 40;
-
-const inputClass =
-  "h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base";
 
 type StockFilter = "all" | "zero" | "positive";
 
@@ -260,18 +271,14 @@ export default function CatalogoPage() {
   }
 
   if (loading) {
-    return <p className="py-10 text-center text-graphite">Cargando…</p>;
+    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
   }
 
   if (loadError) {
     return (
       <div className="space-y-4 py-10 text-center">
         <p role="alert">{loadError}</p>
-        <button
-          type="button"
-          onClick={retryLoad}
-          className="h-14 rounded-2xl bg-ink px-6 text-base font-semibold text-paper"
-        >
+        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
           Reintentar
         </button>
       </div>
@@ -280,22 +287,22 @@ export default function CatalogoPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Catálogo y stock</h1>
+      <h1 className={ADMIN_PAGE_TITLE}>Catálogo y stock</h1>
 
-      <section aria-labelledby="filtros" className="space-y-4">
+      <section aria-labelledby="filtros" className={`${ADMIN_CARD} space-y-4`}>
         <h2 id="filtros" className="sr-only">
           Filtros
         </h2>
 
         <div>
-          <label htmlFor="catalogo-modelo" className="mb-1 block text-base font-medium">
+          <label htmlFor="catalogo-modelo" className={ADMIN_LABEL}>
             Modelo de iPhone
           </label>
           <select
             id="catalogo-modelo"
             value={selectedModelId}
             onChange={(e) => setSelectedModelId(e.target.value)}
-            className={inputClass}
+            className={ADMIN_INPUT}
           >
             <option value="">Todos los modelos</option>
             {sortedModels.map((m) => (
@@ -309,14 +316,14 @@ export default function CatalogoPage() {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="catalogo-stock" className="mb-1 block text-base font-medium">
+            <label htmlFor="catalogo-stock" className={ADMIN_LABEL}>
               Stock
             </label>
             <select
               id="catalogo-stock"
               value={stockFilter}
               onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-              className={inputClass}
+              className={ADMIN_INPUT}
             >
               <option value="all">Todos</option>
               <option value="zero">Sin stock (0)</option>
@@ -325,7 +332,7 @@ export default function CatalogoPage() {
           </div>
 
           <div>
-            <label htmlFor="catalogo-buscar" className="mb-1 block text-base font-medium">
+            <label htmlFor="catalogo-buscar" className={ADMIN_LABEL}>
               Buscar producto
             </label>
             <input
@@ -334,7 +341,7 @@ export default function CatalogoPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Estelar, MagCase…"
-              className={inputClass}
+              className={ADMIN_INPUT}
             />
           </div>
         </div>
@@ -343,15 +350,15 @@ export default function CatalogoPage() {
       <dialog
         ref={addDialogRef}
         aria-labelledby="agregar-variante"
-        className="fixed inset-0 m-auto h-fit w-full max-w-lg rounded-2xl border border-graphite bg-paper p-6 backdrop:bg-ink/40"
+        className="fixed inset-0 m-auto h-fit w-full max-w-lg rounded-md border border-admin-border bg-white p-6 backdrop:bg-black/40"
       >
         <div className="space-y-4">
-          <h2 id="agregar-variante" className="font-display text-xl font-semibold tracking-tight">
+          <h2 id="agregar-variante" className={ADMIN_SECTION_TITLE}>
             Agregar variante nueva
           </h2>
 
           <div>
-            <label htmlFor="catalogo-agregar-modelo" className="mb-1 block text-base font-medium">
+            <label htmlFor="catalogo-agregar-modelo" className={ADMIN_LABEL}>
               Modelo de iPhone
             </label>
             <select
@@ -362,7 +369,7 @@ export default function CatalogoPage() {
                 setSkuOverride(null);
                 setVariantError(null);
               }}
-              className={inputClass}
+              className={ADMIN_INPUT}
             >
               {sortedModels.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -391,7 +398,7 @@ export default function CatalogoPage() {
           />
 
           <div>
-            <label htmlFor="catalogo-color" className="mb-1 block text-base font-medium">
+            <label htmlFor="catalogo-color" className={ADMIN_LABEL}>
               Color (opcional)
             </label>
             <input
@@ -403,12 +410,12 @@ export default function CatalogoPage() {
                 setVariantError(null);
               }}
               placeholder="rojo"
-              className={inputClass}
+              className={ADMIN_INPUT}
             />
           </div>
 
           <div>
-            <label htmlFor="catalogo-sku" className="mb-1 block text-base font-medium">
+            <label htmlFor="catalogo-sku" className={ADMIN_LABEL}>
               SKU
             </label>
             <input
@@ -420,9 +427,9 @@ export default function CatalogoPage() {
                 setVariantError(null);
               }}
               autoCapitalize="characters"
-              className={`${inputClass} font-mono`}
+              className={`${ADMIN_INPUT} font-mono`}
             />
-            <p className="mt-1 text-sm text-graphite">
+            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
                 "Sugerido según producto, modelo y color. Podés editarlo."
               ) : (
@@ -431,7 +438,7 @@ export default function CatalogoPage() {
                   <button
                     type="button"
                     onClick={() => setSkuOverride(null)}
-                    className="min-h-11 font-medium text-ink underline underline-offset-2"
+                    className="font-semibold text-admin-text underline underline-offset-2"
                   >
                     Volver a la sugerencia
                   </button>
@@ -442,7 +449,7 @@ export default function CatalogoPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="catalogo-precio" className="mb-1 block text-base font-medium">
+              <label htmlFor="catalogo-precio" className={ADMIN_LABEL}>
                 Precio
               </label>
               <input
@@ -457,11 +464,11 @@ export default function CatalogoPage() {
                   setVariantError(null);
                 }}
                 placeholder="$"
-                className={`${inputClass} font-mono`}
+                className={`${ADMIN_INPUT} font-mono`}
               />
             </div>
             <div>
-              <label htmlFor="catalogo-stock-inicial" className="mb-1 block text-base font-medium">
+              <label htmlFor="catalogo-stock-inicial" className={ADMIN_LABEL}>
                 Stock inicial
               </label>
               <input
@@ -475,30 +482,22 @@ export default function CatalogoPage() {
                   setStock(e.target.value);
                   setVariantError(null);
                 }}
-                className={`${inputClass} font-mono`}
+                className={`${ADMIN_INPUT} font-mono`}
               />
             </div>
           </div>
 
-          {variantError && (
-            <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
-              {variantError}
-            </p>
-          )}
+          {variantError && <p role="alert" className={ADMIN_ALERT_ERROR}>{variantError}</p>}
 
           <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={closeAddDialog}
-              className="h-14 rounded-2xl border border-ink text-base font-medium active:bg-rule"
-            >
+            <button type="button" onClick={closeAddDialog} className={ADMIN_BUTTON_SECONDARY}>
               Cancelar
             </button>
             <button
               type="button"
               onClick={handleCreateVariant}
               disabled={!canSaveVariant}
-              className="h-14 rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
+              className={ADMIN_BUTTON_PRIMARY}
             >
               {savingVariant ? "Agregando…" : "Agregar variante"}
             </button>
@@ -507,31 +506,23 @@ export default function CatalogoPage() {
       </dialog>
 
       <section aria-labelledby="lista-variantes" className="space-y-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="lista-variantes" className="font-display text-xl font-semibold tracking-tight">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="lista-variantes" className={ADMIN_SECTION_TITLE}>
             Variantes ({filteredEntries.length})
           </h2>
-          <button
-            type="button"
-            onClick={openAddDialog}
-            className="h-11 shrink-0 rounded-xl bg-ink px-4 text-base font-medium text-paper"
-          >
+          <button type="button" onClick={openAddDialog} className={ADMIN_BUTTON_PRIMARY}>
             + Agregar variante
           </button>
         </div>
 
-        {addedNotice && (
-          <p role="status" className="rounded-2xl bg-ink p-3 text-base font-medium text-paper">
-            {addedNotice}
-          </p>
-        )}
+        {addedNotice && <p role="status" className={ADMIN_ALERT_OK}>{addedNotice}</p>}
 
         {groups.length === 0 ? (
-          <p className="text-graphite">No hay variantes que matcheen estos filtros.</p>
+          <p className={ADMIN_TEXT_MUTED}>No hay variantes que matcheen estos filtros.</p>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {groups.map(({ product, variants }) => (
-              <div key={product.id} className="space-y-3">
+              <div key={product.id} className={`${ADMIN_CARD} space-y-4`}>
                 <ProductImageGallery
                   productId={product.id}
                   images={product.product_images}
@@ -542,22 +533,19 @@ export default function CatalogoPage() {
                   name={product.name}
                   onSaved={(name) => patchProductInState(product.id, { name })}
                 />
-                <ul className="divide-y divide-rule rounded-2xl border border-rule">
+                <ul className={ADMIN_ROW_LIST}>
                   {variants.map((v) => (
-                    <li
-                      key={v.id}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
-                    >
+                    <li key={v.id} className="flex items-center justify-between gap-3 px-4 py-3">
                       <span className="min-w-0">
-                        <span className="block font-mono text-sm">{v.sku}</span>
-                        <span className="block text-graphite">
+                        <span className="block font-mono text-xs text-admin-muted">{v.sku}</span>
+                        <span className="mt-0.5 block text-sm text-admin-text">
                           {[
                             selectedModelId === ""
                               ? v.iphone_model_id
                                 ? modelNameById.get(v.iphone_model_id)
                                 : "Sin modelo"
                               : null,
-                            v.color,
+                            displayColor(v.color),
                             formatPrice(v.price),
                           ]
                             .filter(Boolean)
@@ -579,18 +567,18 @@ export default function CatalogoPage() {
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
-              className="h-11 rounded-xl border border-ink px-4 text-base font-medium disabled:opacity-40"
+              className={ADMIN_BUTTON_SECONDARY}
             >
               Anterior
             </button>
-            <span className="text-graphite">
+            <span className={ADMIN_TEXT_MUTED}>
               Página {currentPage} de {totalPages}
             </span>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
-              className="h-11 rounded-xl border border-ink px-4 text-base font-medium disabled:opacity-40"
+              className={ADMIN_BUTTON_SECONDARY}
             >
               Siguiente
             </button>

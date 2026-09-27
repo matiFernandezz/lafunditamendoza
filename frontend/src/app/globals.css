@@ -7,6 +7,18 @@
   --rule: #e5e3dd;
   --background: var(--paper);
   --foreground: var(--ink);
+
+  /* Paleta del panel /admin/*: valores fijos pedidos para ese sistema de
+     diseño interno, separados de --paper/--ink/--rule (el tono "papel" de
+     marca del catálogo público). */
+  --admin-bg: #fafafa;
+  --admin-surface: #ffffff;
+  --admin-border: #e5e5e5;
+  --admin-text: #1a1a1a;
+  --admin-muted: #6b6b6b;
+  --admin-danger: #e11d48;
+  --admin-danger-bg: #fef2f2;
+  --admin-danger-border: #fecdd3;
 }
 
 @theme inline {
@@ -16,6 +28,14 @@
   --color-ink: var(--ink);
   --color-graphite: var(--graphite);
   --color-rule: var(--rule);
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-surface: var(--admin-surface);
+  --color-admin-border: var(--admin-border);
+  --color-admin-text: var(--admin-text);
+  --color-admin-muted: var(--admin-muted);
+  --color-admin-danger: var(--admin-danger);
+  --color-admin-danger-bg: var(--admin-danger-bg);
+  --color-admin-danger-border: var(--admin-danger-border);
   --font-sans: var(--font-archivo), system-ui, sans-serif;
   --font-display: var(--font-archivo), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;

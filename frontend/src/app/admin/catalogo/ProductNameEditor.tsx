@@ -1,7 +1,14 @@
 "use client";
 
+import { Pencil } from "lucide-react";
 import { useState } from "react";
 import { AdminApiError, updateProductName } from "@/lib/adminApi";
+import {
+  ADMIN_ALERT_ERROR,
+  ADMIN_BUTTON_PRIMARY,
+  ADMIN_BUTTON_SECONDARY,
+  ADMIN_NAME,
+} from "../adminStyles";
 
 /** Nombre del producto con edición inline: un botón para entrar en modo edición, guardado explícito. */
 export default function ProductNameEditor({
@@ -51,12 +58,15 @@ export default function ProductNameEditor({
   if (!editing) {
     return (
       <div className="flex items-center gap-2">
-        <h3 className="text-base font-semibold">{name}</h3>
+        <h3 className={ADMIN_NAME}>{name}</h3>
         <button
           type="button"
           onClick={startEditing}
-          className="text-sm font-medium text-graphite underline underline-offset-2"
+          title="Editar nombre del producto"
+          aria-label="Editar nombre del producto"
+          className="inline-flex h-7 items-center gap-1.5 rounded-md border border-admin-border bg-white px-2.5 text-xs font-semibold text-admin-text transition-colors hover:bg-admin-bg"
         >
+          <Pencil aria-hidden="true" className="size-3.5" />
           Editar
         </button>
       </div>
@@ -64,7 +74,7 @@ export default function ProductNameEditor({
   }
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -75,13 +85,14 @@ export default function ProductNameEditor({
           }}
           disabled={saving}
           autoFocus
-          className="h-10 min-w-0 flex-1 rounded-xl border border-graphite bg-transparent px-3 text-base disabled:opacity-60"
+          aria-label="Nombre del producto"
+          className="h-9 min-w-0 flex-1 rounded-md border-2 border-black bg-white px-3 text-sm text-admin-text outline-none disabled:opacity-60"
         />
         <button
           type="button"
           onClick={handleSave}
           disabled={saving || value.trim() === ""}
-          className="h-10 shrink-0 rounded-xl bg-ink px-3 text-sm font-semibold text-paper disabled:opacity-40"
+          className={`${ADMIN_BUTTON_PRIMARY} h-9 px-3 text-xs`}
         >
           {saving ? "…" : "Guardar"}
         </button>
@@ -89,16 +100,12 @@ export default function ProductNameEditor({
           type="button"
           onClick={cancel}
           disabled={saving}
-          className="h-10 shrink-0 rounded-xl border border-ink px-3 text-sm font-medium disabled:opacity-40"
+          className={`${ADMIN_BUTTON_SECONDARY} h-9 px-3 text-xs`}
         >
           Cancelar
         </button>
       </div>
-      {error && (
-        <p role="alert" className="text-xs font-medium text-red-600">
-          {error}
-        </p>
-      )}
+      {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
     </div>
   );
 }

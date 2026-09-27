@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { AdminApiError, updateVariantStock } from "@/lib/adminApi";
+import { ADMIN_BUTTON_PRIMARY, ADMIN_TEXT_MUTED } from "../adminStyles";
 
 /**
  * Input de stock editable inline. El guardado es explícito (botón "Guardar",
@@ -60,28 +61,23 @@ export default function StockInput({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
           }}
-          className={`h-11 w-20 rounded-xl border bg-transparent px-2 text-right font-mono text-base transition-colors disabled:opacity-60 ${
-            flash ? "border-emerald-600" : dirty ? "border-ink" : "border-graphite"
+          className={`h-9 w-20 rounded-md border bg-white px-2 text-right font-mono text-sm text-admin-text transition-colors disabled:opacity-60 ${
+            flash ? "border-emerald-600" : dirty ? "border-black" : "border-admin-border"
           }`}
         />
         {dirty && (
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="h-11 shrink-0 rounded-xl bg-ink px-3 text-sm font-semibold text-paper disabled:opacity-40"
-          >
+          <button type="button" onClick={handleSave} disabled={saving} className={`${ADMIN_BUTTON_PRIMARY} h-9 px-3 text-xs`}>
             {saving ? "…" : "Guardar"}
           </button>
         )}
       </div>
       {error && (
-        <p role="alert" className="text-xs font-medium text-red-600">
+        <p role="alert" className="text-xs font-medium text-admin-danger">
           {error}
         </p>
       )}
       {!isValid && value.trim() !== "" && !error && (
-        <p className="text-xs text-graphite">Tiene que ser un entero ≥ 0</p>
+        <p className={ADMIN_TEXT_MUTED}>Tiene que ser un entero ≥ 0</p>
       )}
     </div>
   );

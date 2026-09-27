@@ -1,6 +1,8 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { ADMIN_LABEL } from "../adminStyles";
 
 export type ComboboxOption = {
   id: string;
@@ -53,7 +55,7 @@ export default function Combobox({
 
   return (
     <div ref={rootRef} className="relative">
-      <label htmlFor={id} className="mb-1 block text-base font-medium">
+      <label htmlFor={id} className={ADMIN_LABEL}>
         {label}
       </label>
       <button
@@ -63,29 +65,22 @@ export default function Combobox({
         aria-expanded={open}
         aria-controls={listboxId}
         onClick={() => setOpen((o) => !o)}
-        className="flex min-h-14 w-full items-center justify-between gap-3 rounded-2xl border border-graphite bg-transparent px-4 py-3 text-left text-base"
+        className="flex h-10 w-full items-center justify-between gap-3 rounded-md border border-admin-border bg-white px-3 text-left text-sm text-admin-text"
       >
         {selected ? (
-          <span className="min-w-0">
-            <span className="block break-words">{selected.label}</span>
+          <span className="min-w-0 truncate">
+            <span className="truncate">{selected.label}</span>
             {selected.sublabel && (
-              <span className="block break-words text-sm text-graphite">{selected.sublabel}</span>
+              <span className="ml-1.5 truncate text-[13px] text-admin-muted">{selected.sublabel}</span>
             )}
           </span>
         ) : (
-          <span className="text-graphite">{placeholder}</span>
+          <span className="text-admin-muted">{placeholder}</span>
         )}
-        <svg
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.75"
-          strokeLinecap="square"
+        <ChevronDown
           aria-hidden="true"
-          className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
-        >
-          <path d="M3 6l5 5 5-5" />
-        </svg>
+          className={`size-4 shrink-0 text-admin-muted transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {open && (
@@ -93,10 +88,10 @@ export default function Combobox({
           id={listboxId}
           role="listbox"
           aria-labelledby={id}
-          className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-2xl border border-graphite bg-paper py-1 shadow-lg"
+          className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-admin-border bg-white py-1 shadow-lg"
         >
           {options.length === 0 ? (
-            <li className="px-4 py-3 text-graphite">No hay opciones</li>
+            <li className="px-3 py-2.5 text-sm text-admin-muted">No hay opciones</li>
           ) : (
             options.map((o) => (
               <li key={o.id} role="option" aria-selected={o.id === value}>
@@ -106,13 +101,13 @@ export default function Combobox({
                     onChange(o.id);
                     setOpen(false);
                   }}
-                  className={`block min-h-11 w-full px-4 py-2.5 text-left ${
-                    o.id === value ? "bg-rule" : "active:bg-rule"
+                  className={`block min-h-10 w-full px-3 py-2 text-left text-sm ${
+                    o.id === value ? "bg-admin-bg font-semibold" : "text-admin-text hover:bg-admin-bg"
                   }`}
                 >
                   <span className="block break-words">{o.label}</span>
                   {o.sublabel && (
-                    <span className="block break-words text-sm text-graphite">{o.sublabel}</span>
+                    <span className="block break-words text-[13px] text-admin-muted">{o.sublabel}</span>
                   )}
                 </button>
               </li>

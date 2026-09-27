@@ -10,6 +10,7 @@ import {
   type AdminVariant,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import { ADMIN_BUTTON_PRIMARY, ADMIN_INPUT, ADMIN_TEXT_MUTED } from "../adminStyles";
 import { variantLabel } from "./utils";
 import ProductGrid from "./ProductGrid";
 import CartPanel from "./CartPanel";
@@ -194,18 +195,14 @@ export default function VentasPage() {
   }
 
   if (loading) {
-    return <p className="py-10 text-center text-zinc-500">Cargando catálogo…</p>;
+    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando catálogo…</p>;
   }
 
   if (loadError) {
     return (
       <div className="space-y-4 py-10 text-center">
-        <p className="text-zinc-600">{loadError}</p>
-        <button
-          type="button"
-          onClick={retryLoad}
-          className="h-12 rounded-xl bg-zinc-900 px-6 font-medium text-white"
-        >
+        <p className="text-admin-muted">{loadError}</p>
+        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
           Reintentar
         </button>
       </div>
@@ -225,7 +222,7 @@ export default function VentasPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por producto o SKU…"
-            className="h-14 w-full rounded-xl border border-zinc-300 bg-white px-4 text-base"
+            className={ADMIN_INPUT}
           />
         </div>
 
@@ -234,10 +231,10 @@ export default function VentasPage() {
             <button
               type="button"
               onClick={() => setSelectedCategory(null)}
-              className={`h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
+              className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
                 selectedCategory === null
-                  ? "border-zinc-900 bg-zinc-900 text-white"
-                  : "border-zinc-300 bg-white text-zinc-700"
+                  ? "border-black bg-black text-white"
+                  : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
               }`}
             >
               Todas
@@ -247,10 +244,10 @@ export default function VentasPage() {
                 key={c.id}
                 type="button"
                 onClick={() => setSelectedCategory(c.id)}
-                className={`h-11 shrink-0 rounded-full border px-4 text-sm font-medium ${
+                className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
                   selectedCategory === c.id
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-300 bg-white text-zinc-700"
+                    ? "border-black bg-black text-white"
+                    : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
                 }`}
               >
                 {c.name}
@@ -282,15 +279,15 @@ export default function VentasPage() {
 
       {lastSaleTotal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center">
+          <div className="w-full max-w-sm rounded-md border border-admin-border bg-white p-6 text-center">
             <p className="text-4xl">✅</p>
-            <h2 className="mt-2 text-xl font-bold">¡Venta registrada!</h2>
-            <p className="mt-1 text-zinc-600">Total cobrado</p>
-            <p className="text-3xl font-bold">{formatPrice(lastSaleTotal)}</p>
+            <h2 className="mt-2 text-xl font-bold text-admin-text">¡Venta registrada!</h2>
+            <p className="mt-1 text-admin-muted">Total cobrado</p>
+            <p className="text-3xl font-bold text-admin-text">{formatPrice(lastSaleTotal)}</p>
             <button
               type="button"
               onClick={() => setLastSaleTotal(null)}
-              className="mt-6 h-14 w-full rounded-xl bg-zinc-900 text-base font-semibold text-white active:bg-zinc-800"
+              className={`${ADMIN_BUTTON_PRIMARY} mt-6 w-full`}
             >
               Nueva venta
             </button>

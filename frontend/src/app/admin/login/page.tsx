@@ -3,6 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ADMIN_ALERT_ERROR,
+  ADMIN_BUTTON_PRIMARY,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_PAGE_TITLE,
+  ADMIN_TEXT_MUTED,
+} from "../adminStyles";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -39,13 +47,13 @@ export default function AdminLoginPage() {
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-md flex-col justify-center space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Acceso al panel</h1>
-        <p className="mt-1 text-zinc-600">Ingresá con tu cuenta de administrador.</p>
+        <h1 className={ADMIN_PAGE_TITLE}>Acceso al panel</h1>
+        <p className={`mt-1 ${ADMIN_TEXT_MUTED}`}>Ingresá con tu cuenta de administrador.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-zinc-700">
+          <label htmlFor="email" className={ADMIN_LABEL}>
             Email
           </label>
           <input
@@ -55,13 +63,13 @@ export default function AdminLoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-14 w-full rounded-xl border border-zinc-300 bg-white px-4 text-base"
+            className={ADMIN_INPUT}
             placeholder="admin@lafundita.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium text-zinc-700">
+          <label htmlFor="password" className={ADMIN_LABEL}>
             Contraseña
           </label>
           <input
@@ -71,21 +79,17 @@ export default function AdminLoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-14 w-full rounded-xl border border-zinc-300 bg-white px-4 text-base"
+            className={ADMIN_INPUT}
             placeholder="••••••••"
           />
         </div>
 
-        {error && (
-          <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
-            {error}
-          </p>
-        )}
+        {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
 
         <button
           type="submit"
           disabled={submitting || !email.trim() || !password}
-          className="h-14 w-full rounded-xl bg-zinc-900 text-base font-semibold text-white active:bg-zinc-800 disabled:bg-zinc-300"
+          className={`${ADMIN_BUTTON_PRIMARY} w-full`}
         >
           {submitting ? "Entrando…" : "Entrar"}
         </button>

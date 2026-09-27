@@ -1,7 +1,9 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import type { AdminProduct, AdminVariant } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import { ADMIN_CARD, ADMIN_TEXT_MUTED } from "../adminStyles";
 import { variantLabel } from "./utils";
 
 const LOW_STOCK = 3;
@@ -19,7 +21,7 @@ export default function ProductGrid({
 }) {
   if (products.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-zinc-300 p-6 text-center text-zinc-500">
+      <p className="rounded-md border border-dashed border-admin-border p-6 text-center text-sm text-admin-muted">
         No encontramos productos con ese filtro.
       </p>
     );
@@ -28,9 +30,9 @@ export default function ProductGrid({
   return (
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
       {products.map((product) => (
-        <li key={product.id} className="min-w-0 self-start rounded-2xl border border-zinc-200 bg-white p-4">
-          <h3 className="text-base font-semibold">{product.name}</h3>
-          <ul className="mt-2 divide-y divide-zinc-100">
+        <li key={product.id} className={`${ADMIN_CARD} min-w-0 self-start`}>
+          <h3 className="text-sm font-semibold text-admin-text sm:text-base">{product.name}</h3>
+          <ul className="mt-2 divide-y divide-admin-border">
             {product.product_variants.map((variant) => {
               const inCart = cartQuantities.get(variant.id) ?? 0;
               const outOfStock = variant.stock_quantity <= 0;
@@ -45,17 +47,19 @@ export default function ProductGrid({
                     type="button"
                     onClick={() => onAdd(product, variant)}
                     disabled={outOfStock || atLimit}
-                    className="flex w-full items-center justify-between gap-3 rounded-xl px-1 py-2 text-left active:bg-zinc-100 disabled:opacity-40"
+                    className="flex w-full items-center justify-between gap-3 rounded-md px-1 py-2 text-left hover:bg-admin-bg disabled:opacity-40"
                   >
                     <div className="min-w-0">
-                      <p className="break-words text-sm font-medium">{variantLabel(variant, modelName)}</p>
-                      <p className="text-xs text-zinc-500">
+                      <p className="break-words text-sm font-medium text-admin-text">
+                        {variantLabel(variant, modelName)}
+                      </p>
+                      <p className={ADMIN_TEXT_MUTED}>
                         {outOfStock ? (
-                          <span className="font-medium text-red-600">Sin stock</span>
+                          <span className="font-semibold text-admin-danger">Sin stock</span>
                         ) : (
                           <>
                             {variant.stock_quantity <= LOW_STOCK && (
-                              <span className="font-medium text-amber-700">
+                              <span className="font-semibold text-amber-700">
                                 Quedan {variant.stock_quantity}
                               </span>
                             )}
@@ -70,9 +74,14 @@ export default function ProductGrid({
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-3">
-                      <span className="text-sm font-semibold">{formatPrice(variant.price)}</span>
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-900 text-lg font-bold text-white">
-                        +
+                      <span className="text-sm font-semibold text-admin-text">
+                        {formatPrice(variant.price)}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="flex size-8 items-center justify-center rounded-full bg-black text-white"
+                      >
+                        <Plus className="size-4" />
                       </span>
                     </div>
                   </button>

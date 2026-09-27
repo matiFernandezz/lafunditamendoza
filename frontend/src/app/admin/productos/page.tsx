@@ -13,11 +13,22 @@ import {
   type AdminProduct,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import {
+  ADMIN_ALERT_ERROR,
+  ADMIN_ALERT_OK,
+  ADMIN_BUTTON_PRIMARY,
+  ADMIN_CARD,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_PAGE_TITLE,
+  ADMIN_ROW_LIST,
+  ADMIN_SECTION_TITLE,
+  ADMIN_TEXTAREA,
+  ADMIN_TEXT_MUTED,
+} from "../adminStyles";
+import { displayColor } from "../ventas/utils";
 import Combobox from "./Combobox";
 import { suggestSku } from "./sku";
-
-const inputClass =
-  "h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base";
 
 async function loadData() {
   const [categories, models, products] = await Promise.all([
@@ -204,18 +215,14 @@ export default function ProductosPage() {
   }
 
   if (loading) {
-    return <p className="py-10 text-center text-graphite">Cargando…</p>;
+    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
   }
 
   if (loadError) {
     return (
       <div className="space-y-4 py-10 text-center">
         <p role="alert">{loadError}</p>
-        <button
-          type="button"
-          onClick={retryLoad}
-          className="h-14 rounded-2xl bg-ink px-6 text-base font-semibold text-paper"
-        >
+        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
           Reintentar
         </button>
       </div>
@@ -224,16 +231,16 @@ export default function ProductosPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Productos</h1>
+      <h1 className={ADMIN_PAGE_TITLE}>Productos</h1>
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:items-start lg:gap-12">
-        <section aria-labelledby="nuevo-producto" className="space-y-4">
-          <h2 id="nuevo-producto" className="font-display text-xl font-semibold tracking-tight">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <section aria-labelledby="nuevo-producto" className={`${ADMIN_CARD} space-y-4`}>
+          <h2 id="nuevo-producto" className={ADMIN_SECTION_TITLE}>
             Nuevo producto
           </h2>
 
           <div>
-            <label htmlFor="producto-nombre" className="mb-1 block text-base font-medium">
+            <label htmlFor="producto-nombre" className={ADMIN_LABEL}>
               Nombre
             </label>
             <input
@@ -246,12 +253,12 @@ export default function ProductosPage() {
                 setProductOk(null);
               }}
               placeholder="Funda de silicona degradé"
-              className={inputClass}
+              className={ADMIN_INPUT}
             />
           </div>
 
           <div>
-            <label htmlFor="producto-descripcion" className="mb-1 block text-base font-medium">
+            <label htmlFor="producto-descripcion" className={ADMIN_LABEL}>
               Descripción (opcional)
             </label>
             <textarea
@@ -259,12 +266,12 @@ export default function ProductosPage() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="min-h-24 w-full rounded-2xl border border-graphite bg-transparent p-4 text-base"
+              className={`min-h-24 ${ADMIN_TEXTAREA}`}
             />
           </div>
 
           <div>
-            <label htmlFor="producto-categoria" className="mb-1 block text-base font-medium">
+            <label htmlFor="producto-categoria" className={ADMIN_LABEL}>
               Categoría
             </label>
             <select
@@ -274,7 +281,7 @@ export default function ProductosPage() {
                 setCategoryId(e.target.value);
                 setProductError(null);
               }}
-              className={inputClass}
+              className={ADMIN_INPUT}
             >
               <option value="">Elegí una categoría</option>
               {categoryOptions.map(({ parent, children }) =>
@@ -295,22 +302,14 @@ export default function ProductosPage() {
             </select>
           </div>
 
-          {productError && (
-            <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
-              {productError}
-            </p>
-          )}
-          {productOk && (
-            <p role="status" className="rounded-2xl bg-ink p-3 text-base font-medium text-paper">
-              {productOk}
-            </p>
-          )}
+          {productError && <p role="alert" className={ADMIN_ALERT_ERROR}>{productError}</p>}
+          {productOk && <p role="status" className={ADMIN_ALERT_OK}>{productOk}</p>}
 
           <button
             type="button"
             onClick={handleCreateProduct}
             disabled={!canSaveProduct}
-            className="h-14 w-full rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
+            className={`${ADMIN_BUTTON_PRIMARY} w-full`}
           >
             {savingProduct ? "Creando…" : "Crear producto"}
           </button>
@@ -319,9 +318,9 @@ export default function ProductosPage() {
         <section
           ref={variantSectionRef}
           aria-labelledby="agregar-variante"
-          className="scroll-mt-20 space-y-4"
+          className={`${ADMIN_CARD} scroll-mt-20 space-y-4`}
         >
-          <h2 id="agregar-variante" className="font-display text-xl font-semibold tracking-tight">
+          <h2 id="agregar-variante" className={ADMIN_SECTION_TITLE}>
             Agregar variante
           </h2>
 
@@ -344,7 +343,7 @@ export default function ProductosPage() {
           />
 
           <div>
-            <label htmlFor="variante-modelo" className="mb-1 block text-base font-medium">
+            <label htmlFor="variante-modelo" className={ADMIN_LABEL}>
               Modelo de iPhone
             </label>
             <select
@@ -354,7 +353,7 @@ export default function ProductosPage() {
                 setModelId(e.target.value);
                 setVariantError(null);
               }}
-              className={inputClass}
+              className={ADMIN_INPUT}
             >
               <option value="">No aplica / todos los modelos</option>
               {models.map((m) => (
@@ -366,7 +365,7 @@ export default function ProductosPage() {
           </div>
 
           <div>
-            <label htmlFor="variante-color" className="mb-1 block text-base font-medium">
+            <label htmlFor="variante-color" className={ADMIN_LABEL}>
               Color (opcional)
             </label>
             <input
@@ -379,12 +378,12 @@ export default function ProductosPage() {
                 setVariantOk(null);
               }}
               placeholder="rojo"
-              className={inputClass}
+              className={ADMIN_INPUT}
             />
           </div>
 
           <div>
-            <label htmlFor="variante-sku" className="mb-1 block text-base font-medium">
+            <label htmlFor="variante-sku" className={ADMIN_LABEL}>
               SKU
             </label>
             <input
@@ -396,9 +395,9 @@ export default function ProductosPage() {
                 setVariantError(null);
               }}
               autoCapitalize="characters"
-              className={`${inputClass} font-mono`}
+              className={`${ADMIN_INPUT} font-mono`}
             />
-            <p className="mt-1 text-sm text-graphite">
+            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
                 "Sugerido según producto, modelo y color. Podés editarlo."
               ) : (
@@ -407,7 +406,7 @@ export default function ProductosPage() {
                   <button
                     type="button"
                     onClick={() => setSkuOverride(null)}
-                    className="min-h-11 font-medium text-ink underline underline-offset-2"
+                    className="font-semibold text-admin-text underline underline-offset-2"
                   >
                     Volver a la sugerencia
                   </button>
@@ -418,7 +417,7 @@ export default function ProductosPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="variante-precio" className="mb-1 block text-base font-medium">
+              <label htmlFor="variante-precio" className={ADMIN_LABEL}>
                 Precio
               </label>
               <input
@@ -433,11 +432,11 @@ export default function ProductosPage() {
                   setVariantError(null);
                 }}
                 placeholder="$"
-                className={`${inputClass} font-mono`}
+                className={`${ADMIN_INPUT} font-mono`}
               />
             </div>
             <div>
-              <label htmlFor="variante-stock" className="mb-1 block text-base font-medium">
+              <label htmlFor="variante-stock" className={ADMIN_LABEL}>
                 Stock inicial
               </label>
               <input
@@ -451,53 +450,48 @@ export default function ProductosPage() {
                   setStock(e.target.value);
                   setVariantError(null);
                 }}
-                className={`${inputClass} font-mono`}
+                className={`${ADMIN_INPUT} font-mono`}
               />
             </div>
           </div>
 
-          {variantError && (
-            <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
-              {variantError}
-            </p>
-          )}
-          {variantOk && (
-            <p role="status" className="rounded-2xl bg-ink p-3 text-base font-medium text-paper">
-              {variantOk}
-            </p>
-          )}
+          {variantError && <p role="alert" className={ADMIN_ALERT_ERROR}>{variantError}</p>}
+          {variantOk && <p role="status" className={ADMIN_ALERT_OK}>{variantOk}</p>}
 
           <button
             type="button"
             onClick={handleCreateVariant}
             disabled={!canSaveVariant}
-            className="h-14 w-full rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
+            className={`${ADMIN_BUTTON_PRIMARY} w-full`}
           >
             {savingVariant ? "Agregando…" : "Agregar variante"}
           </button>
 
           {selectedProduct && (
             <div className="space-y-2 pt-2">
-              <h3 className="text-base font-semibold">
+              <h3 className="text-sm font-semibold text-admin-text">
                 Variantes de {selectedProduct.name} ({selectedProduct.product_variants.length})
               </h3>
               {selectedProduct.product_variants.length === 0 ? (
-                <p className="text-graphite">Todavía no tiene variantes.</p>
+                <p className={ADMIN_TEXT_MUTED}>Todavía no tiene variantes.</p>
               ) : (
-                <ul className="divide-y divide-rule rounded-2xl border border-rule">
+                <ul className={ADMIN_ROW_LIST}>
                   {selectedProduct.product_variants.map((v) => (
                     <li key={v.id} className="flex items-start justify-between gap-3 px-4 py-3">
                       <span className="min-w-0">
-                        <span className="block font-mono text-sm">{v.sku}</span>
-                        <span className="block text-graphite">
-                          {[v.iphone_model_id ? modelNamesById.get(v.iphone_model_id) : "Todos los modelos", v.color]
+                        <span className="block font-mono text-xs text-admin-muted">{v.sku}</span>
+                        <span className="mt-0.5 block text-sm text-admin-text">
+                          {[
+                            v.iphone_model_id ? modelNamesById.get(v.iphone_model_id) : "Todos los modelos",
+                            displayColor(v.color),
+                          ]
                             .filter(Boolean)
                             .join(" · ")}
                         </span>
                       </span>
                       <span className="shrink-0 text-right text-sm tabular-nums">
-                        <span className="block font-mono">{formatPrice(v.price)}</span>
-                        <span className="block text-graphite">Stock {v.stock_quantity}</span>
+                        <span className="block font-mono text-admin-text">{formatPrice(v.price)}</span>
+                        <span className={ADMIN_TEXT_MUTED}>Stock {v.stock_quantity}</span>
                       </span>
                     </li>
                   ))}

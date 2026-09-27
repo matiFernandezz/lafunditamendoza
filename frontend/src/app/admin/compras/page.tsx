@@ -1,5 +1,6 @@
 "use client";
 
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getIphoneModels, type IphoneModel } from "@/lib/catalog";
 import {
@@ -12,6 +13,19 @@ import {
   type Supplier,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import {
+  ADMIN_ALERT_ERROR,
+  ADMIN_ALERT_OK,
+  ADMIN_BUTTON_PRIMARY,
+  ADMIN_CARD,
+  ADMIN_ICON_BUTTON,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+  ADMIN_PAGE_TITLE,
+  ADMIN_ROW_LIST,
+  ADMIN_SECTION_TITLE,
+  ADMIN_TEXT_MUTED,
+} from "../adminStyles";
 import { variantLabel } from "../ventas/utils";
 import SupplierField from "./SupplierField";
 
@@ -25,9 +39,6 @@ type PurchaseLine = {
 };
 
 const MAX_RESULTS = 10;
-
-const inputClass =
-  "h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base";
 
 function parseQuantity(value: string): number | null {
   const n = Number(value);
@@ -227,18 +238,14 @@ export default function ComprasPage() {
   }
 
   if (loading) {
-    return <p className="py-10 text-center text-graphite">Cargando…</p>;
+    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
   }
 
   if (loadError) {
     return (
       <div className="space-y-4 py-10 text-center">
         <p role="alert">{loadError}</p>
-        <button
-          type="button"
-          onClick={retryLoad}
-          className="h-14 rounded-2xl bg-ink px-6 text-base font-semibold text-paper"
-        >
+        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
           Reintentar
         </button>
       </div>
@@ -247,9 +254,9 @@ export default function ComprasPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <h1 className="font-display text-3xl font-semibold tracking-tight">Registrar compra</h1>
+      <h1 className={ADMIN_PAGE_TITLE}>Registrar compra</h1>
 
-      <section className="space-y-4">
+      <section className={`${ADMIN_CARD} space-y-4`}>
         <SupplierField
           suppliers={suppliers}
           value={supplierId}
@@ -266,7 +273,7 @@ export default function ComprasPage() {
           }}
         />
         <div>
-          <label htmlFor="fecha" className="mb-1 block text-base font-medium">
+          <label htmlFor="fecha" className={ADMIN_LABEL}>
             Fecha (opcional, por defecto hoy)
           </label>
           <input
@@ -277,13 +284,13 @@ export default function ComprasPage() {
               touch();
               setDate(e.target.value);
             }}
-            className={inputClass}
+            className={ADMIN_INPUT}
           />
         </div>
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight">Productos</h2>
+        <h2 className={ADMIN_SECTION_TITLE}>Productos</h2>
         <div>
           <label htmlFor="buscar" className="sr-only">
             Buscar por producto, modelo o SKU
@@ -294,18 +301,18 @@ export default function ComprasPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por producto, modelo o SKU…"
-            className={inputClass}
+            className={ADMIN_INPUT}
           />
         </div>
 
         {search.trim() === "" ? (
-          <p className="text-graphite">Escribí un producto, modelo o SKU para agregarlo.</p>
+          <p className={ADMIN_TEXT_MUTED}>Escribí un producto, modelo o SKU para agregarlo.</p>
         ) : results.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-rule p-4 text-center text-graphite">
+          <p className="rounded-md border border-dashed border-admin-border p-4 text-center text-sm text-admin-muted">
             No hay variantes que coincidan.
           </p>
         ) : (
-          <ul className="divide-y divide-rule rounded-2xl border border-rule">
+          <ul className={ADMIN_ROW_LIST}>
             {results.slice(0, MAX_RESULTS).map(({ product, variant, label }) => {
               const inLine = lines.find((l) => l.variantId === variant.id);
               return (
@@ -313,22 +320,24 @@ export default function ComprasPage() {
                   <button
                     type="button"
                     onClick={() => addVariant(product, variant, label)}
-                    className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left active:bg-rule"
+                    className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-admin-bg"
                   >
                     <span className="min-w-0">
-                      <span className="block break-words font-semibold">{product.name}</span>
-                      <span className="block break-words text-graphite">
+                      <span className="block break-words text-sm font-semibold text-admin-text">
+                        {product.name}
+                      </span>
+                      <span className="block break-words text-[13px] text-admin-muted">
                         {label}
                         {!variant.active && " (inactiva)"}
                       </span>
-                      <span className="block font-mono text-xs text-graphite">{variant.sku}</span>
+                      <span className="block font-mono text-xs text-admin-muted">{variant.sku}</span>
                     </span>
-                    <span className="shrink-0 text-right text-sm tabular-nums">
+                    <span className="shrink-0 text-right text-sm tabular-nums text-admin-text">
                       <span className="block">Stock {variant.stock_quantity}</span>
-                      <span className="block font-mono text-graphite">
+                      <span className="block font-mono text-[13px] text-admin-muted">
                         {variant.cost_price > 0 ? formatPrice(variant.cost_price) : "sin costo"}
                       </span>
-                      {inLine && <span className="block font-medium">En la compra</span>}
+                      {inLine && <span className="block font-semibold">En la compra</span>}
                     </span>
                   </button>
                 </li>
@@ -337,18 +346,16 @@ export default function ComprasPage() {
           </ul>
         )}
         {results.length > MAX_RESULTS && (
-          <p className="text-sm text-graphite">
+          <p className={ADMIN_TEXT_MUTED}>
             Mostrando {MAX_RESULTS} de {results.length}. Afiná la búsqueda para ver el resto.
           </p>
         )}
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-xl font-semibold tracking-tight">
-          Líneas de la compra
-        </h2>
+        <h2 className={ADMIN_SECTION_TITLE}>Líneas de la compra</h2>
         {lines.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-rule p-4 text-center text-graphite">
+          <p className="rounded-md border border-dashed border-admin-border p-4 text-center text-sm text-admin-muted">
             Tocá una variante de arriba para agregarla.
           </p>
         ) : (
@@ -360,36 +367,41 @@ export default function ComprasPage() {
               return (
                 <li
                   key={line.variantId}
-                  className={`space-y-3 rounded-2xl border p-4 ${invalid ? "border-ink" : "border-rule"}`}
+                  className={`space-y-3 rounded-md border bg-white p-4 ${
+                    invalid ? "border-admin-danger" : "border-admin-border"
+                  }`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold">{line.productName}</p>
-                      <p className="text-graphite">{line.label}</p>
-                      <p className="font-mono text-xs text-graphite">{line.sku}</p>
+                      <p className="text-sm font-semibold text-admin-text">{line.productName}</p>
+                      <p className="text-[13px] text-admin-muted">{line.label}</p>
+                      <p className="font-mono text-xs text-admin-muted">{line.sku}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => removeLine(line.variantId)}
-                      className="min-h-11 shrink-0 px-2 text-base font-medium underline underline-offset-2"
+                      title="Quitar de la compra"
+                      aria-label="Quitar de la compra"
+                      className={ADMIN_ICON_BUTTON}
                     >
-                      Quitar
+                      <Trash2 aria-hidden="true" className="size-4" />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label htmlFor={`qty-${line.variantId}`} className="mb-1 block text-base font-medium">
+                      <label htmlFor={`qty-${line.variantId}`} className={ADMIN_LABEL}>
                         Cantidad
                       </label>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         <button
                           type="button"
-                          aria-label="Restar"
+                          aria-label="Restar una unidad"
+                          title="Restar una unidad"
                           onClick={() => stepQuantity(line, -1)}
-                          className="h-14 w-12 shrink-0 rounded-2xl border border-graphite text-xl font-medium active:bg-rule"
+                          className={ADMIN_ICON_BUTTON}
                         >
-                          −
+                          <Minus aria-hidden="true" className="size-4" />
                         </button>
                         <input
                           id={`qty-${line.variantId}`}
@@ -399,20 +411,21 @@ export default function ComprasPage() {
                           step={1}
                           value={line.quantity}
                           onChange={(e) => updateLine(line.variantId, { quantity: e.target.value })}
-                          className="h-14 w-full min-w-0 rounded-2xl border border-graphite bg-transparent px-1 text-center text-base"
+                          className={`${ADMIN_INPUT} min-w-0 px-1 text-center`}
                         />
                         <button
                           type="button"
-                          aria-label="Sumar"
+                          aria-label="Sumar una unidad"
+                          title="Sumar una unidad"
                           onClick={() => stepQuantity(line, 1)}
-                          className="h-14 w-12 shrink-0 rounded-2xl border border-graphite text-xl font-medium active:bg-rule"
+                          className={ADMIN_ICON_BUTTON}
                         >
-                          +
+                          <Plus aria-hidden="true" className="size-4" />
                         </button>
                       </div>
                     </div>
                     <div>
-                      <label htmlFor={`cost-${line.variantId}`} className="mb-1 block text-base font-medium">
+                      <label htmlFor={`cost-${line.variantId}`} className={ADMIN_LABEL}>
                         Costo unitario
                       </label>
                       <input
@@ -424,16 +437,16 @@ export default function ComprasPage() {
                         value={line.unitCost}
                         onChange={(e) => updateLine(line.variantId, { unitCost: e.target.value })}
                         placeholder="$"
-                        className={`${inputClass} font-mono`}
+                        className={`${ADMIN_INPUT} font-mono`}
                       />
                     </div>
                   </div>
 
-                  <p className="flex justify-between text-base">
-                    <span className="text-graphite">
+                  <p className="flex justify-between text-sm">
+                    <span className="text-admin-muted">
                       {invalid ? "Completá cantidad y costo (mayores a 0)" : "Subtotal"}
                     </span>
-                    <span className="font-mono font-medium tabular-nums">
+                    <span className="font-mono font-semibold tabular-nums text-admin-text">
                       {q !== null && c !== null ? formatPrice(q * c) : "—"}
                     </span>
                   </p>
@@ -444,18 +457,10 @@ export default function ComprasPage() {
         )}
       </section>
 
-      <div className="sticky bottom-0 -mx-4 space-y-3 border-t border-rule bg-paper px-4 py-3 md:mx-0 md:rounded-t-2xl md:border">
-        {error && (
-          <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
-            {error}
-          </p>
-        )}
-        {success && (
-          <p role="status" className="rounded-2xl bg-ink p-3 text-base font-medium text-paper">
-            {success}
-          </p>
-        )}
-        <div className="flex items-baseline justify-between text-lg font-semibold">
+      <div className="sticky bottom-0 -mx-4 space-y-3 border-t border-admin-border bg-admin-bg px-4 py-3 md:mx-0 md:rounded-t-md md:border">
+        {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+        {success && <p role="status" className={ADMIN_ALERT_OK}>{success}</p>}
+        <div className="flex items-baseline justify-between text-lg font-bold text-admin-text">
           <span>Total</span>
           <span className="font-mono tabular-nums">{formatPrice(total)}</span>
         </div>
@@ -463,12 +468,12 @@ export default function ComprasPage() {
           type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="h-14 w-full rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
+          className={`${ADMIN_BUTTON_PRIMARY} w-full`}
         >
           {submitting ? "Registrando…" : "Registrar compra"}
         </button>
         {!canSubmit && !submitting && (
-          <p className="text-sm text-graphite">
+          <p className={ADMIN_TEXT_MUTED}>
             {supplierId === ""
               ? "Elegí un proveedor para registrar la compra."
               : lines.length === 0

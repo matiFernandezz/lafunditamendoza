@@ -2,11 +2,16 @@
 
 import { useState } from "react";
 import { AdminApiError, createSupplier, type Supplier } from "@/lib/adminApi";
+import {
+  ADMIN_ALERT_ERROR,
+  ADMIN_BUTTON_PRIMARY,
+  ADMIN_BUTTON_SECONDARY,
+  ADMIN_CARD,
+  ADMIN_INPUT,
+  ADMIN_LABEL,
+} from "../adminStyles";
 
 const NEW_SUPPLIER = "__new__";
-
-const inputClass =
-  "h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base";
 
 export default function SupplierField({
   suppliers,
@@ -57,14 +62,14 @@ export default function SupplierField({
   return (
     <div className="space-y-3">
       <div>
-        <label htmlFor="proveedor" className="mb-1 block text-base font-medium">
+        <label htmlFor="proveedor" className={ADMIN_LABEL}>
           Proveedor
         </label>
         <select
           id="proveedor"
           value={creating ? NEW_SUPPLIER : value}
           onChange={(e) => handleSelect(e.target.value)}
-          className={inputClass}
+          className={ADMIN_INPUT}
         >
           <option value="">Elegí un proveedor</option>
           {suppliers.map((s) => (
@@ -77,9 +82,9 @@ export default function SupplierField({
       </div>
 
       {creating && (
-        <div className="space-y-3 rounded-2xl border border-rule p-4">
+        <div className={`${ADMIN_CARD} space-y-3`}>
           <div>
-            <label htmlFor="proveedor-nombre" className="mb-1 block text-base font-medium">
+            <label htmlFor="proveedor-nombre" className={ADMIN_LABEL}>
               Nombre
             </label>
             <input
@@ -87,11 +92,11 @@ export default function SupplierField({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={inputClass}
+              className={ADMIN_INPUT}
             />
           </div>
           <div>
-            <label htmlFor="proveedor-contacto" className="mb-1 block text-base font-medium">
+            <label htmlFor="proveedor-contacto" className={ADMIN_LABEL}>
               Datos de contacto (opcional)
             </label>
             <input
@@ -100,14 +105,10 @@ export default function SupplierField({
               value={contact}
               onChange={(e) => setContact(e.target.value)}
               placeholder="Teléfono, mail, dirección…"
-              className={inputClass}
+              className={ADMIN_INPUT}
             />
           </div>
-          {error && (
-            <p role="alert" className="rounded-2xl border border-ink p-3 text-base font-medium">
-              {error}
-            </p>
-          )}
+          {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -115,7 +116,7 @@ export default function SupplierField({
                 setCreating(false);
                 setError(null);
               }}
-              className="h-14 rounded-2xl border border-ink text-base font-medium active:bg-rule"
+              className={ADMIN_BUTTON_SECONDARY}
             >
               Cancelar
             </button>
@@ -123,7 +124,7 @@ export default function SupplierField({
               type="button"
               onClick={handleSave}
               disabled={saving || !name.trim()}
-              className="h-14 rounded-2xl bg-ink text-base font-semibold text-paper disabled:opacity-40"
+              className={ADMIN_BUTTON_PRIMARY}
             >
               {saving ? "Guardando…" : "Guardar proveedor"}
             </button>
