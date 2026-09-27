@@ -14,7 +14,7 @@ function toNavLinks(categories: CategoryGroup[]): NavLink[] {
   const fromCategories = categories.map((group) => ({
     key: group.id,
     label: group.name,
-    href: `/categoria/${group.id}`,
+    href: `/categoria/${group.slug}`,
   }));
   return [...fromCategories, { key: "nosotros", label: "Nosotros", href: "/nosotros" }];
 }

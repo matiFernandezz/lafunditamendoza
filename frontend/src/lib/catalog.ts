@@ -3,6 +3,7 @@ import { supabase } from "./supabase";
 export type Category = {
   id: string;
   name: string;
+  slug: string;
   parent_id: string | null;
 };
 
@@ -11,6 +12,7 @@ export type CategoryGroup = Category & { children: Category[] };
 export type IphoneModel = {
   id: string;
   name: string;
+  slug: string;
 };
 
 export type Variant = {
@@ -44,7 +46,7 @@ export const isUuid = (value: unknown): value is string =>
 export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, parent_id")
+    .select("id, name, slug, parent_id")
     .order("name")
     .overrideTypes<Category[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar las categorías: ${error.message}`);
@@ -57,14 +59,14 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
     }));
 }
 
-/** Una categoría con el nombre de su padre (null si no existe). */
+/** Una categoría (por slug, para la URL /categoria/[slug]) con el nombre de su padre. */
 export async function getCategory(
-  id: string,
+  slug: string,
 ): Promise<(Category & { parent: { id: string; name: string } | null }) | null> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, parent_id")
-    .eq("id", id)
+    .select("id, name, slug, parent_id")
+    .eq("slug", slug)
     .maybeSingle()
     .overrideTypes<Category, { merge: false }>();
   if (error) throw new Error(`No se pudo cargar la categoría: ${error.message}`);
@@ -89,7 +91,7 @@ export async function getCategory(
 export async function getIphoneModels(): Promise<IphoneModel[]> {
   const { data, error } = await supabase
     .from("iphone_models")
-    .select("id, name")
+    .select("id, name, slug")
     .order("sort_order")
     .order("name")
     .overrideTypes<IphoneModel[], { merge: false }>();
@@ -97,11 +99,12 @@ export async function getIphoneModels(): Promise<IphoneModel[]> {
   return data;
 }
 
-export async function getIphoneModel(id: string): Promise<IphoneModel | null> {
+/** Un modelo por slug, para la URL /modelo/[slug]. */
+export async function getIphoneModel(slug: string): Promise<IphoneModel | null> {
   const { data, error } = await supabase
     .from("iphone_models")
-    .select("id, name")
-    .eq("id", id)
+    .select("id, name, slug")
+    .eq("slug", slug)
     .maybeSingle()
     .overrideTypes<IphoneModel, { merge: false }>();
   if (error) throw new Error(`No se pudo cargar el modelo: ${error.message}`);

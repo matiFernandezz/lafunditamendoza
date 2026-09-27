@@ -26,7 +26,7 @@ export default function IphoneModelStrip({ lines }: { lines: ModelLine[] }) {
             return (
               <Link
                 key={line.key}
-                href={`/modelo/${line.models[0].id}`}
+                href={`/modelo/${line.models[0].slug}`}
                 className="group flex flex-col items-center gap-1"
               >
                 <span className="font-display text-3xl font-black tracking-tight transition-opacity group-hover:opacity-60 sm:text-4xl">
@@ -67,7 +67,7 @@ export default function IphoneModelStrip({ lines }: { lines: ModelLine[] }) {
             {line.models.map((model) => (
               <Link
                 key={model.id}
-                href={`/modelo/${model.id}`}
+                href={`/modelo/${model.slug}`}
                 className="rounded-full border border-graphite px-4 py-2 text-sm font-medium transition-colors duration-200 hover:border-ink hover:bg-ink hover:text-paper"
               >
                 {model.name}

@@ -3,27 +3,22 @@ import { notFound } from "next/navigation";
 import ArrowMark from "@/components/ArrowMark";
 import ModelFilter from "@/components/ModelFilter";
 import ProductTile from "@/components/ProductTile";
-import {
-  getCategory,
-  getIphoneModels,
-  getProductsByCategory,
-  isUuid,
-} from "@/lib/catalog";
+import { getCategory, getIphoneModels, getProductsByCategory, isUuid } from "@/lib/catalog";
 
-export default async function CategoryPage(props: PageProps<"/categoria/[id]">) {
-  const { id } = await props.params;
-  if (!isUuid(id)) notFound();
+export default async function CategoryPage(props: PageProps<"/categoria/[slug]">) {
+  const { slug } = await props.params;
 
   // Un ?modelo= inválido se ignora en vez de romper la página.
   const { modelo } = await props.searchParams;
   const modelId = isUuid(modelo) ? modelo : undefined;
 
-  const [category, models, products] = await Promise.all([
-    getCategory(id),
-    getIphoneModels(),
-    getProductsByCategory(id, modelId),
-  ]);
+  const category = await getCategory(slug);
   if (!category) notFound();
+
+  const [models, products] = await Promise.all([
+    getIphoneModels(),
+    getProductsByCategory(category.id, modelId),
+  ]);
 
   const selectedModel = models.find((m) => m.id === modelId);
 

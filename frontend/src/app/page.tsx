@@ -89,7 +89,7 @@ export default async function Home() {
           </p>
           {fundas && (
             <Link
-              href={`/categoria/${fundas.id}`}
+              href={`/categoria/${fundas.slug}`}
               className="inline-flex h-14 shrink-0 items-center gap-2 border-b-2 border-ink text-base font-semibold"
             >
               Ver todo
@@ -110,7 +110,7 @@ export default async function Home() {
             {tiles.map((tile, index) => (
               <CategoryTileCard
                 key={tile.id}
-                href={`/categoria/${tile.id}`}
+                href={`/categoria/${tile.slug}`}
                 name={tile.name}
                 count={tile.count}
                 imageUrl={tile.imageUrl}

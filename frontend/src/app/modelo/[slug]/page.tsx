@@ -2,16 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ArrowMark from "@/components/ArrowMark";
 import ProductTile from "@/components/ProductTile";
-import { getIphoneModel, getProductsByModel, isUuid } from "@/lib/catalog";
+import { getIphoneModel, getProductsByModel } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
-export default async function ModeloPage(props: PageProps<"/modelo/[id]">) {
-  const { id } = await props.params;
-  if (!isUuid(id)) notFound();
+export default async function ModeloPage(props: PageProps<"/modelo/[slug]">) {
+  const { slug } = await props.params;
 
-  const [model, products] = await Promise.all([getIphoneModel(id), getProductsByModel(id)]);
+  const model = await getIphoneModel(slug);
   if (!model) notFound();
+
+  const products = await getProductsByModel(model.id);
 
   return (
     <div className="space-y-10 md:space-y-14">
@@ -38,7 +39,7 @@ export default async function ModeloPage(props: PageProps<"/modelo/[id]">) {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 md:gap-4">
           {products.map((product) => (
-            <ProductTile key={product.id} product={product} modelId={id} />
+            <ProductTile key={product.id} product={product} modelId={model.id} />
           ))}
         </div>
       )}
