@@ -6,6 +6,7 @@ import type { Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 
 const LOW_STOCK = 3;
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
 export default function ProductDetail({
   product,
@@ -49,6 +50,15 @@ export default function ProductDetail({
   const selectedVariant =
     availableVariants.find((v) => (color ? v.color === color : true)) ?? availableVariants[0];
 
+  const selectedModelName = modelOptions.find((m) => m.id === modelId)?.name;
+  const waMessage = [
+    `Hola! Te consulto por "${product.name}"`,
+    selectedModelName,
+    color,
+  ]
+    .filter(Boolean)
+    .join(" - ");
+
   return (
     <div className="grid gap-8 md:grid-cols-2 md:gap-12">
       <ProductGallery images={product.product_images} alt={product.name} />
@@ -66,7 +76,7 @@ export default function ProductDetail({
         {modelOptions.length > 0 && (
           <div>
             <label htmlFor="modelo-detalle" className="mb-2 block font-medium">
-              Modelo
+              Elegí tu modelo
             </label>
             <select
               id="modelo-detalle"
@@ -124,6 +134,17 @@ export default function ProductDetail({
               <span className="font-mono text-xs">{selectedVariant.sku}</span>
             </p>
           </div>
+        )}
+
+        {WHATSAPP_NUMBER && (
+          <a
+            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper transition-transform duration-200 active:scale-[0.98]"
+          >
+            Consultar por WhatsApp
+          </a>
         )}
       </div>
     </div>

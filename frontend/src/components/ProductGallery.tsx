@@ -4,9 +4,11 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import type { ProductImage } from "@/lib/catalog";
 
+const THUMBNAIL_THRESHOLD = 2;
+
 // Detalle de producto: una sola foto se muestra fija sin controles; con más
 // de una, scroll horizontal con snap (swipe nativo en mobile) + flechas y
-// puntos para desktop/mouse.
+// puntos, más una fila de thumbnails debajo si hay más de 2 fotos.
 export default function ProductGallery({
   images,
   alt,
@@ -95,19 +97,38 @@ export default function ProductGallery({
         </button>
       </div>
 
-      <div className="flex justify-center gap-1.5">
-        {sorted.map((img, i) => (
-          <button
-            key={img.id}
-            type="button"
-            onClick={() => scrollToIndex(i)}
-            aria-label={`Ir a la foto ${i + 1}`}
-            className={`h-1.5 w-1.5 rounded-full transition-colors ${
-              i === active ? "bg-ink" : "bg-rule"
-            }`}
-          />
-        ))}
-      </div>
+      {sorted.length > THUMBNAIL_THRESHOLD ? (
+        <div className="flex gap-2 overflow-x-auto">
+          {sorted.map((img, i) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => scrollToIndex(i)}
+              aria-label={`Ir a la foto ${i + 1}`}
+              aria-current={i === active}
+              className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border transition-colors ${
+                i === active ? "border-ink" : "border-rule"
+              }`}
+            >
+              <Image src={img.url} alt="" fill sizes="64px" className="object-cover" />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex justify-center gap-1.5">
+          {sorted.map((img, i) => (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => scrollToIndex(i)}
+              aria-label={`Ir a la foto ${i + 1}`}
+              className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                i === active ? "bg-ink" : "bg-rule"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

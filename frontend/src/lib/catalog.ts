@@ -35,6 +35,7 @@ export type Product = {
   id: string;
   name: string;
   description: string | null;
+  category: { id: string; name: string; slug: string } | null;
   product_images: ProductImage[];
   product_variants: Variant[];
 };
@@ -45,7 +46,7 @@ export function coverImage(product: Pick<Product, "product_images">): string | n
 }
 
 const PRODUCT_SELECT =
-  "id, name, description, product_images(id, url, sort_order), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
+  "id, name, description, category:categories(id, name, slug), product_images(id, url, sort_order), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

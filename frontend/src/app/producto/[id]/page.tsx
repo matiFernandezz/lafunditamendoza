@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import ArrowMark from "@/components/ArrowMark";
 import ProductDetail from "@/components/ProductDetail";
 import { getProduct, isUuid } from "@/lib/catalog";
 
@@ -18,13 +17,24 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
 
   return (
     <div className="space-y-8 md:space-y-10">
-      <Link
-        href="/"
-        className="-my-1 inline-flex min-h-11 items-center gap-2 text-sm text-graphite transition-colors duration-200 hover:text-ink"
-      >
-        <ArrowMark className="h-2.5 w-4 rotate-180" strokeWidth={5} />
-        Inicio
-      </Link>
+      <nav aria-label="Ubicación" className="flex flex-wrap items-center gap-1.5 text-sm text-graphite">
+        <Link href="/" className="transition-colors duration-200 hover:text-ink">
+          Inicio
+        </Link>
+        {product.category && (
+          <>
+            <span aria-hidden="true">/</span>
+            <Link
+              href={`/categoria/${product.category.slug}`}
+              className="transition-colors duration-200 hover:text-ink"
+            >
+              {product.category.name}
+            </Link>
+          </>
+        )}
+        <span aria-hidden="true">/</span>
+        <span className="text-ink">{product.name}</span>
+      </nav>
 
       <ProductDetail product={product} initialModelId={initialModelId} />
     </div>
