@@ -3,11 +3,11 @@ import { forwardMultipartToBackend, requireSession, unauthorized } from "@/lib/a
 
 export async function POST(
   request: NextRequest,
-  ctx: RouteContext<"/api/products/[id]/image">,
+  ctx: RouteContext<"/api/products/[id]/images">,
 ) {
   const session = await requireSession();
   if (!session) return unauthorized();
 
   const { id } = await ctx.params;
-  return forwardMultipartToBackend(`/api/products/${id}/image`, request);
+  return forwardMultipartToBackend(`/api/products/${id}/images`, request);
 }

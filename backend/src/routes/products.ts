@@ -19,9 +19,11 @@ router.get('/', async (req, res) => {
     .from('products')
     .select(
       `${PRODUCT_SELECT},
-       product_variants ( id, sku, color, price, cost_price, stock_quantity, active, iphone_model_id )`
+       product_variants ( id, sku, color, price, cost_price, stock_quantity, active, iphone_model_id ),
+       product_images ( id, url, sort_order )`
     )
-    .order('name', { ascending: true });
+    .order('name', { ascending: true })
+    .order('sort_order', { referencedTable: 'product_images', ascending: true });
 
   if (category_id) {
     query = query.eq('category_id', category_id);
@@ -149,7 +151,14 @@ function handleImageUpload(req: Request, res: Response, next: NextFunction) {
   });
 }
 
-router.post('/:id/image', handleImageUpload, async (req, res) => {
+/** Extrae el path dentro del bucket a partir de la URL publica que guardamos. */
+function storagePathFromUrl(url: string): string | null {
+  const marker = `/object/public/${IMAGE_BUCKET}/`;
+  const index = url.indexOf(marker);
+  return index === -1 ? null : url.slice(index + marker.length);
+}
+
+router.post('/:id/images', handleImageUpload, async (req, res) => {
   const { id } = req.params;
 
   if (!isUuid(id)) {
@@ -168,6 +177,19 @@ router.post('/:id/image', handleImageUpload, async (req, res) => {
     });
   }
 
+  const { data: existing, error: existingError } = await supabase
+    .from('product_images')
+    .select('sort_order')
+    .eq('product_id', id)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingError) {
+    return res.status(500).json({ error: existingError.message });
+  }
+
+  const nextSortOrder = existing ? existing.sort_order + 1 : 0;
   const path = `${randomUUID()}.${extension}`;
 
   const { error: uploadError } = await supabase.storage
@@ -181,10 +203,35 @@ router.post('/:id/image', handleImageUpload, async (req, res) => {
   const { data: publicUrlData } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
 
   const { data, error } = await supabase
-    .from('products')
-    .update({ image_url: publicUrlData.publicUrl })
-    .eq('id', id)
-    .select(PRODUCT_SELECT)
+    .from('product_images')
+    .insert({ product_id: id, url: publicUrlData.publicUrl, sort_order: nextSortOrder })
+    .select('id, url, sort_order')
+    .single();
+
+  if (error?.code === '23503') {
+    return res.status(404).json({ error: 'No existe un producto con ese id' });
+  }
+
+  if (error || !data) {
+    return res.status(500).json({ error: error?.message ?? 'No se pudo guardar la imagen' });
+  }
+
+  res.status(201).json({ data });
+});
+
+router.delete('/:id/images/:imageId', async (req, res) => {
+  const { id, imageId } = req.params;
+
+  if (!isUuid(id) || !isUuid(imageId)) {
+    return res.status(400).json({ error: 'id e imageId deben ser uuids validos' });
+  }
+
+  const { data, error } = await supabase
+    .from('product_images')
+    .delete()
+    .eq('id', imageId)
+    .eq('product_id', id)
+    .select('url')
     .maybeSingle();
 
   if (error) {
@@ -192,7 +239,67 @@ router.post('/:id/image', handleImageUpload, async (req, res) => {
   }
 
   if (!data) {
-    return res.status(404).json({ error: 'No existe un producto con ese id' });
+    return res.status(404).json({ error: 'No existe esa imagen para ese producto' });
+  }
+
+  const storagePath = storagePathFromUrl(data.url);
+  if (storagePath) {
+    // Si falla el borrado en Storage no hacemos fallar el request: la fila ya
+    // se borro y es lo que importa para el catalogo; el archivo huerfano no
+    // es visible para nadie.
+    await supabase.storage.from(IMAGE_BUCKET).remove([storagePath]);
+  }
+
+  res.status(204).end();
+});
+
+router.patch('/:id/images/reorder', async (req, res) => {
+  const { id } = req.params;
+  const { order } = req.body ?? {};
+
+  if (!isUuid(id)) {
+    return res.status(400).json({ error: 'id debe ser un uuid valido' });
+  }
+
+  if (!Array.isArray(order) || order.length === 0 || !order.every(isUuid)) {
+    return res.status(400).json({ error: 'order debe ser un array de uuids' });
+  }
+
+  const { data: current, error: currentError } = await supabase
+    .from('product_images')
+    .select('id')
+    .eq('product_id', id);
+
+  if (currentError) {
+    return res.status(500).json({ error: currentError.message });
+  }
+
+  const currentIds = new Set(current.map((row) => row.id));
+  const sameSet = order.length === currentIds.size && order.every((imgId) => currentIds.has(imgId));
+  if (!sameSet) {
+    return res.status(400).json({
+      error: 'order tiene que incluir exactamente las imagenes actuales del producto, sin repetir',
+    });
+  }
+
+  for (const [index, imageId] of order.entries()) {
+    const { error } = await supabase
+      .from('product_images')
+      .update({ sort_order: index })
+      .eq('id', imageId);
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('product_images')
+    .select('id, url, sort_order')
+    .eq('product_id', id)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
 
   res.json({ data });

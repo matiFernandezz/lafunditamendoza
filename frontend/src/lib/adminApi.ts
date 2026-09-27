@@ -48,6 +48,12 @@ export type AdminVariant = {
   iphone_model_id: string | null;
 };
 
+export type AdminProductImage = {
+  id: string;
+  url: string;
+  sort_order: number;
+};
+
 export type AdminProduct = {
   id: string;
   name: string;
@@ -57,6 +63,7 @@ export type AdminProduct = {
   image_url: string | null;
   created_at: string;
   product_variants: AdminVariant[];
+  product_images: AdminProductImage[];
 };
 
 export function getAdminProducts(): Promise<{ data: AdminProduct[] }> {
@@ -220,11 +227,28 @@ export function updateProductName(id: string, name: string): Promise<{ data: Adm
   });
 }
 
-export function uploadProductImage(id: string, file: File): Promise<{ data: AdminProduct }> {
+export function addProductImage(
+  productId: string,
+  file: File,
+): Promise<{ data: AdminProductImage }> {
   const formData = new FormData();
   formData.append("image", file);
-  return adminFetch(`/api/products/${id}/image`, {
+  return adminFetch(`/api/products/${productId}/images`, {
     method: "POST",
     body: formData,
+  });
+}
+
+export async function deleteProductImage(productId: string, imageId: string): Promise<void> {
+  await adminFetch(`/api/products/${productId}/images/${imageId}`, { method: "DELETE" });
+}
+
+export function reorderProductImages(
+  productId: string,
+  order: string[],
+): Promise<{ data: AdminProductImage[] }> {
+  return adminFetch(`/api/products/${productId}/images/reorder`, {
+    method: "PATCH",
+    body: JSON.stringify({ order }),
   });
 }
