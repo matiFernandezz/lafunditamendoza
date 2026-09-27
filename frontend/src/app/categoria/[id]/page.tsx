@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import ArrowMark from "@/components/ArrowMark";
 import ModelFilter from "@/components/ModelFilter";
-import ProductCard from "@/components/ProductCard";
+import ProductTile from "@/components/ProductTile";
 import {
   getCategory,
   getIphoneModels,
@@ -37,7 +37,7 @@ export default async function CategoryPage(props: PageProps<"/categoria/[id]">) 
           <ArrowMark className="h-2.5 w-4 rotate-180" strokeWidth={5} />
           Inicio
         </Link>
-        <h1 className="mt-3 font-display text-[clamp(2.5rem,10vw,4.5rem)] font-semibold leading-[0.98] tracking-[-0.03em]">
+        <h1 className="mt-3 font-display text-[clamp(2.5rem,10vw,4.5rem)] font-black leading-[0.98] tracking-[-0.03em]">
           {category.parent && <span className="text-graphite">{category.parent.name} / </span>}
           {category.name}
         </h1>
@@ -59,11 +59,11 @@ export default async function CategoryPage(props: PageProps<"/categoria/[id]">) 
               : "No hay productos disponibles en esta categoría por el momento."}
           </p>
         ) : (
-          <ul className="grid items-start gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductTile key={product.id} product={product} modelId={selectedModel?.id} />
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
