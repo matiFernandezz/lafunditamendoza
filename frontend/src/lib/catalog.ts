@@ -19,6 +19,7 @@ export type Variant = {
   color: string | null;
   price: number;
   stock_quantity: number;
+  iphone_model_id: string | null;
   iphone_models: { name: string } | null;
 };
 
@@ -26,8 +27,12 @@ export type Product = {
   id: string;
   name: string;
   description: string | null;
+  image_url: string | null;
   product_variants: Variant[];
 };
+
+const PRODUCT_SELECT =
+  "id, name, description, image_url, product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -92,6 +97,40 @@ export async function getIphoneModels(): Promise<IphoneModel[]> {
   return data;
 }
 
+export async function getIphoneModel(id: string): Promise<IphoneModel | null> {
+  const { data, error } = await supabase
+    .from("iphone_models")
+    .select("id, name")
+    .eq("id", id)
+    .maybeSingle()
+    .overrideTypes<IphoneModel, { merge: false }>();
+  if (error) throw new Error(`No se pudo cargar el modelo: ${error.message}`);
+  return data;
+}
+
+export type ModelLine = { key: string; label: string; models: IphoneModel[] };
+
+// Agrupa los 22 modelos reales por línea (11, 12, ..., 17, Air) para la
+// franja "Elegí tu iPhone" de la home: se ven 8 botones grandes, pero se
+// puede llegar a los 22 reales expandiendo la línea elegida.
+export function groupModelsByLine(models: IphoneModel[]): ModelLine[] {
+  const LINE_ORDER = ["11", "12", "13", "14", "15", "16", "17", "Air"];
+  const byLine = new Map<string, IphoneModel[]>();
+
+  for (const model of models) {
+    const match = model.name.match(/^iPhone (\d+|Air)/);
+    const key = match ? match[1] : model.name;
+    if (!byLine.has(key)) byLine.set(key, []);
+    byLine.get(key)!.push(model);
+  }
+
+  return LINE_ORDER.filter((key) => byLine.has(key)).map((key) => ({
+    key,
+    label: key,
+    models: byLine.get(key)!,
+  }));
+}
+
 /**
  * Productos activos de una categoría, con solo sus variantes activas y con stock.
  * Con `modelId`, deja las variantes de ese modelo o sin restricción de modelo;
@@ -113,9 +152,7 @@ export async function getProductsByCategory(
 
   let query = supabase
     .from("products")
-    .select(
-      "id, name, description, product_variants!inner(id, sku, color, price, stock_quantity, iphone_models(name))",
-    )
+    .select(PRODUCT_SELECT)
     .in("category_id", categoryIds)
     .eq("active", true)
     .eq("product_variants.active", true)
@@ -133,6 +170,90 @@ export async function getProductsByCategory(
     .order("price", { referencedTable: "product_variants" })
     .overrideTypes<Product[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar los productos: ${error.message}`);
+  return data;
+}
+
+/**
+ * Productos (de cualquier categoría) compatibles con un modelo puntual:
+ * variantes de ese modelo o universales (sin modelo). Para la página
+ * /modelo/[id], que se accede desde la franja "Elegí tu iPhone" de la home.
+ */
+export async function getProductsByModel(modelId: string): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .or(`iphone_model_id.eq.${modelId},iphone_model_id.is.null`, {
+      referencedTable: "product_variants",
+    })
+    .order("name")
+    .order("price", { referencedTable: "product_variants" })
+    .overrideTypes<Product[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar los productos: ${error.message}`);
+  return data;
+}
+
+/** Productos para "destacados" de la home: los más nuevos con stock. */
+export async function getFeaturedProducts(limit: number): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from("products")
+    .select(`${PRODUCT_SELECT}, created_at`)
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+    .overrideTypes<(Product & { created_at: string })[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar los destacados: ${error.message}`);
+  return data;
+}
+
+export type CategoryTile = Category & { count: number; imageUrl: string | null };
+
+/**
+ * Las categorías hoja (con productos propios) para el grid de la home:
+ * nombre, cantidad de productos con stock y una foto representativa
+ * (la del primer producto con imagen, por orden alfabético).
+ */
+export async function getCategoryTiles(): Promise<CategoryTile[]> {
+  const [groups, counts] = await Promise.all([getCategoryGroups(), getProductCountsByCategory()]);
+  const leaves = groups.flatMap((g) => (g.children.length > 0 ? g.children : [g]));
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("category_id, image_url")
+    .eq("active", true)
+    .not("image_url", "is", null)
+    .order("name")
+    .overrideTypes<{ category_id: string; image_url: string }[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar las fotos de categoría: ${error.message}`);
+
+  const imageByCategory = new Map<string, string>();
+  for (const row of data) {
+    if (!imageByCategory.has(row.category_id)) imageByCategory.set(row.category_id, row.image_url);
+  }
+
+  return leaves.map((c) => ({
+    ...c,
+    count: counts[c.id] ?? 0,
+    imageUrl: imageByCategory.get(c.id) ?? null,
+  }));
+}
+
+/** Un producto puntual con sus variantes activas y con stock, para el detalle. */
+export async function getProduct(id: string): Promise<Product | null> {
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("id", id)
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .maybeSingle()
+    .overrideTypes<Product | null, { merge: false }>();
+  if (error) throw new Error(`No se pudo cargar el producto: ${error.message}`);
   return data;
 }
 
