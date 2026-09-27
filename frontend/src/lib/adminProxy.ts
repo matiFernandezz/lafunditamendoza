@@ -5,6 +5,8 @@ import { requireEnv } from "@/lib/requireEnv";
 const BACKEND_URL = requireEnv(process.env.BACKEND_URL, "BACKEND_URL");
 const BACKEND_API_KEY = requireEnv(process.env.BACKEND_API_KEY, "BACKEND_API_KEY");
 
+const EMPTY_BODY_STATUS = new Set([204, 205, 304]);
+
 /**
  * Devuelve los claims del JWT si hay una sesión de Supabase Auth válida
  * (verificados localmente, sin ir al servidor de Auth), o null si no.
@@ -38,6 +40,13 @@ export async function forwardToBackend(path: string, init?: RequestInit) {
       "x-api-key": BACKEND_API_KEY,
     },
   });
+
+  // 204/205/304 no admiten body: construir un Response con body y uno de
+  // esos status tira TypeError. Pasa de verdad: el DELETE de una foto de
+  // producto responde 204 y rompía el borrado con un 500.
+  if (EMPTY_BODY_STATUS.has(res.status)) {
+    return new NextResponse(null, { status: res.status });
+  }
 
   const body = await res.text();
   return new NextResponse(body, {
