@@ -25,16 +25,27 @@ export type Variant = {
   iphone_models: { name: string } | null;
 };
 
+export type ProductImage = {
+  id: string;
+  url: string;
+  sort_order: number;
+};
+
 export type Product = {
   id: string;
   name: string;
   description: string | null;
-  image_url: string | null;
+  product_images: ProductImage[];
   product_variants: Variant[];
 };
 
+/** La portada de un producto: su primera imagen (sort_order más bajo), o null si no tiene ninguna. */
+export function coverImage(product: Pick<Product, "product_images">): string | null {
+  return product.product_images[0]?.url ?? null;
+}
+
 const PRODUCT_SELECT =
-  "id, name, description, image_url, product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
+  "id, name, description, product_images(id, url, sort_order), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -171,6 +182,7 @@ export async function getProductsByCategory(
   const { data, error } = await query
     .order("name")
     .order("price", { referencedTable: "product_variants" })
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
     .overrideTypes<Product[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar los productos: ${error.message}`);
   return data;
@@ -193,6 +205,7 @@ export async function getProductsByModel(modelId: string): Promise<Product[]> {
     })
     .order("name")
     .order("price", { referencedTable: "product_variants" })
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
     .overrideTypes<Product[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar los productos: ${error.message}`);
   return data;
@@ -207,6 +220,7 @@ export async function getFeaturedProducts(limit: number): Promise<Product[]> {
     .eq("product_variants.active", true)
     .gt("product_variants.stock_quantity", 0)
     .order("created_at", { ascending: false })
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
     .limit(limit)
     .overrideTypes<(Product & { created_at: string })[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar los destacados: ${error.message}`);
@@ -226,16 +240,17 @@ export async function getCategoryTiles(): Promise<CategoryTile[]> {
 
   const { data, error } = await supabase
     .from("products")
-    .select("category_id, image_url")
+    .select("category_id, product_images(url, sort_order)")
     .eq("active", true)
-    .not("image_url", "is", null)
     .order("name")
-    .overrideTypes<{ category_id: string; image_url: string }[], { merge: false }>();
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
+    .overrideTypes<{ category_id: string; product_images: { url: string; sort_order: number }[] }[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar las fotos de categoría: ${error.message}`);
 
   const imageByCategory = new Map<string, string>();
   for (const row of data) {
-    if (!imageByCategory.has(row.category_id)) imageByCategory.set(row.category_id, row.image_url);
+    const url = row.product_images[0]?.url;
+    if (url && !imageByCategory.has(row.category_id)) imageByCategory.set(row.category_id, url);
   }
 
   return leaves.map((c) => ({
@@ -254,6 +269,7 @@ export async function getProduct(id: string): Promise<Product | null> {
     .eq("active", true)
     .eq("product_variants.active", true)
     .gt("product_variants.stock_quantity", 0)
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
     .maybeSingle()
     .overrideTypes<Product | null, { merge: false }>();
   if (error) throw new Error(`No se pudo cargar el producto: ${error.message}`);

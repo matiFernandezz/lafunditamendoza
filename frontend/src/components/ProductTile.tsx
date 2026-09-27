@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { Product } from "@/lib/catalog";
+import { coverImage, type Product } from "@/lib/catalog";
 import { formatPriceRange } from "@/lib/format";
 
 // Una card por producto/diseño, nunca una por combinación modelo/color:
 // el precio es fijo si todas las variantes visibles cuestan lo mismo
 // (ej. ya filtrado por modelo), o "Desde $X" si varía entre modelos.
+// Solo muestra la portada (primera imagen); la galería completa es del detalle.
 export default function ProductTile({
   product,
   modelId,
@@ -15,6 +16,7 @@ export default function ProductTile({
 }) {
   const price = formatPriceRange(product.product_variants.map((v) => v.price));
   const href = modelId ? `/producto/${product.id}?modelo=${modelId}` : `/producto/${product.id}`;
+  const image = coverImage(product);
 
   return (
     <Link
@@ -22,9 +24,9 @@ export default function ProductTile({
       className="group block overflow-hidden rounded-[20px] border border-rule transition-colors duration-200 hover:border-ink"
     >
       <div className="relative aspect-square w-full overflow-hidden bg-rule/40">
-        {product.image_url ? (
+        {image ? (
           <Image
-            src={product.image_url}
+            src={image}
             alt={product.name}
             fill
             sizes="(min-width: 768px) 25vw, 50vw"

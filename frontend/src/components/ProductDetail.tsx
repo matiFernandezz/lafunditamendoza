@@ -1,7 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
+import ProductGallery from "@/components/ProductGallery";
 import type { Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 
@@ -51,20 +51,7 @@ export default function ProductDetail({
 
   return (
     <div className="grid gap-8 md:grid-cols-2 md:gap-12">
-      <div className="relative aspect-square w-full overflow-hidden rounded-[28px] bg-rule/40">
-        {product.image_url ? (
-          <Image
-            src={product.image_url}
-            alt={product.name}
-            fill
-            sizes="(min-width: 768px) 45vw, 100vw"
-            className="object-cover"
-            priority
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-graphite">Sin foto</div>
-        )}
-      </div>
+      <ProductGallery images={product.product_images} alt={product.name} />
 
       <div className="space-y-6">
         <div>

@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import ArrowMark from "@/components/ArrowMark";
+import HeroCarousel from "@/components/HeroCarousel";
 import IphoneModelStrip from "@/components/IphoneModelStrip";
 import ProductTile from "@/components/ProductTile";
 import {
+  coverImage,
   getCategoryGroups,
   getCategoryTiles,
   getFeaturedProducts,
@@ -75,28 +77,38 @@ export default async function Home() {
   const modelLines = groupModelsByLine(models);
   const fundas = categoryGroups.find((g) => g.children.length > 0);
 
+  // Mismos destacados de la sección de abajo, mostrando su portada: ninguna
+  // foto nueva, solo se reusan las que ya elegimos con el criterio de "destacado".
+  const heroImages = featured
+    .map((product) => ({ id: product.id, url: coverImage(product), alt: product.name }))
+    .filter((img): img is { id: string; url: string; alt: string } => img.url !== null)
+    .slice(0, 6);
+
   return (
     <div className="space-y-16 md:space-y-24">
-      <section className="space-y-6">
-        <h1 className="font-display text-[clamp(2.75rem,11vw,6.5rem)] font-black leading-[0.92] tracking-[-0.03em] text-pretty">
-          Tu iPhone,
-          <br />
-          pero más vos.
-        </h1>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <p className="max-w-[34ch] text-base text-graphite md:text-xl">
-            Fundas y accesorios para tu iPhone, elegidos y armados a mano.
-          </p>
-          {fundas && (
-            <Link
-              href={`/categoria/${fundas.slug}`}
-              className="inline-flex h-14 shrink-0 items-center gap-2 border-b-2 border-ink text-base font-semibold"
-            >
-              Ver todo
-              <ArrowMark className="h-2.5 w-4" strokeWidth={5} />
-            </Link>
-          )}
+      <section className="grid gap-8 md:grid-cols-[1.3fr_1fr] md:items-center md:gap-12">
+        <div className="space-y-6">
+          <h1 className="font-display text-[clamp(2.75rem,11vw,6.5rem)] font-black leading-[0.92] tracking-[-0.03em] text-pretty">
+            Tu iPhone,
+            <br />
+            pero más vos.
+          </h1>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <p className="max-w-[34ch] text-base text-graphite md:text-xl">
+              Fundas y accesorios para tu iPhone, elegidos y armados a mano.
+            </p>
+            {fundas && (
+              <Link
+                href={`/categoria/${fundas.slug}`}
+                className="inline-flex h-14 shrink-0 items-center gap-2 border-b-2 border-ink text-base font-semibold"
+              >
+                Ver todo
+                <ArrowMark className="h-2.5 w-4" strokeWidth={5} />
+              </Link>
+            )}
+          </div>
         </div>
+        {heroImages.length > 0 && <HeroCarousel images={heroImages} />}
       </section>
 
       {modelLines.length > 0 && <IphoneModelStrip lines={modelLines} />}
