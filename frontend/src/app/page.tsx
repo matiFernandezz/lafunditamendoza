@@ -1,11 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import ArrowMark from "@/components/ArrowMark";
-import HeroCarousel from "@/components/HeroCarousel";
+import HeroCarousel, { type HeroSlide } from "@/components/HeroCarousel";
 import IphoneModelStrip from "@/components/IphoneModelStrip";
 import ProductTile from "@/components/ProductTile";
 import {
-  coverImage,
   getCategoryGroups,
   getCategoryTiles,
   getFeaturedProducts,
@@ -16,6 +15,17 @@ import {
 // Las categorías y productos vienen de la base: sin esto Next pre-renderiza
 // la home en el build y queda congelada.
 export const dynamic = "force-dynamic";
+
+// Fotos de marca para el fondo del hero (no product_images: son renders
+// encargados para la home, no fotos de un producto puntual). Para sumar
+// más, agregar el archivo a public/hero/ y una entrada acá.
+const HERO_SLIDES: HeroSlide[] = [
+  {
+    id: "render-central",
+    src: "/hero/render-central.jpg",
+    alt: "Mano sosteniendo un iPhone con Cherry Case y, al lado, otro con Chessy Case",
+  },
+];
 
 function CategoryTileCard({
   href,
@@ -77,38 +87,27 @@ export default async function Home() {
   const modelLines = groupModelsByLine(models);
   const fundas = categoryGroups.find((g) => g.children.length > 0);
 
-  // Mismos destacados de la sección de abajo, mostrando su portada: ninguna
-  // foto nueva, solo se reusan las que ya elegimos con el criterio de "destacado".
-  const heroImages = featured
-    .map((product) => ({ id: product.id, url: coverImage(product), alt: product.name }))
-    .filter((img): img is { id: string; url: string; alt: string } => img.url !== null)
-    .slice(0, 6);
-
   return (
     <div className="space-y-16 md:space-y-24">
-      <section className="grid gap-8 md:grid-cols-[1.3fr_1fr] md:items-center md:gap-12">
-        <div className="space-y-6">
-          <h1 className="font-display text-[clamp(2.75rem,11vw,6.5rem)] font-black leading-[0.92] tracking-[-0.03em] text-pretty">
-            Tu iPhone,
-            <br />
-            pero más vos.
-          </h1>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <p className="max-w-[34ch] text-base text-graphite md:text-xl">
-              Fundas y accesorios para tu iPhone, elegidos y armados a mano.
-            </p>
-            {fundas && (
-              <Link
-                href={`/categoria/${fundas.slug}`}
-                className="inline-flex h-14 shrink-0 items-center gap-2 border-b-2 border-ink text-base font-semibold"
-              >
-                Ver todo
-                <ArrowMark className="h-2.5 w-4" strokeWidth={5} />
-              </Link>
-            )}
-          </div>
+      {/*
+        Los renders de public/hero/ ya son piezas terminadas (headline, CTA y
+        paginación de referencia incluidos en la foto): no se les superpone
+        texto propio encima, porque duplicaría lo que ya está en la imagen.
+        Todo el bloque es un link a Fundas; el h1 queda oculto solo para
+        accesibilidad/SEO.
+      */}
+      <section className="relative overflow-hidden rounded-[20px] bg-ink">
+        <h1 className="sr-only">Tu iPhone, pero más vos.</h1>
+        {fundas && (
+          <Link
+            href={`/categoria/${fundas.slug}`}
+            aria-label="Ver todos los productos"
+            className="absolute inset-0 z-0"
+          />
+        )}
+        <div className="relative aspect-[1584/722] w-full pointer-events-none">
+          <HeroCarousel slides={HERO_SLIDES} />
         </div>
-        {heroImages.length > 0 && <HeroCarousel images={heroImages} />}
       </section>
 
       {modelLines.length > 0 && <IphoneModelStrip lines={modelLines} />}

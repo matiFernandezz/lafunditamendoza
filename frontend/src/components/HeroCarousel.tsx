@@ -3,72 +3,75 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-const AUTO_ADVANCE_MS = 5000;
+export type HeroSlide = { id: string; src: string; alt: string };
 
-export type HeroImage = { id: string; url: string; alt: string };
+const AUTO_ADVANCE_MS = 6000;
 
-// Carrusel del hero: pasa sola cada 5s + flechas manuales. Usa las portadas
-// de los productos destacados que ya se eligieron para esa sección (mismo
-// criterio, ninguna imagen nueva).
-export default function HeroCarousel({ images }: { images: HeroImage[] }) {
+// Capa de fondo del hero: fotos reales (no product_images, son renders de
+// marca en public/hero/), crossfade automático + flechas manuales. Con una
+// sola foto no muestra controles ni indicador, igual criterio que la
+// galería del detalle de producto. Sin gradiente propio: las piezas ya
+// vienen con su propio contraste resuelto (ver comentario en page.tsx). El
+// contenedor llega con pointer-events-none (hay un link de "ver todo" atrás
+// cubriendo todo el bloque), así que los controles reactivan pointer-events
+// puntualmente para seguir siendo clickeables.
+export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    if (images.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % images.length), AUTO_ADVANCE_MS);
+    if (slides.length <= 1) return;
+    const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), AUTO_ADVANCE_MS);
     return () => clearInterval(id);
-  }, [images.length]);
+  }, [slides.length]);
 
-  if (images.length === 0) return null;
+  if (slides.length === 0) return null;
 
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-[20px] bg-rule/40">
-      {images.map((img, i) => (
+    <div className="absolute inset-0">
+      {slides.map((slide, i) => (
         <Image
-          key={img.id}
-          src={img.url}
-          alt={img.alt}
+          key={slide.id}
+          src={slide.src}
+          alt={slide.alt}
           fill
-          sizes="(min-width: 768px) 40vw, 90vw"
           priority={i === 0}
+          sizes="100vw"
           className={`object-cover transition-opacity duration-700 ${
             i === index ? "opacity-100" : "opacity-0"
           }`}
         />
       ))}
 
-      {images.length > 1 && (
-        <>
-          <button
-            type="button"
-            onClick={() => setIndex((i) => (i - 1 + images.length) % images.length)}
-            aria-label="Foto anterior"
-            className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-paper/90 text-ink"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => setIndex((i) => (i + 1) % images.length)}
-            aria-label="Foto siguiente"
-            className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-paper/90 text-ink"
-          >
-            ›
-          </button>
-          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-            {images.map((img, i) => (
-              <button
-                key={img.id}
-                type="button"
-                onClick={() => setIndex(i)}
-                aria-label={`Ir a la foto ${i + 1}`}
-                className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                  i === index ? "bg-paper" : "bg-paper/40"
-                }`}
-              />
-            ))}
+      {slides.length > 1 && (
+        <div className="pointer-events-auto absolute bottom-6 left-6 flex items-center gap-3 text-paper sm:bottom-10 sm:left-10">
+          <span className="font-mono text-sm tabular-nums">
+            {String(index + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
+          </span>
+          <div className="h-px w-16 overflow-hidden bg-paper/30">
+            <div
+              className="h-full bg-paper transition-all duration-500"
+              style={{ width: `${((index + 1) / slides.length) * 100}%` }}
+            />
           </div>
-        </>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setIndex((i) => (i - 1 + slides.length) % slides.length)}
+              aria-label="Foto anterior"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-paper/40 text-paper transition-colors duration-200 hover:bg-paper/10"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => setIndex((i) => (i + 1) % slides.length)}
+              aria-label="Foto siguiente"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-paper/40 text-paper transition-colors duration-200 hover:bg-paper/10"
+            >
+              ›
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
