@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { NextFunction, Request, Response, Router } from 'express';
 import multer from 'multer';
 import { supabase } from '../lib/supabaseClient';
-import { isUuid } from '../lib/validate';
+import { isPositiveNumber, isUuid } from '../lib/validate';
 
 const router = Router();
 
@@ -119,6 +119,47 @@ router.patch('/:id', async (req, res) => {
 
   if (!data) {
     return res.status(404).json({ error: 'No existe un producto con ese id' });
+  }
+
+  res.json({ data });
+});
+
+// Mismo precio para todas las variantes del producto (todos los modelos y
+// colores), en un solo UPDATE: o cambian todas o ninguna.
+router.patch('/:id/price', async (req, res) => {
+  const { id } = req.params;
+  const { price } = req.body ?? {};
+
+  if (!isUuid(id)) {
+    return res.status(400).json({ error: 'id debe ser un uuid valido' });
+  }
+
+  if (!isPositiveNumber(price)) {
+    return res.status(400).json({ error: 'price debe ser un numero mayor a 0' });
+  }
+
+  const { data: product, error: productError } = await supabase
+    .from('products')
+    .select('id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (productError) {
+    return res.status(500).json({ error: productError.message });
+  }
+
+  if (!product) {
+    return res.status(404).json({ error: 'No existe un producto con ese id' });
+  }
+
+  const { data, error } = await supabase
+    .from('product_variants')
+    .update({ price })
+    .eq('product_id', id)
+    .select('id, product_id, iphone_model_id, color, sku, price, cost_price, stock_quantity, active');
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
   }
 
   res.json({ data });

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { supabase } from '../lib/supabaseClient';
-import { isUuid } from '../lib/validate';
+import { isUuid, isPositiveNumber } from '../lib/validate';
 
 const MAX_COLOR_LENGTH = 60;
 const MAX_SKU_LENGTH = 64;
@@ -37,7 +37,7 @@ router.post('/', async (req, res) => {
     });
   }
 
-  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+  if (!isPositiveNumber(price)) {
     return res.status(400).json({ error: 'price debe ser un numero mayor a 0' });
   }
 
@@ -91,23 +91,35 @@ router.post('/', async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   const { id } = req.params;
-  const { stock_quantity } = req.body ?? {};
+  const { stock_quantity, price } = req.body ?? {};
 
   if (!isUuid(id)) {
     return res.status(400).json({ error: 'id debe ser un uuid valido' });
   }
 
+  if (stock_quantity === undefined && price === undefined) {
+    return res.status(400).json({ error: 'Envia stock_quantity, price o ambos' });
+  }
+
   if (
-    typeof stock_quantity !== 'number' ||
-    !Number.isInteger(stock_quantity) ||
-    stock_quantity < 0
+    stock_quantity !== undefined &&
+    (typeof stock_quantity !== 'number' ||
+      !Number.isInteger(stock_quantity) ||
+      stock_quantity < 0)
   ) {
     return res.status(400).json({ error: 'stock_quantity debe ser un entero mayor o igual a 0' });
   }
 
+  if (price !== undefined && !isPositiveNumber(price)) {
+    return res.status(400).json({ error: 'price debe ser un numero mayor a 0' });
+  }
+
   const { data, error } = await supabase
     .from('product_variants')
-    .update({ stock_quantity })
+    .update({
+      ...(stock_quantity !== undefined ? { stock_quantity } : {}),
+      ...(price !== undefined ? { price } : {}),
+    })
     .eq('id', id)
     .select('id, product_id, iphone_model_id, color, sku, price, cost_price, stock_quantity, active')
     .maybeSingle();

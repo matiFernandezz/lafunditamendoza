@@ -220,6 +220,24 @@ export function updateVariantStock(
   });
 }
 
+export function updateVariantPrice(id: string, price: number): Promise<{ data: AdminVariant }> {
+  return adminFetch(`/api/product-variants/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ price }),
+  });
+}
+
+/** Mismo precio para todas las variantes del producto; devuelve las variantes actualizadas. */
+export function updateProductPrice(
+  productId: string,
+  price: number,
+): Promise<{ data: AdminVariant[] }> {
+  return adminFetch(`/api/products/${productId}/price`, {
+    method: "PATCH",
+    body: JSON.stringify({ price }),
+  });
+}
+
 export function updateProductName(id: string, name: string): Promise<{ data: AdminProduct }> {
   return adminFetch(`/api/products/${id}`, {
     method: "PATCH",

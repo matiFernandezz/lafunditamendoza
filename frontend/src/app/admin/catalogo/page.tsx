@@ -7,12 +7,13 @@ import {
   getAdminCategories,
   getAdminIphoneModels,
   getAdminProducts,
+  updateVariantPrice,
+  updateVariantStock,
   type AdminCategory,
   type AdminIphoneModel,
   type AdminProduct,
   type AdminVariant,
 } from "@/lib/adminApi";
-import { formatPrice } from "@/lib/format";
 import {
   ADMIN_ALERT_ERROR,
   ADMIN_ALERT_OK,
@@ -29,9 +30,10 @@ import {
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
 import { displayColor } from "../ventas/utils";
+import BulkPriceEditor from "./BulkPriceEditor";
 import ProductImageGallery from "./ProductImageGallery";
 import ProductNameEditor from "./ProductNameEditor";
-import StockInput from "./StockInput";
+import VariantNumberInput from "./VariantNumberInput";
 
 const UNIVERSAL = "__universal__";
 const PAGE_SIZE = 40;
@@ -139,6 +141,22 @@ export default function CatalogoPage() {
 
   function patchProductInState(productId: string, patch: Partial<AdminProduct>) {
     setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)));
+  }
+
+  function applyVariantPrices(productId: string, updated: Pick<AdminVariant, "id" | "price">[]) {
+    const priceById = new Map(updated.map((v) => [v.id, v.price]));
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id !== productId
+          ? p
+          : {
+              ...p,
+              product_variants: p.product_variants.map((v) =>
+                priceById.has(v.id) ? { ...v, price: priceById.get(v.id)! } : v,
+              ),
+            },
+      ),
+    );
   }
 
   const categoryPath = useMemo(() => {
@@ -528,33 +546,62 @@ export default function CatalogoPage() {
                   images={product.product_images}
                   onChange={(images) => patchProductInState(product.id, { product_images: images })}
                 />
-                <ProductNameEditor
-                  productId={product.id}
-                  name={product.name}
-                  onSaved={(name) => patchProductInState(product.id, { name })}
-                />
+                <div className="space-y-3">
+                  <ProductNameEditor
+                    productId={product.id}
+                    name={product.name}
+                    onSaved={(name) => patchProductInState(product.id, { name })}
+                  />
+                  <BulkPriceEditor
+                    productId={product.id}
+                    productName={product.name}
+                    variantCount={product.product_variants.length}
+                    onApplied={(updated) => applyVariantPrices(product.id, updated)}
+                  />
+                </div>
                 <ul className={ADMIN_ROW_LIST}>
-                  {variants.map((v) => (
-                    <li key={v.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <span className="min-w-0">
-                        <span className="block font-mono text-xs text-admin-muted">{v.sku}</span>
-                        <span className="mt-0.5 block text-sm text-admin-text">
-                          {[
-                            selectedModelId === ""
-                              ? v.iphone_model_id
-                                ? modelNameById.get(v.iphone_model_id)
-                                : "Sin modelo"
-                              : null,
-                            displayColor(v.color),
-                            formatPrice(v.price),
-                          ]
-                            .filter(Boolean)
-                            .join(" · ")}
+                  {variants.map((v) => {
+                    const detail = [
+                      selectedModelId === ""
+                        ? v.iphone_model_id
+                          ? modelNameById.get(v.iphone_model_id)
+                          : "Sin modelo"
+                        : null,
+                      displayColor(v.color),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
+                    return (
+                      <li
+                        key={v.id}
+                        className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <span className="min-w-0">
+                          <span className="block font-mono text-xs text-admin-muted">{v.sku}</span>
+                          {detail && (
+                            <span className="mt-0.5 block text-sm text-admin-text">{detail}</span>
+                          )}
                         </span>
-                      </span>
-                      <StockInput variantId={v.id} initialStock={v.stock_quantity} />
-                    </li>
-                  ))}
+                        <div className="flex items-start gap-4">
+                          <VariantNumberInput
+                            kind="price"
+                            label="Precio"
+                            value={v.price}
+                            save={(price) => updateVariantPrice(v.id, price)}
+                            onSaved={(price) => applyVariantPrices(product.id, [{ ...v, price }])}
+                          />
+                          {/* El stock guardado no se sube al estado a propósito: con el
+                              filtro "Sin stock" la fila desaparecería al guardar. */}
+                          <VariantNumberInput
+                            kind="stock"
+                            label="Stock"
+                            value={v.stock_quantity}
+                            save={(stock) => updateVariantStock(v.id, stock)}
+                          />
+                        </div>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
