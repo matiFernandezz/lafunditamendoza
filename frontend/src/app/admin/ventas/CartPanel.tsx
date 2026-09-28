@@ -2,13 +2,25 @@
 
 import { Minus, Plus, Trash2, X } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { ADMIN_ALERT_ERROR, ADMIN_BUTTON_PRIMARY, ADMIN_ICON_BUTTON } from "../adminStyles";
-import type { CartItem, PaymentMethod } from "./types";
+import { ADMIN_ALERT_ERROR, ADMIN_BUTTON_PRIMARY, ADMIN_ICON_BUTTON, ADMIN_INPUT } from "../adminStyles";
+import type { CartItem, DiscountChoice, PaymentMethod } from "./types";
+import { MAX_DISCOUNT_PERCENT, discountAmount, resolveDiscount } from "./utils";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "efectivo", label: "Efectivo" },
   { value: "transferencia", label: "Transferencia" },
 ];
+
+// Los que se usan con amigos; cualquier otro va por "Otro".
+const DISCOUNT_PRESETS = [10, 15];
+
+function choiceClass(active: boolean) {
+  return `h-10 rounded-md border text-sm font-semibold transition-colors ${
+    active
+      ? "border-black bg-black text-white"
+      : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
+  }`;
+}
 
 export default function CartPanel({
   items,
@@ -16,6 +28,8 @@ export default function CartPanel({
   onOpenChange,
   paymentMethod,
   onPaymentMethodChange,
+  discount,
+  onDiscountChange,
   onUpdateQuantity,
   onRemove,
   onConfirm,
@@ -27,6 +41,8 @@ export default function CartPanel({
   onOpenChange: (open: boolean) => void;
   paymentMethod: PaymentMethod;
   onPaymentMethodChange: (method: PaymentMethod) => void;
+  discount: DiscountChoice;
+  onDiscountChange: (discount: DiscountChoice) => void;
   onUpdateQuantity: (variantId: string, quantity: number) => void;
   onRemove: (variantId: string) => void;
   onConfirm: () => void;
@@ -34,7 +50,10 @@ export default function CartPanel({
   error: string | null;
 }) {
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const total = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const percent = resolveDiscount(discount);
+  const discounted = percent ? discountAmount(subtotal, percent) : 0;
+  const total = subtotal - discounted;
 
   return (
     <>
@@ -47,6 +66,7 @@ export default function CartPanel({
         >
           <span className="text-sm font-semibold">
             {itemCount} {itemCount === 1 ? "producto" : "productos"}
+            {percent ? <span className="ml-2 font-normal text-white/70">−{percent}%</span> : null}
           </span>
           <span className="text-base font-bold">{formatPrice(total)}</span>
         </button>
@@ -154,9 +174,98 @@ export default function CartPanel({
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-lg font-bold text-admin-text">
-              <span>Total</span>
-              <span>{formatPrice(total)}</span>
+            <div>
+              <p className="mb-1.5 text-sm font-semibold text-admin-text">Descuento</p>
+              <div role="radiogroup" aria-label="Descuento" className="grid grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={discount.kind === "none"}
+                  aria-label="Sin descuento"
+                  onClick={() => onDiscountChange({ kind: "none" })}
+                  className={choiceClass(discount.kind === "none")}
+                >
+                  Sin
+                </button>
+                {DISCOUNT_PRESETS.map((p) => {
+                  const active = discount.kind === "preset" && discount.percent === p;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => onDiscountChange({ kind: "preset", percent: p })}
+                      className={choiceClass(active)}
+                    >
+                      {p}%
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={discount.kind === "custom"}
+                  onClick={() =>
+                    discount.kind !== "custom" && onDiscountChange({ kind: "custom", text: "" })
+                  }
+                  className={choiceClass(discount.kind === "custom")}
+                >
+                  Otro
+                </button>
+              </div>
+              {discount.kind === "custom" && (
+                <div className="mt-2">
+                  <label htmlFor="descuento-otro" className="sr-only">
+                    Porcentaje de descuento
+                  </label>
+                  <div className="relative w-28">
+                    <input
+                      id="descuento-otro"
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={MAX_DISCOUNT_PERCENT}
+                      step={1}
+                      value={discount.text}
+                      autoFocus
+                      onChange={(e) => onDiscountChange({ kind: "custom", text: e.target.value })}
+                      placeholder="20"
+                      className={`${ADMIN_INPUT} pr-8 text-right font-mono`}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-admin-muted"
+                    >
+                      %
+                    </span>
+                  </div>
+                  {percent === null && (
+                    <p className="mt-1 text-[13px] text-admin-muted">
+                      Poné un número entero entre 1 y {MAX_DISCOUNT_PERCENT}.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1 border-t border-admin-border pt-4">
+              {discounted > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-sm text-admin-muted">
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">{formatPrice(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm font-semibold text-emerald-700">
+                    <span>Descuento {percent}%</span>
+                    <span className="tabular-nums">−{formatPrice(discounted)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between text-lg font-bold text-admin-text">
+                <span>{discounted > 0 ? "Total a cobrar" : "Total"}</span>
+                <span>{formatPrice(total)}</span>
+              </div>
             </div>
 
             {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
@@ -164,7 +273,7 @@ export default function CartPanel({
             <button
               type="button"
               onClick={onConfirm}
-              disabled={submitting}
+              disabled={submitting || percent === null}
               className={`${ADMIN_BUTTON_PRIMARY} w-full`}
             >
               {submitting ? "Confirmando…" : "Confirmar venta"}

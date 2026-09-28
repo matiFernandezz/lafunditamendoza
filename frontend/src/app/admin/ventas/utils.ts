@@ -1,4 +1,15 @@
 import type { AdminVariant } from "@/lib/adminApi";
+import type { DiscountChoice } from "./types";
+
+export const MAX_DISCOUNT_PERCENT = 99;
+
+/** Porcentaje a aplicar, o null si el "Otro" escrito a mano no es válido (1-99). */
+export function resolveDiscount(choice: DiscountChoice): number | null {
+  if (choice.kind === "none") return 0;
+  if (choice.kind === "preset") return choice.percent;
+  const n = Number(choice.text);
+  return choice.text.trim() !== "" && Number.isInteger(n) && n >= 1 && n <= MAX_DISCOUNT_PERCENT ? n : null;
+}
 
 /**
  * Color a mostrar, o null si no hay nada que mostrar. "Único" es el valor
@@ -9,6 +20,15 @@ export function displayColor(color: string | null): string | null {
   const trimmed = color?.trim();
   if (!trimmed) return null;
   return trimmed.toLocaleLowerCase("es") === "único" ? null : trimmed;
+}
+
+/**
+ * Pesos que descuenta un porcentaje, redondeados a entero. Es la misma cuenta
+ * que hace el backend al registrar la venta (que es el que manda): acá solo
+ * sirve para mostrar el total antes de confirmar.
+ */
+export function discountAmount(subtotal: number, percent: number): number {
+  return Math.round((subtotal * percent) / 100);
 }
 
 /** "iPhone 13 Pro Max · transparente", o el sku si no hay modelo ni color. */

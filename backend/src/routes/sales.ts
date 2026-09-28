@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { isUuid, isPositiveInt, isPositiveNumber } from '../lib/validate';
 
 const PAYMENT_METHODS = ['efectivo', 'transferencia'] as const;
+const MAX_DISCOUNT_PERCENT = 99;
 const CHANNELS = ['feria', 'whatsapp', 'web'] as const;
 
 type SaleItemInput = {
@@ -23,7 +24,7 @@ function validateItems(items: unknown): items is SaleItemInput[] {
 const router = Router();
 
 router.post('/', async (req, res) => {
-  const { payment_method, channel, notes, items } = req.body ?? {};
+  const { payment_method, channel, notes, items, discount_percent } = req.body ?? {};
 
   if (!PAYMENT_METHODS.includes(payment_method)) {
     return res.status(400).json({
@@ -44,11 +45,34 @@ router.post('/', async (req, res) => {
     });
   }
 
-  const total_amount = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const discountPercent = discount_percent ?? 0;
+  if (
+    typeof discountPercent !== 'number' ||
+    !Number.isInteger(discountPercent) ||
+    discountPercent < 0 ||
+    discountPercent > MAX_DISCOUNT_PERCENT
+  ) {
+    return res.status(400).json({
+      error: `discount_percent debe ser un entero entre 0 y ${MAX_DISCOUNT_PERCENT} (o no enviarse)`,
+    });
+  }
+
+  // El descuento se redondea a pesos enteros: en la feria no se cobran
+  // centavos. total_amount es lo que realmente se cobra.
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const discount_amount = Math.round((subtotal * discountPercent) / 100);
+  const total_amount = subtotal - discount_amount;
 
   const { data: sale, error: saleError } = await supabase
     .from('sales')
-    .insert({ payment_method, channel: channel ?? null, notes: notes ?? null, total_amount })
+    .insert({
+      payment_method,
+      channel: channel ?? null,
+      notes: notes ?? null,
+      total_amount,
+      discount_percent: discountPercent,
+      discount_amount,
+    })
     .select()
     .single();
 
@@ -93,7 +117,8 @@ function parseRange(query: Request['query']): { from?: string; to?: string } | {
   }
 }
 
-const SALE_SELECT = `id, sale_date, payment_method, channel, total_amount, notes, status, voided_at, void_reason,
+const SALE_SELECT = `id, sale_date, payment_method, channel, total_amount, discount_percent, discount_amount,
+  notes, status, voided_at, void_reason,
   sale_items (
     id, variant_id, quantity, unit_price,
     variant:product_variants (

@@ -8,13 +8,14 @@ import {
   getAdminProducts,
   type AdminProduct,
   type AdminVariant,
+  type CreatedSale,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import { ADMIN_BUTTON_PRIMARY, ADMIN_INPUT, ADMIN_TEXT_MUTED } from "../adminStyles";
-import { variantLabel } from "./utils";
+import { resolveDiscount, variantLabel } from "./utils";
 import ProductGrid from "./ProductGrid";
 import CartPanel from "./CartPanel";
-import type { CartItem, PaymentMethod } from "./types";
+import type { CartItem, DiscountChoice, PaymentMethod } from "./types";
 
 type CategoryChip = { id: string; name: string };
 
@@ -33,7 +34,8 @@ export default function VentasPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("efectivo");
   const [submitting, setSubmitting] = useState(false);
   const [saleError, setSaleError] = useState<string | null>(null);
-  const [lastSaleTotal, setLastSaleTotal] = useState<number | null>(null);
+  const [discount, setDiscount] = useState<DiscountChoice>({ kind: "none" });
+  const [lastSale, setLastSale] = useState<CreatedSale | null>(null);
 
   const modelNamesById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
 
@@ -167,21 +169,25 @@ export default function VentasPage() {
   }
 
   async function handleConfirm() {
-    if (cart.length === 0) return;
+    const discountPercent = resolveDiscount(discount);
+    if (cart.length === 0 || discountPercent === null) return;
     setSubmitting(true);
     setSaleError(null);
     try {
       const res = await createSale({
         payment_method: paymentMethod,
         channel: "feria",
+        discount_percent: discountPercent,
         items: cart.map((i) => ({
           variant_id: i.variantId,
           quantity: i.quantity,
           unit_price: i.price,
         })),
       });
-      setLastSaleTotal(res.data.total_amount);
+      setLastSale(res.data);
       setCart([]);
+      // El descuento es de esa venta: el próximo cliente arranca sin descuento.
+      setDiscount({ kind: "none" });
       setCartOpen(false);
       // Refrescamos productos para que el stock mostrado quede al día.
       refreshCatalog();
@@ -270,6 +276,8 @@ export default function VentasPage() {
         onOpenChange={setCartOpen}
         paymentMethod={paymentMethod}
         onPaymentMethodChange={setPaymentMethod}
+        discount={discount}
+        onDiscountChange={setDiscount}
         onUpdateQuantity={handleUpdateQuantity}
         onRemove={handleRemove}
         onConfirm={handleConfirm}
@@ -277,16 +285,21 @@ export default function VentasPage() {
         error={saleError}
       />
 
-      {lastSaleTotal !== null && (
+      {lastSale !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-md border border-admin-border bg-white p-6 text-center">
             <p className="text-4xl">✅</p>
             <h2 className="mt-2 text-xl font-bold text-admin-text">¡Venta registrada!</h2>
             <p className="mt-1 text-admin-muted">Total cobrado</p>
-            <p className="text-3xl font-bold text-admin-text">{formatPrice(lastSaleTotal)}</p>
+            <p className="text-3xl font-bold text-admin-text">{formatPrice(lastSale.total_amount)}</p>
+            {lastSale.discount_percent > 0 && (
+              <p className="mt-1 text-sm font-semibold text-emerald-700">
+                Con {lastSale.discount_percent}% de descuento (−{formatPrice(lastSale.discount_amount)})
+              </p>
+            )}
             <button
               type="button"
-              onClick={() => setLastSaleTotal(null)}
+              onClick={() => setLastSale(null)}
               className={`${ADMIN_BUTTON_PRIMARY} mt-6 w-full`}
             >
               Nueva venta

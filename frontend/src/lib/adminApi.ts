@@ -80,6 +80,8 @@ export type CreateSalePayload = {
   payment_method: "efectivo" | "transferencia";
   channel?: "feria" | "whatsapp" | "web";
   items: SaleItemInput[];
+  /** Entero 0-99 sobre el total. El monto lo calcula el backend. */
+  discount_percent?: number;
 };
 
 export type CreatedSale = {
@@ -87,7 +89,10 @@ export type CreatedSale = {
   sale_date: string;
   payment_method: string;
   channel: string | null;
+  /** Lo que realmente se cobró: con el descuento ya aplicado. */
   total_amount: number;
+  discount_percent: number;
+  discount_amount: number;
   notes: string | null;
 };
 
@@ -138,6 +143,7 @@ export function getSales(
 
 export type SalesSummary = {
   total_amount: number;
+  discount_total: number;
   sales_count: number;
   average_ticket: number;
   by_payment_method: { payment_method: string; total_amount: number; sales_count: number }[];

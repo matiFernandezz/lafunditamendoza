@@ -71,6 +71,11 @@ export default function SaleRow({
             >
               {formatPrice(sale.total_amount)}
             </span>
+            {sale.discount_percent > 0 && (
+              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                −{sale.discount_percent}%
+              </span>
+            )}
             {voided && (
               <span className="rounded-full border border-admin-danger-border bg-admin-danger-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-admin-danger">
                 Anulada
@@ -119,6 +124,23 @@ export default function SaleRow({
               );
             })}
           </ul>
+
+          {sale.discount_amount > 0 && (
+            <dl className="space-y-1 border-t border-admin-border pt-3 text-sm">
+              <div className="flex justify-between text-admin-muted">
+                <dt>Subtotal</dt>
+                <dd className="font-mono tabular-nums">{formatPrice(sale.total_amount + sale.discount_amount)}</dd>
+              </div>
+              <div className="flex justify-between font-semibold text-emerald-700">
+                <dt>Descuento {sale.discount_percent}%</dt>
+                <dd className="font-mono tabular-nums">−{formatPrice(sale.discount_amount)}</dd>
+              </div>
+              <div className="flex justify-between font-semibold text-admin-text">
+                <dt>Total cobrado</dt>
+                <dd className="font-mono tabular-nums">{formatPrice(sale.total_amount)}</dd>
+              </div>
+            </dl>
+          )}
 
           {voided ? (
             <p className="text-[13px] text-admin-muted">

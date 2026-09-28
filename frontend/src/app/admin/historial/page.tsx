@@ -245,6 +245,11 @@ export default function HistorialPage() {
               <p className="mt-1 text-xs text-white/70">
                 Ticket promedio {formatPrice(summary!.average_ticket)}
               </p>
+              {summary!.discount_total > 0 && (
+                <p className="mt-0.5 text-xs text-white/70">
+                  Descuentos otorgados −{formatPrice(summary!.discount_total)}
+                </p>
+              )}
             </div>
             <SummaryCard label="Efectivo" amount={cash!.amount} detail={salesLabel(cash!.count)} />
             <SummaryCard label="Transferencia" amount={transfer!.amount} detail={salesLabel(transfer!.count)} />
