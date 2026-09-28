@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Request, Router } from 'express';
 import { supabase } from '../lib/supabaseClient';
 import { isUuid, isPositiveInt, isPositiveNumber } from '../lib/validate';
 
@@ -70,20 +70,59 @@ router.post('/', async (req, res) => {
   res.status(201).json({ data: { ...sale, sale_items: saleItems } });
 });
 
+/**
+ * Rango [from, to) de query params ISO 8601 (instantes con zona, p. ej. los
+ * que arma el panel desde la hora local del celular). Los dos son opcionales
+ * por separado; si vienen ambos, from tiene que ser anterior a to.
+ */
+function parseRange(query: Request['query']): { from?: string; to?: string } | { error: string } {
+  const parse = (value: unknown, name: string) => {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string' || Number.isNaN(Date.parse(value))) {
+      throw new Error(`${name} debe ser una fecha ISO 8601 valida`);
+    }
+    return new Date(value).toISOString();
+  };
+  try {
+    const from = parse(query.from, 'from');
+    const to = parse(query.to, 'to');
+    if (from && to && from >= to) return { error: 'from tiene que ser anterior a to' };
+    return { from, to };
+  } catch (err) {
+    return { error: (err as Error).message };
+  }
+}
+
+const SALE_SELECT = `id, sale_date, payment_method, channel, total_amount, notes, status, voided_at, void_reason,
+  sale_items (
+    id, variant_id, quantity, unit_price,
+    variant:product_variants (
+      id, sku, color,
+      product:products ( id, name ),
+      iphone_model:iphone_models ( id, name )
+    )
+  )`;
+
 router.get('/', async (req, res) => {
+  const range = parseRange(req.query);
+  if ('error' in range) {
+    return res.status(400).json({ error: range.error });
+  }
+
   const page = Math.max(1, Number(req.query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(req.query.page_size) || 20));
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
+  const offset = (page - 1) * pageSize;
 
-  const { data, error, count } = await supabase
+  let query = supabase
     .from('sales')
-    .select(
-      'id, sale_date, payment_method, channel, total_amount, notes, sale_items(id, variant_id, quantity, unit_price)',
-      { count: 'exact' }
-    )
+    .select(SALE_SELECT, { count: 'exact' })
     .order('sale_date', { ascending: false })
-    .range(from, to);
+    .range(offset, offset + pageSize - 1);
+
+  if (range.from) query = query.gte('sale_date', range.from);
+  if (range.to) query = query.lt('sale_date', range.to);
+
+  const { data, error, count } = await query;
 
   if (error) {
     return res.status(500).json({ error: error.message });
@@ -98,6 +137,59 @@ router.get('/', async (req, res) => {
       total_pages: count !== null ? Math.ceil((count ?? 0) / pageSize) : 0,
     },
   });
+});
+
+// Todo el cálculo vive en la función SQL sales_summary: acá no se traen filas.
+router.get('/summary', async (req, res) => {
+  const range = parseRange(req.query);
+  if ('error' in range) {
+    return res.status(400).json({ error: range.error });
+  }
+  if (!range.from || !range.to) {
+    return res.status(400).json({ error: 'from y to son obligatorios' });
+  }
+
+  const { data, error } = await supabase.rpc('sales_summary', { p_from: range.from, p_to: range.to });
+
+  if (error) {
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ data });
+});
+
+const MAX_VOID_REASON_LENGTH = 300;
+
+// Códigos propios que levanta la función SQL void_sale, con un mensaje para
+// mostrar tal cual en el panel (el de Postgres trae timestamps crudos).
+const VOID_ERRORS: Record<string, { status: number; message: string }> = {
+  VS400: { status: 400, message: 'El motivo de la anulación es obligatorio.' },
+  VS404: { status: 404, message: 'Esa venta no existe.' },
+  VS409: { status: 409, message: 'Esta venta ya estaba anulada.' },
+};
+
+router.post('/:id/void', async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body ?? {};
+
+  if (!isUuid(id)) {
+    return res.status(400).json({ error: 'id debe ser un uuid valido' });
+  }
+
+  if (typeof reason !== 'string' || reason.trim() === '' || reason.trim().length > MAX_VOID_REASON_LENGTH) {
+    return res.status(400).json({
+      error: `reason es obligatorio (texto de hasta ${MAX_VOID_REASON_LENGTH} caracteres)`,
+    });
+  }
+
+  const { data, error } = await supabase.rpc('void_sale', { p_sale_id: id, p_reason: reason.trim() });
+
+  if (error) {
+    const known = VOID_ERRORS[error.code];
+    return res.status(known?.status ?? 500).json({ error: known?.message ?? error.message });
+  }
+
+  res.json({ data });
 });
 
 export default router;

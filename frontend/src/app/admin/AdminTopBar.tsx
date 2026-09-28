@@ -3,10 +3,14 @@
 import { LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+// Historial al lado de Ventas: en la feria son las dos que se usan desde el
+// celular, así que quedan siempre a la vista sin scrollear las solapas.
 const LINKS = [
   { href: "/admin/ventas", label: "Ventas" },
+  { href: "/admin/historial", label: "Historial" },
   { href: "/admin/compras", label: "Compras" },
   { href: "/admin/productos", label: "Productos" },
   { href: "/admin/catalogo", label: "Catálogo" },
@@ -15,6 +19,16 @@ const LINKS = [
 export default function AdminTopBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  // A 375px las 5 solapas no entran: scroll horizontal, y al cambiar de
+  // pantalla se centra la activa para que nunca quede tapada o cortada.
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    const active = tabs?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!tabs || !active) return;
+    tabs.scrollLeft = active.offsetLeft - (tabs.clientWidth - active.offsetWidth) / 2;
+  }, [pathname]);
 
   if (pathname === "/admin/login") return null;
 
@@ -30,11 +44,7 @@ export default function AdminTopBar() {
       aria-label="Panel"
       className="flex items-center justify-between gap-2 border-b border-admin-border pb-4"
     >
-      {/* A 375px las 4 solapas entran justo si el padding es chico y "Salir"
-          queda como ícono solo; el overflow-x es la válvula de escape si
-          alguna etiqueta crece. Sin wrap: partirlas en dos filas las hacía
-          chocar con "Salir". */}
-      <div className="-mx-1 flex gap-0.5 overflow-x-auto px-1 sm:gap-1">
+      <div ref={tabsRef} className="relative -mx-1 flex gap-0.5 overflow-x-auto px-1 sm:gap-1">
         {LINKS.map((link) => {
           const current = pathname.startsWith(link.href);
           return (

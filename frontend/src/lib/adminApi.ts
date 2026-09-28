@@ -98,6 +98,63 @@ export function createSale(payload: CreateSalePayload): Promise<{ data: CreatedS
   });
 }
 
+export type SaleStatus = "completada" | "anulada";
+
+export type SaleLine = {
+  id: string;
+  variant_id: string;
+  quantity: number;
+  unit_price: number;
+  variant: {
+    id: string;
+    sku: string;
+    color: string | null;
+    product: { id: string; name: string } | null;
+    iphone_model: { id: string; name: string } | null;
+  } | null;
+};
+
+export type SaleRecord = CreatedSale & {
+  status: SaleStatus;
+  voided_at: string | null;
+  void_reason: string | null;
+};
+
+export type Sale = SaleRecord & { sale_items: SaleLine[] };
+
+export type Pagination = { page: number; page_size: number; total: number; total_pages: number };
+
+/** Rango [from, to) en instantes ISO: el panel lo arma con la hora local del celular. */
+export type DateRange = { from: string; to: string };
+
+export function getSales(
+  range: DateRange,
+  page = 1,
+  pageSize = 50,
+): Promise<{ data: Sale[]; pagination: Pagination }> {
+  const query = new URLSearchParams({ ...range, page: String(page), page_size: String(pageSize) });
+  return adminFetch(`/api/sales?${query}`);
+}
+
+export type SalesSummary = {
+  total_amount: number;
+  sales_count: number;
+  average_ticket: number;
+  by_payment_method: { payment_method: string; total_amount: number; sales_count: number }[];
+  top_products: { product_id: string; product_name: string; units: number; revenue: number }[];
+};
+
+export function getSalesSummary(range: DateRange): Promise<{ data: SalesSummary }> {
+  return adminFetch(`/api/sales/summary?${new URLSearchParams(range)}`);
+}
+
+export function voidSale(id: string, reason: string): Promise<{ data: SaleRecord }> {
+  return adminFetch(`/api/sales/${id}/void`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
 export type Supplier = {
   id: string;
   name: string;

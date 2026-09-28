@@ -26,6 +26,13 @@ export const ADMIN_BUTTON_SECONDARY =
 export const ADMIN_BUTTON_SECONDARY_SM =
   "inline-flex h-8 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-admin-border bg-transparent px-3 text-xs font-semibold text-admin-text transition-colors hover:bg-admin-bg disabled:opacity-40";
 
+// Acciones destructivas (anular una venta): contorno rojo para abrir el paso
+// de confirmación, rojo sólido para confirmar.
+export const ADMIN_BUTTON_DANGER_OUTLINE =
+  "inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-admin-danger-border bg-white px-4 text-sm font-semibold text-admin-danger transition-colors hover:bg-admin-danger-bg disabled:opacity-40";
+export const ADMIN_BUTTON_DANGER =
+  "inline-flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-admin-danger px-4 text-sm font-semibold text-white transition-colors hover:brightness-95 disabled:bg-neutral-200 disabled:text-neutral-500";
+
 export const ADMIN_CARD = "rounded-md border border-admin-border bg-white p-4 sm:p-6";
 export const ADMIN_ROW_LIST = "divide-y divide-admin-border rounded-md border border-admin-border bg-white";
 

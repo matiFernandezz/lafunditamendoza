@@ -6,13 +6,5 @@ export async function GET(request: NextRequest) {
   if (!session) return unauthorized();
 
   const query = request.nextUrl.searchParams.toString();
-  return forwardToBackend(`/api/sales${query ? `?${query}` : ""}`);
-}
-
-export async function POST(request: NextRequest) {
-  const session = await requireSession();
-  if (!session) return unauthorized();
-
-  const body = await request.text();
-  return forwardToBackend("/api/sales", { method: "POST", body });
+  return forwardToBackend(`/api/sales/summary${query ? `?${query}` : ""}`);
 }
