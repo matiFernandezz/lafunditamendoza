@@ -4,8 +4,9 @@
 // con su propia lógica; esto solo evita que cuatro pantallas terminen con
 // cuatro pieles distintas.
 
-export const ADMIN_PAGE_TITLE = "text-2xl font-bold tracking-tight text-admin-text";
-export const ADMIN_SECTION_TITLE = "text-xl font-bold tracking-tight text-admin-text";
+// Títulos en Space Grotesk, como el resto de la marca; el cuerpo es Plex Sans.
+export const ADMIN_PAGE_TITLE = "font-display text-2xl font-bold tracking-tight text-admin-text";
+export const ADMIN_SECTION_TITLE = "font-display text-xl font-bold tracking-tight text-admin-text";
 export const ADMIN_LABEL = "mb-1.5 block text-sm font-semibold text-admin-text";
 export const ADMIN_TEXT_MUTED = "text-[13px] font-normal text-admin-muted";
 export const ADMIN_NAME = "text-sm font-semibold text-admin-text sm:text-base";

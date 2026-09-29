@@ -6,24 +6,27 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import type { CategoryGroup } from "@/lib/catalog";
 import { PAGE_PADDING } from "@/lib/layout";
+import Logo from "./Logo";
 
 type NavLink = { key: string; label: string; href: string };
 
-// Nav real: las 3 categorías de tope tal cual están en la base (Fundas
-// agrupa sus 3 subcategorías, no se listan por separado) + Nosotros, fija.
+// Nav real: las categorías de tope tal cual están en la base (Fundas agrupa
+// sus subcategorías, no se listan por separado) + Nosotros, fija. Primero
+// las que tienen subcategorías (Fundas, lo principal), como en el diseño.
 function toNavLinks(categories: CategoryGroup[]): NavLink[] {
-  const fromCategories = categories.map((group) => ({
-    key: group.id,
-    label: group.name,
-    href: `/categoria/${group.slug}`,
-  }));
+  const fromCategories = [...categories]
+    .sort((a, b) => Number(b.children.length > 0) - Number(a.children.length > 0))
+    .map((group) => ({
+      key: group.id,
+      label: group.name,
+      href: `/categoria/${group.slug}`,
+    }));
   return [...fromCategories, { key: "nosotros", label: "Nosotros", href: "/nosotros" }];
 }
 
-// El isotipo (design_reference/logo.png) es un jpg cuadrado con fondo negro
-// puro ya "quemado" en la imagen: el header tiene que ser bg-black exacto
-// (no --ink, que es gris muy oscuro) para que el logo se pierda sin recuadro.
-function Logo() {
+// Logo del header del admin (sin tocar en el rediseño del catálogo). Es un jpg
+// con fondo negro puro "quemado": el header es bg-black exacto para que se pierda.
+function AdminLogo() {
   return (
     <Image src="/logo.jpg" alt="La Fundita" width={44} height={44} priority className="block" />
   );
@@ -60,7 +63,7 @@ export default function AppShell({
         <header className="sticky top-0 z-20 bg-black text-paper">
           <div className={`mx-auto flex h-16 w-full items-center ${width}`}>
             <Link href="/" className="flex items-center focus-visible:outline-paper">
-              <Logo />
+              <AdminLogo />
             </Link>
           </div>
         </header>
@@ -72,9 +75,20 @@ export default function AppShell({
   return (
     <>
       <header className="sticky top-0 z-20 bg-black text-paper">
-        <div className={`mx-auto flex h-20 w-full items-center justify-between gap-4 ${width}`}>
-          <Link href="/" className="flex shrink-0 items-center focus-visible:outline-paper">
-            <Logo />
+        {/* El header va más adentro que el contenido: page-pad + 12px en
+            mobile y clamp(48px, 9vw, 180px) desde md, como en el diseño. */}
+        <div className="flex h-20 w-full items-center justify-between gap-4 px-8 md:px-[clamp(48px,9vw,180px)]">
+          <Link
+            href="/"
+            aria-label="La Fundita — inicio"
+            className="flex shrink-0 items-center focus-visible:outline-paper"
+          >
+            <span className="md:hidden">
+              <Logo size={56} />
+            </span>
+            <span className="hidden md:block">
+              <Logo size={60} />
+            </span>
           </Link>
 
           <nav aria-label="Categorías" className="hidden md:flex md:items-center md:gap-8">
@@ -120,7 +134,10 @@ export default function AppShell({
             <ul>
               {navLinks.map((link) => (
                 <li key={link.key} className="border-b border-paper/10 last:border-0">
-                  <Link href={link.href} className="flex min-h-14 items-center text-base font-semibold">
+                  <Link
+                    href={link.href}
+                    className="flex min-h-14 items-center font-display text-title font-semibold tracking-tight"
+                  >
                     {link.label}
                   </Link>
                 </li>

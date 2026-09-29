@@ -36,9 +36,41 @@
   --color-admin-danger: var(--admin-danger);
   --color-admin-danger-bg: var(--admin-danger-bg);
   --color-admin-danger-border: var(--admin-danger-border);
-  --font-sans: var(--font-archivo), system-ui, sans-serif;
-  --font-display: var(--font-archivo), system-ui, sans-serif;
+
+  /* Tipografía (design/tokens/typography.css): Space Grotesk para títulos y
+     números de modelo, Plex Sans de apoyo, Plex Mono para precios y SKU. */
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
   --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Escala display del diseño, con nombres propios para no pisar la escala
+     de Tailwind (text-sm, text-xl…) que usa el admin. */
+  --text-hero: clamp(3rem, 14.5vw, 8rem);
+  /* Título de páginas interiores: el diseño llega a 72px; se bajó a 32–48px
+     porque a ese tamaño las páginas de categoría y producto quedaban enormes. */
+  --text-page: clamp(2rem, 5vw, 3rem);
+  --text-section: clamp(1.875rem, 6vw, 2.25rem);
+  --text-headline: 1.5rem;
+  --text-model: clamp(1.875rem, 7vw, 2.25rem);
+  --text-title: 1.25rem;
+  --text-card: 1rem;
+  --text-lead: 1.125rem;
+  --text-price-lg: 1.875rem;
+
+  /* Tracking e interlínea del diseño. tracking-tight (-0.025em) ya coincide
+     con el de Tailwind; leading-heading es el "tight" del diseño (1.1). */
+  --tracking-hero: -0.035em;
+  --tracking-page: -0.03em;
+  --tracking-label: 0.1em;
+  --leading-hero: 0.92;
+  --leading-page: 0.98;
+  --leading-heading: 1.1;
+
+  /* Radios: fotos 0, miniaturas 12px (rounded-xl), controles 16px
+     (rounded-2xl), avisos vacíos 28px. */
+  --radius-container: 28px;
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 body {
@@ -53,6 +85,10 @@ h3 {
   text-wrap: balance;
 }
 
+p {
+  text-wrap: pretty;
+}
+
 ::selection {
   background: var(--ink);
   color: var(--paper);
@@ -61,54 +97,4 @@ h3 {
 :focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
-}
-
-/*
- * Única animación del catálogo: el rango de modelos del hero al cargar.
- * Las dos líneas suben desde una máscara y la flecha se dibuja.
- * El estado por defecto es el final (visible); sin animación no se pierde nada.
- */
-.hero-mask {
-  display: block;
-  overflow: hidden;
-  padding-block: 0.1em;
-  margin-block: -0.1em;
-}
-
-@keyframes hero-rise {
-  from {
-    transform: translateY(105%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes hero-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.hero-rise {
-  animation: hero-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.hero-rise-late {
-  animation-delay: 90ms;
-}
-
-.hero-arrow path {
-  stroke-dasharray: 1;
-  animation: hero-draw 600ms cubic-bezier(0.22, 1, 0.36, 1) 300ms both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hero-rise,
-  .hero-arrow path {
-    animation: none;
-  }
 }

@@ -1,15 +1,27 @@
 import type { Metadata } from "next";
-import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import AppShell from "@/components/AppShell";
 import { getCategoryGroups, type CategoryGroup } from "@/lib/catalog";
 import "./globals.css";
 
-const archivo = Archivo({
-  variable: "--font-archivo",
+// Tipografías del sistema de diseño (design/tokens/fonts.css), servidas por
+// next/font en vez del @import de Google Fonts: sin salto de texto al cargar.
+// Space Grotesk: títulos y números de modelo.
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
-  weight: ["500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700"],
 });
 
+// Plex Sans: texto de apoyo. El 700 no lo pide el diseño, pero el admin usa
+// font-bold y sin cargarlo el navegador lo simularía.
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+// Plex Mono: precios, SKU y contadores.
 const plexMono = IBM_Plex_Mono({
   variable: "--font-plex-mono",
   subsets: ["latin"],
@@ -35,7 +47,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${archivo.variable} ${plexMono.variable} h-full antialiased`}
+      className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AppShell categories={categories}>{children}</AppShell>

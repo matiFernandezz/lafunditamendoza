@@ -74,7 +74,7 @@ export async function getCategoryGroups(): Promise<CategoryGroup[]> {
 /** Una categoría (por slug, para la URL /categoria/[slug]) con el nombre de su padre. */
 export async function getCategory(
   slug: string,
-): Promise<(Category & { parent: { id: string; name: string } | null }) | null> {
+): Promise<(Category & { parent: { id: string; name: string; slug: string } | null }) | null> {
   const { data, error } = await supabase
     .from("categories")
     .select("id, name, slug, parent_id")
@@ -86,14 +86,14 @@ export async function getCategory(
 
   // Consulta aparte: el embed `categories!parent_id` sobre la misma tabla resuelve
   // hacia los hijos y devuelve [], así que el nombre del padre nunca llegaba.
-  let parent: { id: string; name: string } | null = null;
+  let parent: { id: string; name: string; slug: string } | null = null;
   if (data.parent_id) {
     const { data: parentRow, error: parentError } = await supabase
       .from("categories")
-      .select("id, name")
+      .select("id, name, slug")
       .eq("id", data.parent_id)
       .maybeSingle()
-      .overrideTypes<{ id: string; name: string }, { merge: false }>();
+      .overrideTypes<{ id: string; name: string; slug: string }, { merge: false }>();
     if (parentError) throw new Error(`No se pudo cargar la categoría: ${parentError.message}`);
     parent = parentRow;
   }
@@ -125,25 +125,24 @@ export async function getIphoneModel(slug: string): Promise<IphoneModel | null> 
 
 export type ModelLine = { key: string; label: string; models: IphoneModel[] };
 
-// Agrupa los 22 modelos reales por línea (11, 12, ..., 17, Air) para la
-// franja "Elegí tu iPhone" de la home: se ven 8 botones grandes, pero se
-// puede llegar a los 22 reales expandiendo la línea elegida.
+/**
+ * Agrupa los modelos reales por línea numérica (11, 12, …, 18) para la
+ * franja "Elegí tu iPhone" de la home: un botón grande por línea, que se
+ * expande a sus modelos en el orden de sort_order (base, Air, Pro, Pro Max).
+ */
 export function groupModelsByLine(models: IphoneModel[]): ModelLine[] {
-  const LINE_ORDER = ["11", "12", "13", "14", "15", "16", "17", "Air"];
   const byLine = new Map<string, IphoneModel[]>();
 
   for (const model of models) {
-    const match = model.name.match(/^iPhone (\d+|Air)/);
-    const key = match ? match[1] : model.name;
+    const key = model.name.match(/^iPhone (\d+)/)?.[1];
+    if (!key) continue;
     if (!byLine.has(key)) byLine.set(key, []);
     byLine.get(key)!.push(model);
   }
 
-  return LINE_ORDER.filter((key) => byLine.has(key)).map((key) => ({
-    key,
-    label: key,
-    models: byLine.get(key)!,
-  }));
+  return [...byLine.keys()]
+    .sort((a, b) => Number(a) - Number(b))
+    .map((key) => ({ key, label: key, models: byLine.get(key)! }));
 }
 
 /**
@@ -228,37 +227,16 @@ export async function getFeaturedProducts(limit: number): Promise<Product[]> {
   return data;
 }
 
-export type CategoryTile = Category & { count: number; imageUrl: string | null };
+export type CategoryTile = Category & { count: number };
 
 /**
- * Las categorías hoja (con productos propios) para el grid de la home:
- * nombre, cantidad de productos con stock y una foto representativa
- * (la del primer producto con imagen, por orden alfabético).
+ * Las categorías hoja (con productos propios) para el grid de la home, con la
+ * cantidad de productos con stock. La foto de cada mosaico la elige la home.
  */
 export async function getCategoryTiles(): Promise<CategoryTile[]> {
   const [groups, counts] = await Promise.all([getCategoryGroups(), getProductCountsByCategory()]);
   const leaves = groups.flatMap((g) => (g.children.length > 0 ? g.children : [g]));
-
-  const { data, error } = await supabase
-    .from("products")
-    .select("category_id, product_images(url, sort_order)")
-    .eq("active", true)
-    .order("name")
-    .order("sort_order", { referencedTable: "product_images", ascending: true })
-    .overrideTypes<{ category_id: string; product_images: { url: string; sort_order: number }[] }[], { merge: false }>();
-  if (error) throw new Error(`No se pudieron cargar las fotos de categoría: ${error.message}`);
-
-  const imageByCategory = new Map<string, string>();
-  for (const row of data) {
-    const url = row.product_images[0]?.url;
-    if (url && !imageByCategory.has(row.category_id)) imageByCategory.set(row.category_id, url);
-  }
-
-  return leaves.map((c) => ({
-    ...c,
-    count: counts[c.id] ?? 0,
-    imageUrl: imageByCategory.get(c.id) ?? null,
-  }));
+  return leaves.map((c) => ({ ...c, count: counts[c.id] ?? 0 }));
 }
 
 /** Un producto puntual con sus variantes activas y con stock, para el detalle. */

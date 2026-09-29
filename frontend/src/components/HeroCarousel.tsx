@@ -3,79 +3,99 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
-export type HeroSlide = { id: string; src: string; alt: string };
+export type HeroSlide = {
+  id: string;
+  src: string;
+  alt: string;
+  /** object-position de la foto (por defecto "center"). */
+  position?: string;
+  /** Oscurece la foto (0.5–0.6) cuando lleva logo o texto encima. */
+  dim?: number;
+  /** Contenido propio del slide (titular, CTA, logo), ya posicionado. */
+  content?: React.ReactNode;
+};
 
 const AUTO_ADVANCE_MS = 6000;
 
-// Capa de fondo del hero: fotos reales (no product_images, son renders de
-// marca en public/hero/), crossfade automático + flechas manuales. Con una
-// sola foto no muestra controles ni indicador, igual criterio que la
-// galería del detalle de producto. Sin gradiente propio: las piezas ya
-// vienen con su propio contraste resuelto (ver comentario en page.tsx). El
-// contenedor llega con pointer-events-none (hay un link de "ver todo" atrás
-// cubriendo todo el bloque), así que los controles reactivan pointer-events
-// puntualmente para seguir siendo clickeables. object-left: en mobile el
-// contenedor es más angosto que la foto (16:9/4:3 vs. el 2.19:1 original) y
-// el texto de la pieza vive en el tercio izquierdo -- object-cover sin esto
-// recorta centrado y se lo come. Si algún render futuro tiene el contenido
-// importante centrado o a la derecha, esto habría que hacerlo por slide.
+/**
+ * Hero carrusel a sangre del diseño: crossfade de 700ms cada 6s, flechas
+ * circulares a los costados y contador "01 / 04" con barra abajo a la
+ * derecha. Cambiar a mano reinicia el temporizador. Con reduced-motion no
+ * avanza solo (las flechas siguen andando).
+ */
 export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [index, setIndex] = useState(0);
+  const count = slides.length;
 
   useEffect(() => {
-    if (slides.length <= 1) return;
-    const id = setInterval(() => setIndex((i) => (i + 1) % slides.length), AUTO_ADVANCE_MS);
-    return () => clearInterval(id);
-  }, [slides.length]);
+    if (count <= 1) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = setInterval(() => setIndex((i) => (i + 1) % count), AUTO_ADVANCE_MS);
+    return () => clearInterval(timer);
+  }, [count, index]);
 
-  if (slides.length === 0) return null;
+  if (count === 0) return null;
+
+  const arrow =
+    "absolute top-1/2 z-10 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-ink/28 pb-[3px] text-[26px] leading-none text-paper backdrop-blur-[6px] transition-colors duration-200 hover:bg-ink/45";
 
   return (
     <div className="absolute inset-0">
       {slides.map((slide, i) => (
-        <Image
+        <div
           key={slide.id}
-          src={slide.src}
-          alt={slide.alt}
-          fill
-          priority={i === 0}
-          sizes="100vw"
-          className={`object-cover object-left transition-opacity duration-700 ${
-            i === index ? "opacity-100" : "opacity-0"
+          aria-hidden={i !== index}
+          inert={i !== index}
+          className={`absolute inset-0 transition-opacity duration-700 ${
+            i === index ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
-        />
+        >
+          <Image
+            src={slide.src}
+            alt={slide.alt}
+            fill
+            priority={i === 0}
+            sizes="100vw"
+            className="object-cover"
+            style={{
+              objectPosition: slide.position ?? "center",
+              filter: slide.dim ? `brightness(${slide.dim})` : undefined,
+            }}
+          />
+          {slide.content && <div className="absolute inset-0">{slide.content}</div>}
+        </div>
       ))}
 
-      {slides.length > 1 && (
-        <div className="pointer-events-auto absolute bottom-6 left-6 flex items-center gap-3 text-paper sm:bottom-10 sm:left-10">
-          <span className="font-mono text-sm tabular-nums">
-            {String(index + 1).padStart(2, "0")} / {String(slides.length).padStart(2, "0")}
-          </span>
-          <div className="h-px w-16 overflow-hidden bg-paper/30">
-            <div
-              className="h-full bg-paper transition-all duration-500"
-              style={{ width: `${((index + 1) / slides.length) * 100}%` }}
-            />
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Slide anterior"
+            onClick={() => setIndex((i) => (i - 1 + count) % count)}
+            className={`${arrow} left-2`}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Slide siguiente"
+            onClick={() => setIndex((i) => (i + 1) % count)}
+            className={`${arrow} right-2`}
+          >
+            ›
+          </button>
+          <div className="absolute bottom-6 right-5 z-10 flex items-center gap-3 text-paper sm:right-6 lg:right-10 xl:right-16">
+            <div className="h-px w-16 overflow-hidden bg-paper/40">
+              <div
+                className="h-full bg-paper transition-[width] duration-500"
+                style={{ width: `${((index + 1) / count) * 100}%` }}
+              />
+            </div>
+            <span className="font-mono text-sm tabular-nums">
+              {String(index + 1).padStart(2, "0")} / {String(count).padStart(2, "0")}
+            </span>
           </div>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIndex((i) => (i - 1 + slides.length) % slides.length)}
-              aria-label="Foto anterior"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-paper/40 text-paper transition-colors duration-200 hover:bg-paper/10"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              onClick={() => setIndex((i) => (i + 1) % slides.length)}
-              aria-label="Foto siguiente"
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-paper/40 text-paper transition-colors duration-200 hover:bg-paper/10"
-            >
-              ›
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

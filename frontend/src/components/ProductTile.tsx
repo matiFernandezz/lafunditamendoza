@@ -7,6 +7,8 @@ import { formatPriceRange } from "@/lib/format";
 // el precio es fijo si todas las variantes visibles cuestan lo mismo
 // (ej. ya filtrado por modelo), o "Desde $X" si varía entre modelos.
 // Solo muestra la portada (primera imagen); la galería completa es del detalle.
+// Piel del diseño: foto en rectángulo simple 4/5, sin caja ni borde; nombre en
+// Space Grotesk y precio en mono debajo.
 export default function ProductTile({
   product,
   modelId,
@@ -19,11 +21,8 @@ export default function ProductTile({
   const image = coverImage(product);
 
   return (
-    <Link
-      href={href}
-      className="group block overflow-hidden rounded-[20px] border border-rule transition-colors duration-200 hover:border-ink"
-    >
-      <div className="relative aspect-square w-full overflow-hidden bg-rule/40">
+    <Link href={href} className="group block text-ink">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-rule/40">
         {image ? (
           <Image
             src={image}
@@ -33,13 +32,11 @@ export default function ProductTile({
             className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-graphite">
-            Sin foto
-          </div>
+          <div className="flex h-full items-center justify-center text-sm text-graphite">Sin foto</div>
         )}
       </div>
-      <div className="space-y-0.5 p-3">
-        <p className="font-display text-base font-bold leading-tight tracking-tight text-pretty">
+      <div className="flex flex-col gap-0.5 pt-3">
+        <p className="font-display text-card font-semibold leading-heading tracking-tight underline-offset-[3px] group-hover:underline">
           {product.name}
         </p>
         <p className="font-mono text-sm tabular-nums text-graphite">{price}</p>
