@@ -1,0 +1,33 @@
+/* Panel interno (/admin). Colores = --admin-* de frontend/src/app/globals.css. Tamaños táctiles subidos para uso en feria. */
+:root{
+  --admin-bg:#fafafa;
+  --admin-surface:#ffffff;
+  --admin-border:#e5e5e5;
+  --admin-border-strong:#d4d4d4;
+  --admin-text:#1a1a1a;
+  --admin-muted:#6b6b6b;
+  --admin-ink:#000000;
+  --admin-danger:#e11d48;
+  --admin-danger-bg:#fef2f2;
+  --admin-danger-border:#fecdd3;
+  --admin-ok:#047857;
+  --admin-ok-bg:#ecfdf5;
+  --admin-warn:#b45309;
+  --admin-disabled-bg:#e5e5e5;
+  --admin-disabled-fg:#737373;
+
+  --admin-radius:6px;
+  --admin-control-h:48px;
+  --admin-control-h-sm:40px;
+  --admin-cta-h:56px;
+  --admin-nav-h:64px;
+  --admin-topbar-h:56px;
+
+  --admin-title:1.5rem;
+  --admin-title-sm:1.375rem;
+  --admin-section:1.125rem;
+  --admin-body:.9375rem;
+  --admin-label:.875rem;
+  --admin-meta:.8125rem;
+  --admin-total:2rem;
+}

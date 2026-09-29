@@ -1,0 +1,4 @@
+/* Webfonts — Google Fonts CDN (no se enviaron binarios).
+   Space Grotesk: títulos y números de modelo. IBM Plex Sans: texto de apoyo (300/400/500/600).
+   IBM Plex Mono: precios y SKU. */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');

@@ -1,0 +1,44 @@
+:root{
+  /* Base — los cuatro colores de la ficha técnica + negro puro del logo */
+  --paper:#fafaf8;
+  --ink:#121212;
+  --graphite:#6b6b68;
+  --rule:#e5e3dd;
+  --black:#000000;
+  --white:#ffffff;
+
+  /* Transparencias de uso real en el código */
+  --paper-85:rgb(250 250 248 / .85);
+  --paper-70:rgb(250 250 248 / .70);
+  --paper-40:rgb(250 250 248 / .40);
+  --paper-15:rgb(250 250 248 / .15);
+  --paper-10:rgb(250 250 248 / .10);
+  --paper-90:rgb(250 250 248 / .90);
+  --ink-80:rgb(18 18 18 / .80);
+  --ink-10:rgb(18 18 18 / .10);
+  --rule-40:rgb(229 227 221 / .40);
+
+  /* Semánticos */
+  --surface-page:var(--paper);
+  --surface-inverse:var(--ink);
+  --surface-header:var(--black);          /* negro exacto: el logo trae fondo negro quemado */
+  --surface-photo-empty:var(--rule-40);
+  --surface-tile-fallback:var(--graphite);
+
+  --text-primary:var(--ink);
+  --text-secondary:var(--graphite);
+  --text-on-inverse:var(--paper);
+  --text-on-inverse-muted:var(--paper-85);
+
+  --border-rule:var(--rule);
+  --border-control:var(--graphite);
+  --border-control-hover:var(--ink);
+  --border-on-inverse:var(--paper-15);
+
+  --focus-ring:var(--ink);
+  --selection-bg:var(--ink);
+  --selection-fg:var(--paper);
+
+  /* Protección de foto (tile de categoría): de abajo hacia arriba */
+  --scrim-photo:linear-gradient(to top, rgb(18 18 18 / .8), rgb(18 18 18 / .1) 50%, transparent); /* @kind other */
+}

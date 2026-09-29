@@ -1,0 +1,42 @@
+:root{
+  --font-display:'Space Grotesk', system-ui, sans-serif;
+  --font-body:'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Escala display (Space Grotesk) */
+  --text-hero:clamp(3rem, 14.5vw, 8rem);
+  --text-page:clamp(2.5rem, 10vw, 4.5rem);
+  --text-section:clamp(1.875rem, 6vw, 2.25rem);   /* text-3xl → md:text-4xl */
+  --text-headline:1.5rem;
+  --text-model:clamp(1.875rem, 7vw, 2.25rem);     /* números de la franja de modelos */
+  --text-title:1.25rem;
+  --text-card:1rem;
+
+  /* Escala de texto (Plex Sans / Mono) */
+  --text-lead:1.125rem;
+  --text-body:1rem;
+  --text-small:.875rem;
+  --text-xs:.75rem;
+  --text-price-lg:1.875rem;
+
+  --weight-light:300;
+  --weight-regular:400;
+  --weight-medium:500;
+  --weight-semibold:600;
+  --weight-bold:700;
+
+  --leading-hero:.92;
+  --leading-page:.98;
+  --leading-tight:1.1;
+  --leading-snug:1.25;
+  --leading-body:1.5;
+  --leading-relaxed:1.625;
+
+  --tracking-hero:-.035em;
+  --tracking-page:-.03em;
+  --tracking-tight:-.025em;
+  --tracking-label:.1em;          /* etiquetas en mayúsculas: "VER MÁS", "ELEGÍ TU IPHONE" */
+
+  --measure-lead:34ch;
+  --measure-prose:52ch;
+}

@@ -144,3 +144,5 @@ vite.config.ts.timestamp-*
 
 # Supabase
 .branches
+# Referencias del diseño (capturas de otras marcas, fotos de WhatsApp): no van al repo
+design/uploads/

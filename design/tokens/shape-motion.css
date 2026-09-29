@@ -1,0 +1,24 @@
+:root{
+  /* Radios: fotos en rectángulo simple; controles redondeados */
+  --radius-photo:0px;
+  --radius-thumb:12px;
+  --radius-control:16px;
+  --radius-container:28px;   /* estados vacíos / avisos con borde discontinuo */
+  --radius-pill:9999px;
+
+  --border-w:1px;
+
+  /* Sin sombras. Profundidad = borde, escala o inversión. */
+  --shadow-none:none;
+
+  /* Movimiento */
+  --ease-out:cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+  --dur-fast:200ms; /* @kind other */
+  --dur-image:300ms; /* @kind other */
+  --dur-progress:500ms; /* @kind other */
+  --dur-hero:700ms; /* @kind other */
+  --dur-draw:600ms; /* @kind other */
+  --press-scale:.98; /* @kind other */
+  --hover-zoom-photo:1.04; /* @kind other */
+  --hover-zoom-tile:1.05; /* @kind other */
+}
