@@ -8,17 +8,23 @@
   --background: var(--paper);
   --foreground: var(--ink);
 
-  /* Paleta del panel /admin/*: valores fijos pedidos para ese sistema de
-     diseño interno, separados de --paper/--ink/--rule (el tono "papel" de
-     marca del catálogo público). */
+  /* Paleta del panel /admin/* (design/tokens/admin.css), separada de
+     --paper/--ink/--rule (el tono "papel" de marca del catálogo público). */
   --admin-bg: #fafafa;
   --admin-surface: #ffffff;
   --admin-border: #e5e5e5;
+  --admin-border-strong: #d4d4d4;
   --admin-text: #1a1a1a;
   --admin-muted: #6b6b6b;
+  --admin-ink: #000000;
   --admin-danger: #e11d48;
   --admin-danger-bg: #fef2f2;
   --admin-danger-border: #fecdd3;
+  --admin-ok: #047857;
+  --admin-ok-bg: #ecfdf5;
+  --admin-warn: #b45309;
+  --admin-disabled-bg: #e5e5e5;
+  --admin-disabled-fg: #737373;
 }
 
 @theme inline {
@@ -31,11 +37,18 @@
   --color-admin-bg: var(--admin-bg);
   --color-admin-surface: var(--admin-surface);
   --color-admin-border: var(--admin-border);
+  --color-admin-border-strong: var(--admin-border-strong);
   --color-admin-text: var(--admin-text);
   --color-admin-muted: var(--admin-muted);
+  --color-admin-ink: var(--admin-ink);
   --color-admin-danger: var(--admin-danger);
   --color-admin-danger-bg: var(--admin-danger-bg);
   --color-admin-danger-border: var(--admin-danger-border);
+  --color-admin-ok: var(--admin-ok);
+  --color-admin-ok-bg: var(--admin-ok-bg);
+  --color-admin-warn: var(--admin-warn);
+  --color-admin-disabled-bg: var(--admin-disabled-bg);
+  --color-admin-disabled-fg: var(--admin-disabled-fg);
 
   /* Tipografía (design/tokens/typography.css): Space Grotesk para títulos y
      números de modelo, Plex Sans de apoyo, Plex Mono para precios y SKU. */

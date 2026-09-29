@@ -1,10 +1,5 @@
-import AdminTopBar from "./AdminTopBar";
+import AdminShell from "./AdminShell";
 
 export default function AdminLayout({ children }: LayoutProps<"/admin">) {
-  return (
-    <div className="space-y-6 bg-admin-bg">
-      <AdminTopBar />
-      {children}
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

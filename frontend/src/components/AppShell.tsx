@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -24,18 +23,9 @@ function toNavLinks(categories: CategoryGroup[]): NavLink[] {
   return [...fromCategories, { key: "nosotros", label: "Nosotros", href: "/nosotros" }];
 }
 
-// Logo del header del admin (sin tocar en el rediseño del catálogo). Es un jpg
-// con fondo negro puro "quemado": el header es bg-black exacto para que se pierda.
-function AdminLogo() {
-  return (
-    <Image src="/logo.jpg" alt="La Fundita" width={44} height={44} priority className="block" />
-  );
-}
-
-// Header y contenedor compartidos. /admin usa un ancho generoso (hasta 1400px, centrado) para
-// que ventas aproveche la pantalla; las pantallas de formularios se acotan solas.
-// El catálogo público ocupa el 100% del viewport (como design_reference/home_mockup.png),
-// sin max-width: solo el padding lateral compartido con las secciones full-bleed de la home.
+// Header y contenedor del catálogo público: ocupa el 100% del viewport, sin
+// max-width, solo con el padding lateral compartido con las secciones a sangre
+// de la home. /admin no pasa por acá: tiene su propio shell.
 export default function AppShell({
   children,
   categories,
@@ -45,7 +35,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
-  const width = isAdmin ? "max-w-[1400px] px-4 md:px-6" : `w-full ${PAGE_PADDING}`;
+  const width = `w-full ${PAGE_PADDING}`;
   const [menuOpen, setMenuOpen] = useState(false);
   const navLinks = toNavLinks(categories);
 
@@ -57,20 +47,8 @@ export default function AppShell({
     if (menuOpen) setMenuOpen(false);
   }
 
-  if (isAdmin) {
-    return (
-      <>
-        <header className="sticky top-0 z-20 bg-black text-paper">
-          <div className={`mx-auto flex h-16 w-full items-center ${width}`}>
-            <Link href="/" className="flex items-center focus-visible:outline-paper">
-              <AdminLogo />
-            </Link>
-          </div>
-        </header>
-        <main className={`mx-auto w-full flex-1 ${width} py-6`}>{children}</main>
-      </>
-    );
-  }
+  // El panel arma su propia barra, navegación y contenedor (app/admin/AdminShell).
+  if (isAdmin) return <>{children}</>;
 
   return (
     <>
