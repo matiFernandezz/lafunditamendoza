@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 import {
   AdminApiError,
@@ -9,14 +9,16 @@ import {
   reorderProductImages,
   type AdminProductImage,
 } from "@/lib/adminApi";
-import { ADMIN_ALERT_ERROR, ADMIN_ICON_BUTTON, ADMIN_ICON_BUTTON_DANGER } from "../adminStyles";
+import AdminNotice from "../AdminNotice";
+import { ADMIN_TEXT_MUTED, adminButton } from "../adminStyles";
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
- * Galería de fotos del producto: dropzone (click o drag&drop) que sube de
- * una, fila de thumbnails con reordenar/eliminar, y borrado puntual. La
- * dropzone nunca desaparece después de subir: queda lista para la próxima.
+ * Galería de fotos del producto, como en el diseño: fila de miniaturas (la
+ * primera es la principal) y al final el recuadro para subir (click o
+ * arrastrar, de a una). Tocar una miniatura la selecciona y muestra
+ * Antes / Después / Quitar.
  */
 export default function ProductImageGallery({
   productId,
@@ -33,6 +35,7 @@ export default function ProductImageGallery({
   const [dragOver, setDragOver] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   async function upload(file: File) {
@@ -58,6 +61,7 @@ export default function ProductImageGallery({
     try {
       await deleteProductImage(productId, imageId);
       onChange(images.filter((img) => img.id !== imageId));
+      setSelectedId(null);
     } catch (err) {
       setError(err instanceof AdminApiError ? err.message : "No se pudo borrar la imagen.");
     } finally {
@@ -85,113 +89,129 @@ export default function ProductImageGallery({
     }
   }
 
+  const selectedIndex = sorted.findIndex((img) => img.id === selectedId);
+
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-stretch gap-3">
-        <ul className="flex flex-wrap gap-3">
-          {sorted.map((img, index) => (
-            <li
-              key={img.id}
-              className="flex w-24 flex-col items-center gap-2 rounded-md border border-admin-border bg-white p-2"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- URL externa (Storage), sin next/image por simplicidad. */}
-              <img
-                src={img.url}
-                alt=""
-                className="size-20 rounded-md border border-admin-border object-cover"
-              />
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleMove(index, -1)}
-                  disabled={index === 0 || busyId !== null}
-                  title="Mover foto arriba"
-                  aria-label="Mover foto arriba"
-                  className={`${ADMIN_ICON_BUTTON} size-7`}
+    <div className="flex flex-col gap-2.5">
+      <ul className="-m-1 flex gap-2 overflow-x-auto p-1 lg:flex-wrap lg:overflow-visible">
+        {sorted.map((img, index) => {
+          const selected = img.id === selectedId;
+          return (
+            <li key={img.id} className="shrink-0">
+              <button
+                type="button"
+                onClick={() => setSelectedId(selected ? null : img.id)}
+                aria-pressed={selected}
+                aria-label={`Foto ${index + 1}${index === 0 ? ", principal" : ""}`}
+                className={`relative block size-24 overflow-hidden rounded bg-admin-border outline-offset-2 lg:size-28 ${
+                  selected ? "outline-[3px] outline-admin-ink" : "outline-none"
+                } ${busyId === img.id ? "opacity-40" : ""}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- URL externa (Storage), sin next/image por simplicidad. */}
+                <img src={img.url} alt="" className="size-full object-cover" />
+                <span
+                  className={`absolute left-1.5 top-1.5 flex h-[22px] min-w-[22px] items-center justify-center rounded-full px-1.5 font-mono text-xs font-bold ${
+                    index === 0 ? "bg-admin-ink text-white" : "bg-white/90 text-black"
+                  }`}
                 >
-                  <ArrowUp aria-hidden="true" className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMove(index, 1)}
-                  disabled={index === sorted.length - 1 || busyId !== null}
-                  title="Mover foto abajo"
-                  aria-label="Mover foto abajo"
-                  className={`${ADMIN_ICON_BUTTON} size-7`}
-                >
-                  <ArrowDown aria-hidden="true" className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(img.id)}
-                  disabled={busyId !== null}
-                  title="Eliminar foto"
-                  aria-label="Eliminar foto"
-                  className={`${ADMIN_ICON_BUTTON_DANGER} size-7`}
-                >
-                  <Trash2 aria-hidden="true" className="size-3.5" />
-                </button>
-              </div>
+                  {index === 0 ? "Principal" : index + 1}
+                </span>
+              </button>
             </li>
-          ))}
-        </ul>
+          );
+        })}
 
-        <input
-          ref={inputRef}
-          type="file"
-          accept={ACCEPTED_TYPES.join(",")}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file) upload(file);
-          }}
-          disabled={uploading}
-          className="sr-only"
-        />
-        {/* Al lado de los thumbnails (no debajo) para que cada producto de la
-            lista no coma media pantalla de alto. Siempre visible: después de
-            subir una foto queda lista para la siguiente. */}
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (!uploading) setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-            const file = e.dataTransfer.files?.[0];
-            if (file && !uploading) upload(file);
-          }}
-          className={`flex min-h-[124px] min-w-[220px] flex-1 flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed px-4 py-4 text-center transition-colors ${
-            dragOver
-              ? "border-black bg-admin-bg"
-              : "border-admin-border bg-white hover:bg-admin-bg"
-          } disabled:opacity-60`}
-        >
-          {uploading ? (
-            <>
-              <Loader2 aria-hidden="true" className="size-5 animate-spin text-admin-muted" />
-              <span className="text-sm font-medium text-admin-text">Subiendo…</span>
-            </>
-          ) : (
-            <>
-              <ImagePlus aria-hidden="true" className="size-5 text-admin-muted" />
-              <span className="text-sm font-medium text-admin-text">
-                Arrastrá una imagen o hacé clic para elegir
-              </span>
-              <span className="text-[13px] text-admin-muted">
-                JPG, PNG o WEBP · podés agregar varias
-              </span>
-            </>
-          )}
-        </button>
-      </div>
+        <li className="shrink-0">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPTED_TYPES.join(",")}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) upload(file);
+            }}
+            disabled={uploading}
+            className="sr-only"
+          />
+          {/* Siempre visible: después de subir una foto queda lista para la siguiente. */}
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (!uploading) setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file && !uploading) upload(file);
+            }}
+            className={`flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed p-2 text-center text-admin-text transition-colors duration-200 disabled:opacity-60 lg:h-28 lg:w-[220px] ${
+              dragOver ? "border-admin-ink bg-admin-bg" : "border-admin-border-strong bg-white hover:bg-admin-bg"
+            }`}
+          >
+            {uploading ? (
+              <>
+                <Loader2 aria-hidden="true" className="size-6 animate-spin text-admin-muted" />
+                <span className="text-[13px] font-semibold leading-tight">Subiendo…</span>
+              </>
+            ) : (
+              <>
+                <ImagePlus aria-hidden="true" className="size-6" />
+                <span className="text-[13px] font-semibold leading-tight lg:hidden">Agregar foto</span>
+                <span className="hidden text-[13px] font-semibold leading-tight lg:block">
+                  Arrastrá una foto o hacé clic
+                </span>
+                <span className="hidden text-xs text-admin-muted lg:block">JPG, PNG o WEBP</span>
+              </>
+            )}
+          </button>
+        </li>
+      </ul>
 
-      {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+      {selectedIndex >= 0 ? (
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => handleMove(selectedIndex, -1)}
+            disabled={selectedIndex === 0 || busyId !== null}
+            className={adminButton("secondary")}
+          >
+            <ArrowLeft aria-hidden="true" className="size-[18px]" />
+            Antes
+          </button>
+          <button
+            type="button"
+            onClick={() => handleMove(selectedIndex, 1)}
+            disabled={selectedIndex === sorted.length - 1 || busyId !== null}
+            className={adminButton("secondary")}
+          >
+            <ArrowRight aria-hidden="true" className="size-[18px]" />
+            Después
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDelete(sorted[selectedIndex].id)}
+            disabled={busyId !== null}
+            className={adminButton("dangerOutline")}
+          >
+            <Trash2 aria-hidden="true" className="size-[18px]" />
+            Quitar
+          </button>
+        </div>
+      ) : (
+        <p className={ADMIN_TEXT_MUTED}>
+          {sorted.length > 0
+            ? "La primera es la foto principal en la web. Tocá una foto para moverla o quitarla."
+            : "Sin fotos: en la web se ve el recuadro vacío."}
+        </p>
+      )}
+
+      {error && <AdminNotice kind="danger">{error}</AdminNotice>}
     </div>
   );
 }

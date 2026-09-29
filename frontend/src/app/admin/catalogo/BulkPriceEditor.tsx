@@ -4,11 +4,15 @@ import { Tag } from "lucide-react";
 import { useState } from "react";
 import { AdminApiError, updateProductPrice, type AdminVariant } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_ALERT_ERROR,
-  ADMIN_BUTTON_PRIMARY,
-  ADMIN_BUTTON_SECONDARY,
-  ADMIN_BUTTON_SECONDARY_SM,
+  ADMIN_BODY,
+  ADMIN_INPUT_ADORNMENT,
+  ADMIN_INSET,
+  ADMIN_LABEL,
+  ADMIN_TEXT_MUTED,
+  adminButton,
+  adminInput,
 } from "../adminStyles";
 
 type Step = "idle" | "editing" | "confirming";
@@ -67,20 +71,20 @@ export default function BulkPriceEditor({
 
   if (step === "idle") {
     return (
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-2">
         <button
           type="button"
           onClick={() => {
             setNotice(null);
             setStep("editing");
           }}
-          className={ADMIN_BUTTON_SECONDARY_SM}
+          className={`${adminButton("secondary")} w-full`}
         >
-          <Tag aria-hidden="true" className="size-3.5" />
+          <Tag aria-hidden="true" className="size-[18px]" />
           Cambiar precio a todos los modelos
         </button>
         {notice && (
-          <p role="status" className="text-xs font-semibold text-emerald-700">
+          <p role="status" className="text-sm font-semibold text-admin-ok">
             {notice}
           </p>
         )}
@@ -94,18 +98,15 @@ export default function BulkPriceEditor({
   // (negro) como "Volver" y se ve la transición de color a mitad de camino,
   // además de dejar el foco en el botón que no es.
   return (
-    <div className="space-y-3 rounded-md border border-admin-border bg-admin-bg p-4">
+    <div className={`${ADMIN_INSET} flex flex-col gap-3`}>
       {step === "editing" ? (
-        <div key="editing" className="space-y-3">
-          <label htmlFor={`bulk-price-${productId}`} className="block text-sm font-semibold text-admin-text">
-            Nuevo precio para {target}
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
+        <div key="editing" className="flex flex-col gap-3">
+          <div>
+            <label htmlFor={`bulk-price-${productId}`} className={ADMIN_LABEL}>
+              Nuevo precio para {target}
+            </label>
             <div className="relative">
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-mono text-sm text-admin-muted"
-              >
+              <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} left-3`}>
                 $
               </span>
               <input
@@ -116,54 +117,55 @@ export default function BulkPriceEditor({
                 step="any"
                 value={text}
                 autoFocus
+                placeholder="0"
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && isValid) setStep("confirming");
                   if (e.key === "Escape") close();
                 }}
-                className="h-10 w-36 rounded-md border border-admin-border bg-white pl-6 pr-3 text-right font-mono text-sm text-admin-text focus-visible:border-black focus-visible:outline-none"
+                className={adminInput({ prefix: "text", mono: true })}
               />
             </div>
+            {text.trim() !== "" && !isValid && <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>Tiene que ser mayor a 0</p>}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={close} className={adminButton("secondary")}>
+              Cancelar
+            </button>
             <button
               type="button"
               onClick={() => setStep("confirming")}
               disabled={!isValid}
-              className={ADMIN_BUTTON_PRIMARY}
+              className={adminButton("primary")}
             >
               Continuar
             </button>
-            <button type="button" onClick={close} className={ADMIN_BUTTON_SECONDARY}>
-              Cancelar
-            </button>
           </div>
-          {text.trim() !== "" && !isValid && (
-            <p className="text-[13px] text-admin-muted">Tiene que ser mayor a 0</p>
-          )}
         </div>
       ) : (
-        <div key="confirming" className="space-y-3">
-          <p className="text-sm text-admin-text">
+        <div key="confirming" className="flex flex-col gap-3">
+          <p className={ADMIN_BODY}>
             Esto cambia el precio de {target} de <strong className="font-semibold">{productName}</strong> a{" "}
-            <strong className="font-mono font-semibold">{formatPrice(price)}</strong>, ¿confirmás?
+            <strong className="font-mono font-semibold">{formatPrice(price)}</strong>. ¿Confirmás?
           </p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={handleApply} disabled={saving} className={ADMIN_BUTTON_PRIMARY}>
-              {saving ? "Cambiando…" : "Sí, cambiar precio"}
-            </button>
+          <div className="grid grid-cols-2 gap-2">
             {/* El foco cae en la opción segura: un Enter de más no aplica el cambio masivo. */}
             <button
               type="button"
               onClick={() => setStep("editing")}
               disabled={saving}
               autoFocus
-              className={ADMIN_BUTTON_SECONDARY}
+              className={adminButton("secondary")}
             >
               Volver
+            </button>
+            <button type="button" onClick={handleApply} disabled={saving} className={adminButton("primary")}>
+              {saving ? "Cambiando…" : "Sí, cambiar"}
             </button>
           </div>
         </div>
       )}
-      {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+      {error && <AdminNotice kind="danger">{error}</AdminNotice>}
     </div>
   );
 }

@@ -1,16 +1,15 @@
 "use client";
 
-import { Pencil } from "lucide-react";
+import { Check } from "lucide-react";
 import { useState } from "react";
 import { AdminApiError, updateProductName } from "@/lib/adminApi";
-import {
-  ADMIN_ALERT_ERROR,
-  ADMIN_BUTTON_PRIMARY,
-  ADMIN_BUTTON_SECONDARY,
-  ADMIN_NAME,
-} from "../adminStyles";
+import AdminNotice from "../AdminNotice";
+import { adminButton, adminInput } from "../adminStyles";
 
-/** Nombre del producto con edición inline: un botón para entrar en modo edición, guardado explícito. */
+/**
+ * Nombre del producto editable en el lugar. El guardado es explícito: el botón
+ * "Guardar" aparece solo mientras el texto difiere del nombre guardado.
+ */
 export default function ProductNameEditor({
   productId,
   name,
@@ -20,57 +19,36 @@ export default function ProductNameEditor({
   name: string;
   onSaved: (newName: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function startEditing() {
+  // Si el nombre cambia desde afuera, el input lo refleja. Se ajusta durante
+  // el render, no en un efecto.
+  const [prevName, setPrevName] = useState(name);
+  if (prevName !== name) {
+    setPrevName(name);
     setValue(name);
-    setError(null);
-    setEditing(true);
   }
 
-  function cancel() {
-    setEditing(false);
-    setError(null);
-  }
+  const trimmed = value.trim();
+  const dirty = trimmed !== "" && trimmed !== name;
 
   async function handleSave() {
-    const trimmed = value.trim();
-    if (trimmed === "" || trimmed === name) {
-      setEditing(false);
-      return;
-    }
+    if (!dirty || saving) return;
     setSaving(true);
     setError(null);
     try {
       await updateProductName(productId, trimmed);
       onSaved(trimmed);
-      setEditing(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1200);
     } catch (err) {
       setError(err instanceof AdminApiError ? err.message : "No se pudo guardar el nombre.");
     } finally {
       setSaving(false);
     }
-  }
-
-  if (!editing) {
-    return (
-      <div className="flex items-center gap-2">
-        <h3 className={ADMIN_NAME}>{name}</h3>
-        <button
-          type="button"
-          onClick={startEditing}
-          title="Editar nombre del producto"
-          aria-label="Editar nombre del producto"
-          className="inline-flex h-7 items-center gap-1.5 rounded-md border border-admin-border bg-white px-2.5 text-xs font-semibold text-admin-text transition-colors hover:bg-admin-bg"
-        >
-          <Pencil aria-hidden="true" className="size-3.5" />
-          Editar
-        </button>
-      </div>
-    );
   }
 
   return (
@@ -83,29 +61,28 @@ export default function ProductNameEditor({
             setValue(e.target.value);
             setError(null);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSave();
+            if (e.key === "Escape") setValue(name);
+          }}
           disabled={saving}
-          autoFocus
           aria-label="Nombre del producto"
-          className="h-9 min-w-0 flex-1 rounded-md border-2 border-black bg-white px-3 text-sm text-admin-text outline-none disabled:opacity-60"
+          className={`${adminInput({ state: dirty ? "dirty" : saved ? "ok" : null })} flex-1`}
         />
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || value.trim() === ""}
-          className={`${ADMIN_BUTTON_PRIMARY} h-9 px-3 text-xs`}
-        >
-          {saving ? "…" : "Guardar"}
-        </button>
-        <button
-          type="button"
-          onClick={cancel}
-          disabled={saving}
-          className={`${ADMIN_BUTTON_SECONDARY} h-9 px-3 text-xs`}
-        >
-          Cancelar
-        </button>
+        {dirty ? (
+          <button type="button" onClick={handleSave} disabled={saving} className={adminButton("primary")}>
+            {saving ? "Guardando…" : "Guardar"}
+          </button>
+        ) : (
+          saved && (
+            <span role="status" className="flex shrink-0 items-center gap-1.5 text-[15px] font-semibold text-admin-ok">
+              <Check aria-hidden="true" className="size-[18px]" />
+              Guardado
+            </span>
+          )
+        )}
       </div>
-      {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+      {error && <AdminNotice kind="danger">{error}</AdminNotice>}
     </div>
   );
 }

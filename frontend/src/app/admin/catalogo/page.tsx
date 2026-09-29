@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown, ChevronLeft, ChevronRight, ImageOff, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AdminApiError,
@@ -14,18 +15,22 @@ import {
   type AdminProduct,
   type AdminVariant,
 } from "@/lib/adminApi";
+import { formatPrice } from "@/lib/format";
+import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_ALERT_ERROR,
-  ADMIN_ALERT_OK,
-  ADMIN_BUTTON_PRIMARY,
-  ADMIN_BUTTON_SECONDARY,
-  ADMIN_CARD,
+  ADMIN_CAP,
+  ADMIN_EMPTY,
   ADMIN_INPUT,
+  ADMIN_INPUT_ADORNMENT,
   ADMIN_LABEL,
+  ADMIN_PAGE_SUBTITLE,
   ADMIN_PAGE_TITLE,
-  ADMIN_ROW_LIST,
   ADMIN_SECTION_TITLE,
   ADMIN_TEXT_MUTED,
+  adminBadge,
+  adminButton,
+  adminInput,
+  adminSegment,
 } from "../adminStyles";
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
@@ -39,6 +44,12 @@ const UNIVERSAL = "__universal__";
 const PAGE_SIZE = 40;
 
 type StockFilter = "all" | "zero" | "positive";
+
+const STOCK_FILTERS: { value: StockFilter; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "positive", label: "Con stock" },
+  { value: "zero", label: "Sin stock" },
+];
 
 async function loadData() {
   const [categories, models, products] = await Promise.all([
@@ -65,6 +76,8 @@ export default function CatalogoPage() {
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  // undefined = todavía no se tocó ninguna tarjeta (arranca abierta la primera).
+  const [openId, setOpenId] = useState<string | null | undefined>(undefined);
 
   // Formulario de "agregar variante nueva"
   const [productId, setProductId] = useState("");
@@ -209,6 +222,11 @@ export default function CatalogoPage() {
     return entries;
   }, [products, selectedModelId, stockFilter, search]);
 
+  const filteredProductCount = useMemo(
+    () => new Set(filteredEntries.map((e) => e.product.id)).size,
+    [filteredEntries],
+  );
+
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageEntries = filteredEntries.slice(
@@ -247,8 +265,9 @@ export default function CatalogoPage() {
     priceValid &&
     stockValid;
 
-  function openAddDialog() {
-    setProductId("");
+  // Desde una tarjeta llega con el producto elegido; desde el botón de arriba, vacío.
+  function openAddDialog(presetProductId = "") {
+    setProductId(presetProductId);
     setColor("");
     setSkuOverride(null);
     setPrice("");
@@ -294,26 +313,65 @@ export default function CatalogoPage() {
 
   if (loadError) {
     return (
-      <div className="space-y-4 py-10 text-center">
-        <p role="alert">{loadError}</p>
-        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-10">
+        <AdminNotice kind="danger">{loadError}</AdminNotice>
+        <button type="button" onClick={retryLoad} className={adminButton("primary")}>
           Reintentar
         </button>
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <h1 className={ADMIN_PAGE_TITLE}>Catálogo y stock</h1>
+  // Sin "abierto" elegido todavía, la primera tarjeta de la página arranca abierta.
+  const expandedId = openId === undefined ? groups[0]?.product.id ?? null : openId;
 
-      <section aria-labelledby="filtros" className={`${ADMIN_CARD} space-y-4`}>
-        <h2 id="filtros" className="sr-only">
-          Filtros
-        </h2>
+  return (
+    <div className="mx-auto flex max-w-[1100px] flex-col gap-4">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className={ADMIN_PAGE_TITLE}>Catálogo y stock</h1>
+          <p className={ADMIN_PAGE_SUBTITLE}>
+            {filteredProductCount === 1 ? "1 producto" : `${filteredProductCount} productos`} ·{" "}
+            {filteredEntries.length === 1 ? "1 variante" : `${filteredEntries.length} variantes`}
+          </p>
+        </div>
+        <button type="button" onClick={() => openAddDialog()} className={adminButton("primary")}>
+          <Plus aria-hidden="true" className="size-[18px]" />
+          <span className="hidden sm:inline">Agregar variante</span>
+          <span className="sm:hidden">Variante</span>
+        </button>
+      </div>
+
+      {addedNotice && (
+        <AdminNotice kind="ok" onClose={() => setAddedNotice(null)}>
+          {addedNotice}
+        </AdminNotice>
+      )}
+
+      <section
+        aria-label="Filtros"
+        className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]"
+      >
+        <div className="relative">
+          <label htmlFor="catalogo-buscar" className="sr-only">
+            Buscar producto
+          </label>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-admin-muted"
+          />
+          <input
+            id="catalogo-buscar"
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar producto: Estelar, MagCase…"
+            className={adminInput({ prefix: "icon" })}
+          />
+        </div>
 
         <div>
-          <label htmlFor="catalogo-modelo" className={ADMIN_LABEL}>
+          <label htmlFor="catalogo-modelo" className="sr-only">
             Modelo de iPhone
           </label>
           <select
@@ -323,57 +381,57 @@ export default function CatalogoPage() {
             className={ADMIN_INPUT}
           >
             <option value="">Todos los modelos</option>
+            <option value={UNIVERSAL}>Sin modelo (universales)</option>
             {sortedModels.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>
             ))}
-            <option value={UNIVERSAL}>Sin modelo (accesorios universales)</option>
           </select>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="catalogo-stock" className={ADMIN_LABEL}>
-              Stock
-            </label>
-            <select
-              id="catalogo-stock"
-              value={stockFilter}
-              onChange={(e) => setStockFilter(e.target.value as StockFilter)}
-              className={ADMIN_INPUT}
+        <div role="radiogroup" aria-label="Stock" className="grid grid-cols-3 gap-2">
+          {STOCK_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              type="button"
+              role="radio"
+              aria-checked={stockFilter === f.value}
+              onClick={() => setStockFilter(f.value)}
+              className={adminSegment(stockFilter === f.value)}
             >
-              <option value="all">Todos</option>
-              <option value="zero">Sin stock (0)</option>
-              <option value="positive">Con stock (&gt;0)</option>
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="catalogo-buscar" className={ADMIN_LABEL}>
-              Buscar producto
-            </label>
-            <input
-              id="catalogo-buscar"
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Estelar, MagCase…"
-              className={ADMIN_INPUT}
-            />
-          </div>
+              {f.label}
+            </button>
+          ))}
         </div>
       </section>
 
       <dialog
         ref={addDialogRef}
         aria-labelledby="agregar-variante"
-        className="fixed inset-0 m-auto h-fit w-full max-w-lg rounded-md border border-admin-border bg-white p-6 backdrop:bg-black/40"
+        className="fixed inset-0 m-auto h-fit max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-[480px] overflow-y-auto rounded-lg bg-white p-6 backdrop:bg-black/45"
       >
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           <h2 id="agregar-variante" className={ADMIN_SECTION_TITLE}>
-            Agregar variante nueva
+            Agregar variante
           </h2>
+
+          <Combobox
+            id="catalogo-producto"
+            label="Producto"
+            placeholder="Elegí un producto"
+            options={sortedProducts.map((p) => ({
+              id: p.id,
+              label: p.name,
+              sublabel: categoryPath(p.category_id),
+            }))}
+            value={productId}
+            onChange={(id) => {
+              setProductId(id);
+              setSkuOverride(null);
+              setVariantError(null);
+            }}
+          />
 
           <div>
             <label htmlFor="catalogo-agregar-modelo" className={ADMIN_LABEL}>
@@ -394,30 +452,13 @@ export default function CatalogoPage() {
                   {m.name}
                 </option>
               ))}
-              <option value={UNIVERSAL}>Sin modelo (accesorios universales)</option>
+              <option value={UNIVERSAL}>Sin modelo (sirve para todos)</option>
             </select>
           </div>
 
-          <Combobox
-            id="catalogo-producto"
-            label="Producto"
-            placeholder="Elegí un producto"
-            options={sortedProducts.map((p) => ({
-              id: p.id,
-              label: p.name,
-              sublabel: categoryPath(p.category_id),
-            }))}
-            value={productId}
-            onChange={(id) => {
-              setProductId(id);
-              setSkuOverride(null);
-              setVariantError(null);
-            }}
-          />
-
           <div>
             <label htmlFor="catalogo-color" className={ADMIN_LABEL}>
-              Color (opcional)
+              Color
             </label>
             <input
               id="catalogo-color"
@@ -427,9 +468,10 @@ export default function CatalogoPage() {
                 setColor(e.target.value);
                 setVariantError(null);
               }}
-              placeholder="rojo"
+              placeholder="Ej.: rosa"
               className={ADMIN_INPUT}
             />
+            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>Opcional. Vacío = color único.</p>
           </div>
 
           <div>
@@ -445,7 +487,7 @@ export default function CatalogoPage() {
                 setVariantError(null);
               }}
               autoCapitalize="characters"
-              className={`${ADMIN_INPUT} font-mono`}
+              className={adminInput({ mono: true })}
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
@@ -465,173 +507,246 @@ export default function CatalogoPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label htmlFor="catalogo-stock-inicial" className={ADMIN_LABEL}>
+                Stock
+              </label>
+              <div className="relative">
+                <input
+                  id="catalogo-stock-inicial"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  value={stock}
+                  onChange={(e) => {
+                    setStock(e.target.value);
+                    setVariantError(null);
+                  }}
+                  className={adminInput({ suffix: true, align: "right", mono: true })}
+                />
+                <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} right-3.5`}>
+                  u.
+                </span>
+              </div>
+            </div>
             <div>
               <label htmlFor="catalogo-precio" className={ADMIN_LABEL}>
                 Precio
               </label>
-              <input
-                id="catalogo-precio"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={price}
-                onChange={(e) => {
-                  setPrice(e.target.value);
-                  setVariantError(null);
-                }}
-                placeholder="$"
-                className={`${ADMIN_INPUT} font-mono`}
-              />
-            </div>
-            <div>
-              <label htmlFor="catalogo-stock-inicial" className={ADMIN_LABEL}>
-                Stock inicial
-              </label>
-              <input
-                id="catalogo-stock-inicial"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                value={stock}
-                onChange={(e) => {
-                  setStock(e.target.value);
-                  setVariantError(null);
-                }}
-                className={`${ADMIN_INPUT} font-mono`}
-              />
+              <div className="relative">
+                <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} left-3`}>
+                  $
+                </span>
+                <input
+                  id="catalogo-precio"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={price}
+                  onChange={(e) => {
+                    setPrice(e.target.value);
+                    setVariantError(null);
+                  }}
+                  className={adminInput({ prefix: "text", align: "right", mono: true })}
+                />
+              </div>
             </div>
           </div>
 
-          {variantError && <p role="alert" className={ADMIN_ALERT_ERROR}>{variantError}</p>}
+          {variantError && <AdminNotice kind="danger">{variantError}</AdminNotice>}
 
-          <div className="grid grid-cols-2 gap-3">
-            <button type="button" onClick={closeAddDialog} className={ADMIN_BUTTON_SECONDARY}>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={closeAddDialog} className={adminButton("secondary")}>
               Cancelar
             </button>
             <button
               type="button"
               onClick={handleCreateVariant}
               disabled={!canSaveVariant}
-              className={ADMIN_BUTTON_PRIMARY}
+              className={adminButton("primary")}
             >
-              {savingVariant ? "Agregando…" : "Agregar variante"}
+              {savingVariant ? "Agregando…" : "Agregar"}
             </button>
           </div>
         </div>
       </dialog>
 
-      <section aria-labelledby="lista-variantes" className="space-y-4">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="lista-variantes" className={ADMIN_SECTION_TITLE}>
-            Variantes ({filteredEntries.length})
-          </h2>
-          <button type="button" onClick={openAddDialog} className={ADMIN_BUTTON_PRIMARY}>
-            + Agregar variante
+      {groups.length === 0 ? (
+        <p className={ADMIN_EMPTY}>No hay productos con esos filtros.</p>
+      ) : (
+        <ul className="flex flex-col gap-4">
+          {groups.map(({ product, variants }) => {
+            const open = expandedId === product.id;
+            const all = product.product_variants;
+            const units = all.reduce((sum, v) => sum + v.stock_quantity, 0);
+            const outs = all.filter((v) => v.stock_quantity === 0).length;
+            const prices = [...new Set(all.map((v) => v.price))];
+            const thumb = [...product.product_images].sort((a, b) => a.sort_order - b.sort_order)[0]?.url;
+            const panelId = `producto-${product.id}`;
+
+            return (
+              <li key={product.id} className="min-w-0 overflow-hidden rounded-md border border-admin-border bg-white">
+                <button
+                  type="button"
+                  onClick={() => setOpenId(open ? null : product.id)}
+                  aria-expanded={open}
+                  aria-controls={panelId}
+                  className="flex min-h-[72px] w-full items-center gap-3 py-3 pl-4 pr-3 text-left transition-colors duration-200 hover:bg-admin-bg"
+                >
+                  <span className="relative flex size-[52px] shrink-0 items-center justify-center overflow-hidden rounded-md border border-admin-border bg-admin-bg">
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- URL externa (Storage), igual que la galería.
+                      <img src={thumb} alt="" className="size-full object-cover" />
+                    ) : (
+                      <ImageOff aria-hidden="true" className="size-5 text-admin-muted" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block break-words text-base font-semibold text-admin-text">{product.name}</span>
+                    <span className={`mt-0.5 flex flex-wrap gap-x-1.5 ${ADMIN_TEXT_MUTED}`}>
+                      <span>
+                        {all.length === 1 ? "1 variante" : `${all.length} variantes`} · {units} u.
+                      </span>
+                      {outs > 0 && <span className="font-semibold text-admin-danger">· {outs} sin stock</span>}
+                      <span className="hidden lg:inline">
+                        · {categoryPath(product.category_id)} ·{" "}
+                        {prices.length === 1 ? formatPrice(prices[0]) : "varios precios"}
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`size-[22px] shrink-0 text-admin-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+
+                {open && (
+                  <div
+                    id={panelId}
+                    className="grid items-start gap-6 border-t border-admin-border p-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-8 lg:p-6"
+                  >
+                    <div className="flex min-w-0 flex-col gap-6">
+                      <EditorSection title="Nombre">
+                        <ProductNameEditor
+                          productId={product.id}
+                          name={product.name}
+                          onSaved={(name) => patchProductInState(product.id, { name })}
+                        />
+                      </EditorSection>
+                      <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
+                        <ProductImageGallery
+                          productId={product.id}
+                          images={product.product_images}
+                          onChange={(images) => patchProductInState(product.id, { product_images: images })}
+                        />
+                      </EditorSection>
+                      <EditorSection title="Precio">
+                        <BulkPriceEditor
+                          productId={product.id}
+                          productName={product.name}
+                          variantCount={all.length}
+                          onApplied={(updated) => applyVariantPrices(product.id, updated)}
+                        />
+                      </EditorSection>
+                    </div>
+
+                    <EditorSection
+                      title={`Variantes (${variants.length}${variants.length !== all.length ? ` de ${all.length}` : ""})`}
+                    >
+                      <div className="hidden grid-cols-[minmax(0,1fr)_108px_140px] gap-2 text-xs text-admin-muted lg:grid">
+                        <span>Modelo · color · SKU</span>
+                        <span className="text-right">Stock</span>
+                        <span className="text-right">Precio</span>
+                      </div>
+                      <ul className="divide-y divide-admin-border">
+                        {variants.map((v) => {
+                          const modelName = v.iphone_model_id ? modelNameById.get(v.iphone_model_id) : "Sin modelo";
+                          const detail = [modelName, displayColor(v.color)].filter(Boolean).join(" · ");
+                          return (
+                            <li
+                              key={v.id}
+                              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-start gap-2 py-3 first:pt-0 lg:grid-cols-[minmax(0,1fr)_108px_140px]"
+                            >
+                              <div className="col-span-2 min-w-0 lg:col-span-1 lg:self-center">
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <span className="text-[15px] font-semibold text-admin-text">{detail}</span>
+                                  {v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
+                                </span>
+                                <span className="mt-0.5 block font-mono text-xs text-admin-muted">{v.sku}</span>
+                              </div>
+                              {/* El stock guardado no se sube al estado a propósito: con el
+                                  filtro "Sin stock" la fila desaparecería al guardar. */}
+                              <VariantNumberInput
+                                kind="stock"
+                                label={`Stock ${detail}`}
+                                value={v.stock_quantity}
+                                save={(stock) => updateVariantStock(v.id, stock)}
+                              />
+                              <VariantNumberInput
+                                kind="price"
+                                label={`Precio ${detail}`}
+                                value={v.price}
+                                save={(price) => updateVariantPrice(v.id, price)}
+                                onSaved={(price) => applyVariantPrices(product.id, [{ ...v, price }])}
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => openAddDialog(product.id)}
+                        className={`${adminButton("secondary")} w-full`}
+                      >
+                        <Plus aria-hidden="true" className="size-[18px]" />
+                        Agregar variante
+                      </button>
+                    </EditorSection>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage <= 1}
+            className={adminButton("secondary")}
+          >
+            <ChevronLeft aria-hidden="true" className="size-[18px]" />
+            Anterior
+          </button>
+          <span className={ADMIN_TEXT_MUTED}>
+            Página {currentPage} de {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage >= totalPages}
+            className={adminButton("secondary")}
+          >
+            Siguiente
+            <ChevronRight aria-hidden="true" className="size-[18px]" />
           </button>
         </div>
-
-        {addedNotice && <p role="status" className={ADMIN_ALERT_OK}>{addedNotice}</p>}
-
-        {groups.length === 0 ? (
-          <p className={ADMIN_TEXT_MUTED}>No hay variantes que matcheen estos filtros.</p>
-        ) : (
-          <div className="space-y-4">
-            {groups.map(({ product, variants }) => (
-              <div key={product.id} className={`${ADMIN_CARD} space-y-4`}>
-                <ProductImageGallery
-                  productId={product.id}
-                  images={product.product_images}
-                  onChange={(images) => patchProductInState(product.id, { product_images: images })}
-                />
-                <div className="space-y-3">
-                  <ProductNameEditor
-                    productId={product.id}
-                    name={product.name}
-                    onSaved={(name) => patchProductInState(product.id, { name })}
-                  />
-                  <BulkPriceEditor
-                    productId={product.id}
-                    productName={product.name}
-                    variantCount={product.product_variants.length}
-                    onApplied={(updated) => applyVariantPrices(product.id, updated)}
-                  />
-                </div>
-                <ul className={ADMIN_ROW_LIST}>
-                  {variants.map((v) => {
-                    const detail = [
-                      selectedModelId === ""
-                        ? v.iphone_model_id
-                          ? modelNameById.get(v.iphone_model_id)
-                          : "Sin modelo"
-                        : null,
-                      displayColor(v.color),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ");
-                    return (
-                      <li
-                        key={v.id}
-                        className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-mono text-xs text-admin-muted">{v.sku}</span>
-                          {detail && (
-                            <span className="mt-0.5 block text-sm text-admin-text">{detail}</span>
-                          )}
-                        </span>
-                        <div className="flex items-start gap-4">
-                          <VariantNumberInput
-                            kind="price"
-                            label="Precio"
-                            value={v.price}
-                            save={(price) => updateVariantPrice(v.id, price)}
-                            onSaved={(price) => applyVariantPrices(product.id, [{ ...v, price }])}
-                          />
-                          {/* El stock guardado no se sube al estado a propósito: con el
-                              filtro "Sin stock" la fila desaparecería al guardar. */}
-                          <VariantNumberInput
-                            kind="stock"
-                            label="Stock"
-                            value={v.stock_quantity}
-                            save={(stock) => updateVariantStock(v.id, stock)}
-                          />
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage <= 1}
-              className={ADMIN_BUTTON_SECONDARY}
-            >
-              Anterior
-            </button>
-            <span className={ADMIN_TEXT_MUTED}>
-              Página {currentPage} de {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage >= totalPages}
-              className={ADMIN_BUTTON_SECONDARY}
-            >
-              Siguiente
-            </button>
-          </div>
-        )}
-      </section>
+      )}
     </div>
+  );
+}
+
+function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="flex min-w-0 flex-col gap-2.5">
+      <h3 className={ADMIN_CAP}>{title}</h3>
+      {children}
+    </section>
   );
 }
