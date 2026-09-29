@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { CircleCheck, Search, X } from "lucide-react";
 import { getCategoryGroups, getIphoneModels, type IphoneModel } from "@/lib/catalog";
 import {
   AdminApiError,
@@ -11,7 +12,17 @@ import {
   type CreatedSale,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
-import { ADMIN_BUTTON_PRIMARY, ADMIN_INPUT, ADMIN_TEXT_MUTED } from "../adminStyles";
+import AdminNotice from "../AdminNotice";
+import {
+  ADMIN_CAP,
+  ADMIN_PAGE_SUBTITLE,
+  ADMIN_PAGE_TITLE,
+  ADMIN_TEXT_MUTED,
+  adminButton,
+  adminChip,
+  adminIconButton,
+  adminInput,
+} from "../adminStyles";
 import { resolveDiscount, variantLabel } from "./utils";
 import ProductGrid from "./ProductGrid";
 import CartPanel from "./CartPanel";
@@ -38,6 +49,10 @@ export default function VentasPage() {
   const [lastSale, setLastSale] = useState<CreatedSale | null>(null);
 
   const modelNamesById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
+  const categoryNamesById = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories],
+  );
 
   // Pura: no toca estado, solo trae los datos. La usan tanto el efecto de
   // montaje como el refresco manual (reintentar / post-venta).
@@ -164,10 +179,6 @@ export default function VentasPage() {
     });
   }
 
-  function handleRemove(variantId: string) {
-    setCart((prev) => prev.filter((i) => i.variantId !== variantId));
-  }
-
   async function handleConfirm() {
     const discountPercent = resolveDiscount(discount);
     if (cart.length === 0 || discountPercent === null) return;
@@ -229,65 +240,86 @@ export default function VentasPage() {
 
   if (loadError) {
     return (
-      <div className="space-y-4 py-10 text-center">
-        <p className="text-admin-muted">{loadError}</p>
-        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-10">
+        <AdminNotice kind="danger">{loadError}</AdminNotice>
+        <button type="button" onClick={retryLoad} className={adminButton("primary")}>
           Reintentar
         </button>
       </div>
     );
   }
 
+  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <div className="flex flex-col gap-4 pb-24 md:flex-row md:items-start md:pb-4">
-      <div className="min-w-0 flex-1 space-y-4">
+    <div
+      className={`flex flex-col gap-4 md:flex-row md:items-start md:gap-6 ${cartCount > 0 ? "pb-[72px] md:pb-0" : ""}`}
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
         <div>
-          <label htmlFor="search" className="sr-only">
-            Buscar por producto o SKU
-          </label>
-          <input
-            id="search"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por producto o SKU…"
-            className={ADMIN_INPUT}
-          />
+          <h1 className={ADMIN_PAGE_TITLE}>Nueva venta</h1>
+          <p className={`${ADMIN_PAGE_SUBTITLE} hidden md:block`}>Tocá un modelo para sumarlo a la venta.</p>
         </div>
 
-        {categories.length > 0 && (
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(null)}
-              className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
-                selectedCategory === null
-                  ? "border-black bg-black text-white"
-                  : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
-              }`}
-            >
-              Todas
-            </button>
-            {categories.map((c) => (
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <label htmlFor="search" className="sr-only">
+              Buscar por producto o SKU
+            </label>
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-admin-muted"
+            />
+            <input
+              id="search"
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por producto o SKU…"
+              className={`${adminInput({ prefix: "icon", suffix: search.length > 0 })} [&::-webkit-search-cancel-button]:hidden`}
+            />
+            {search.length > 0 && (
               <button
-                key={c.id}
                 type="button"
-                onClick={() => setSelectedCategory(c.id)}
-                className={`h-9 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors ${
-                  selectedCategory === c.id
-                    ? "border-black bg-black text-white"
-                    : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
-                }`}
+                onClick={() => setSearch("")}
+                aria-label="Borrar búsqueda"
+                title="Borrar búsqueda"
+                className={`${adminIconButton("plain", "sm")} absolute right-1.5 top-1/2 -translate-y-1/2`}
               >
-                {c.name}
+                <X aria-hidden="true" className="size-[18px]" />
               </button>
-            ))}
+            )}
           </div>
-        )}
+
+          {categories.length > 0 && (
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                aria-pressed={selectedCategory === null}
+                className={adminChip(selectedCategory === null)}
+              >
+                Todas
+              </button>
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(c.id)}
+                  aria-pressed={selectedCategory === c.id}
+                  className={adminChip(selectedCategory === c.id)}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <ProductGrid
           products={filteredProducts}
           modelNamesById={modelNamesById}
+          categoryNamesById={categoryNamesById}
           cartQuantities={cartQuantities}
           onAdd={handleAdd}
         />
@@ -302,28 +334,37 @@ export default function VentasPage() {
         discount={discount}
         onDiscountChange={setDiscount}
         onUpdateQuantity={handleUpdateQuantity}
-        onRemove={handleRemove}
         onConfirm={handleConfirm}
         submitting={submitting}
         error={saleError}
       />
 
       {lastSale !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-md border border-admin-border bg-white p-6 text-center">
-            <p className="text-4xl">✅</p>
-            <h2 className="mt-2 text-xl font-bold text-admin-text">¡Venta registrada!</h2>
-            <p className="mt-1 text-admin-muted">Total cobrado</p>
-            <p className="text-3xl font-bold text-admin-text">{formatPrice(lastSale.total_amount)}</p>
-            {lastSale.discount_percent > 0 && (
-              <p className="mt-1 text-sm font-semibold text-emerald-700">
-                Con {lastSale.discount_percent}% de descuento (−{formatPrice(lastSale.discount_amount)})
-              </p>
-            )}
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="venta-registrada"
+            className="flex w-full max-w-[400px] flex-col items-center gap-1.5 rounded-lg bg-white p-6 text-center"
+          >
+            <CircleCheck aria-hidden="true" className="size-12 text-admin-ok" strokeWidth={1.5} />
+            <h2 id="venta-registrada" className="mt-2 font-display text-[22px] font-semibold text-admin-text">
+              Venta registrada
+            </h2>
+            <p className={`mt-2 ${ADMIN_CAP}`}>Total cobrado</p>
+            <p className="font-mono text-4xl font-bold tabular-nums text-admin-text">
+              {formatPrice(lastSale.total_amount)}
+            </p>
+            <p className="text-sm text-admin-muted">
+              {lastSale.payment_method === "efectivo" ? "Efectivo" : "Transferencia"}
+              {lastSale.discount_percent > 0 &&
+                ` · ${lastSale.discount_percent}% de descuento (− ${formatPrice(lastSale.discount_amount)})`}
+            </p>
             <button
               type="button"
+              autoFocus
               onClick={() => setLastSale(null)}
-              className={`${ADMIN_BUTTON_PRIMARY} mt-6 w-full`}
+              className={`${adminButton("primary", "lg")} mt-5 w-full`}
             >
               Nueva venta
             </button>

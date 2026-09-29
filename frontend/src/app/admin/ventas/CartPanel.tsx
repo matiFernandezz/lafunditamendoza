@@ -1,27 +1,83 @@
 "use client";
 
-import { Minus, Plus, Trash2, X } from "lucide-react";
+import { Banknote, Check, ChevronUp, Landmark, Minus, Plus, X, type LucideIcon } from "lucide-react";
 import { formatPrice } from "@/lib/format";
-import { ADMIN_ALERT_ERROR, ADMIN_BUTTON_PRIMARY, ADMIN_ICON_BUTTON, ADMIN_INPUT } from "../adminStyles";
+import AdminNotice from "../AdminNotice";
+import {
+  ADMIN_CAP,
+  ADMIN_INPUT_ADORNMENT,
+  ADMIN_INSET,
+  ADMIN_LABEL,
+  adminButton,
+  adminIconButton,
+  adminInput,
+  adminSegment,
+} from "../adminStyles";
 import type { CartItem, DiscountChoice, PaymentMethod } from "./types";
 import { MAX_DISCOUNT_PERCENT, discountAmount, resolveDiscount } from "./utils";
 
-const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
-  { value: "efectivo", label: "Efectivo" },
-  { value: "transferencia", label: "Transferencia" },
+const PAYMENT_METHODS: { value: PaymentMethod; label: string; icon: LucideIcon }[] = [
+  { value: "efectivo", label: "Efectivo", icon: Banknote },
+  { value: "transferencia", label: "Transferencia", icon: Landmark },
 ];
 
 // Los que se usan con amigos; cualquier otro va por "Otro".
 const DISCOUNT_PRESETS = [10, 15, 20];
 
-function choiceClass(active: boolean) {
-  return `h-10 rounded-md border text-sm font-semibold transition-colors ${
-    active
-      ? "border-black bg-black text-white"
-      : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
-  }`;
+function Stepper({
+  quantity,
+  max,
+  onChange,
+}: {
+  quantity: number;
+  max: number;
+  onChange: (quantity: number) => void;
+}) {
+  return (
+    <div className="inline-flex shrink-0 items-center gap-1">
+      {/* Bajar a 0 saca el producto de la venta. */}
+      <button
+        type="button"
+        onClick={() => onChange(quantity - 1)}
+        aria-label="Restar uno"
+        title="Restar uno"
+        className={adminIconButton()}
+      >
+        <Minus aria-hidden="true" className="size-5" />
+      </button>
+      <span className="min-w-8 text-center font-mono text-[17px] font-semibold tabular-nums text-admin-text">
+        {quantity}
+      </span>
+      <button
+        type="button"
+        onClick={() => onChange(quantity + 1)}
+        disabled={quantity >= max}
+        aria-label="Sumar uno"
+        title="Sumar uno"
+        className={adminIconButton()}
+      >
+        <Plus aria-hidden="true" className="size-5" />
+      </button>
+    </div>
+  );
 }
 
+function SummaryRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div
+      className={`flex items-baseline justify-between gap-3 text-[15px] ${muted ? "text-admin-muted" : "text-admin-text"}`}
+    >
+      <span>{label}</span>
+      <span className="font-mono font-medium tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * La venta en curso. Desktop/tablet: tarjeta fija al costado de la grilla.
+ * Mobile: barra flotante "Ver venta" (arriba de la navegación inferior) que
+ * abre la misma venta en una hoja desde abajo.
+ */
 export default function CartPanel({
   items,
   open,
@@ -31,7 +87,6 @@ export default function CartPanel({
   discount,
   onDiscountChange,
   onUpdateQuantity,
-  onRemove,
   onConfirm,
   submitting,
   error,
@@ -44,7 +99,6 @@ export default function CartPanel({
   discount: DiscountChoice;
   onDiscountChange: (discount: DiscountChoice) => void;
   onUpdateQuantity: (variantId: string, quantity: number) => void;
-  onRemove: (variantId: string) => void;
   onConfirm: () => void;
   submitting: boolean;
   error: string | null;
@@ -57,125 +111,82 @@ export default function CartPanel({
 
   return (
     <>
-      {/* Barra flotante para abrir la venta actual (solo mobile, solo si hay items) */}
       {!open && itemCount > 0 && (
         <button
           type="button"
           onClick={() => onOpenChange(true)}
-          className="fixed inset-x-4 bottom-4 z-20 flex h-14 items-center justify-between rounded-md bg-black px-5 text-white shadow-lg md:hidden"
+          className="fixed inset-x-4 bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-[35] flex h-[60px] items-center justify-between rounded-md bg-admin-ink pl-[18px] pr-4 text-white shadow-[0_8px_24px_rgb(0_0_0/0.18)] md:hidden"
         >
-          <span className="text-sm font-semibold">
-            {itemCount} {itemCount === 1 ? "producto" : "productos"}
-            {percent ? <span className="ml-2 font-normal text-white/70">−{percent}%</span> : null}
+          <span className="flex items-center gap-2.5 text-[15px] font-semibold">
+            <span className="flex h-[26px] min-w-[26px] items-center justify-center rounded-full bg-white px-1.5 font-mono text-sm font-bold text-black">
+              {itemCount}
+            </span>
+            Ver venta
           </span>
-          <span className="text-base font-bold">{formatPrice(total)}</span>
+          <span className="flex items-center gap-1.5 font-mono text-lg font-bold tabular-nums">
+            {formatPrice(total)}
+            <ChevronUp aria-hidden="true" className="size-5" />
+          </span>
         </button>
       )}
 
-      {/* Fondo oscuro detrás del sheet en mobile */}
       {open && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
-          onClick={() => onOpenChange(false)}
-        />
+        <div className="fixed inset-0 z-40 bg-black/45 md:hidden" onClick={() => onOpenChange(false)} />
       )}
 
       <aside
-        className={`fixed inset-x-0 bottom-0 z-40 max-h-[85vh] overflow-y-auto rounded-t-md border border-admin-border bg-white p-4 shadow-2xl transition-transform duration-200 ease-out ${
+        aria-label="Venta actual"
+        className={`fixed inset-x-0 bottom-0 z-50 max-h-[92vh] overflow-y-auto rounded-t-[14px] bg-white px-4 pb-6 pt-2 transition-transform duration-200 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
-        } md:sticky md:top-20 md:z-auto md:h-[calc(100vh-6rem)] md:max-h-none md:w-80 md:shrink-0 lg:w-96 md:translate-y-0 md:rounded-md md:border md:shadow-none`}
+        } md:sticky md:top-[72px] md:z-auto md:max-h-[calc(100vh-6rem)] md:w-[360px] md:shrink-0 md:translate-y-0 md:rounded-md md:border md:border-admin-border md:p-5 lg:top-[88px] lg:w-[400px]`}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-admin-text">Venta actual</h2>
+        <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded bg-admin-border-strong md:hidden" />
+
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold tracking-[-0.01em] text-admin-text md:text-lg">
+            Venta actual
+          </h2>
+          {itemCount > 0 && (
+            <span className="hidden text-[13px] text-admin-muted md:inline">
+              {itemCount === 1 ? "1 producto" : `${itemCount} productos`}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className={`${ADMIN_ICON_BUTTON} md:hidden`}
-            aria-label="Cerrar venta actual"
-            title="Cerrar venta actual"
+            aria-label="Cerrar"
+            title="Cerrar"
+            className={`${adminIconButton("plain")} md:hidden`}
           >
-            <X aria-hidden="true" className="size-4" />
+            <X aria-hidden="true" className="size-5" />
           </button>
         </div>
 
         {items.length === 0 ? (
-          <p className="mt-6 text-center text-sm text-admin-muted">
-            Todavía no agregaste productos a la venta.
+          <p className="my-5 text-center text-sm text-admin-muted">
+            Todavía no agregaste productos. Tocá un modelo para sumarlo.
           </p>
         ) : (
-          <ul className="mt-4 space-y-3 divide-y divide-admin-border">
-            {items.map((item) => (
-              <li key={item.variantId} className="flex items-start justify-between gap-3 pt-3 first:pt-0">
-                <div className="min-w-0 flex-1">
-                  <p className="break-words text-sm font-semibold text-admin-text">{item.productName}</p>
-                  <p className="break-words text-[13px] text-admin-muted">{item.variantLabel}</p>
-                  <p className="mt-1 text-sm font-medium text-admin-text">{formatPrice(item.price)}</p>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onUpdateQuantity(item.variantId, item.quantity - 1)}
-                      className={`${ADMIN_ICON_BUTTON} size-8`}
-                      aria-label="Restar una unidad"
-                      title="Restar una unidad"
-                    >
-                      <Minus aria-hidden="true" className="size-3.5" />
-                    </button>
-                    <span className="w-6 text-center text-sm font-semibold text-admin-text">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onUpdateQuantity(item.variantId, item.quantity + 1)}
-                      disabled={item.quantity >= item.stockQuantity}
-                      className={`${ADMIN_ICON_BUTTON} size-8`}
-                      aria-label="Sumar una unidad"
-                      title="Sumar una unidad"
-                    >
-                      <Plus aria-hidden="true" className="size-3.5" />
-                    </button>
+          <div className="mt-2 flex flex-col gap-5">
+            <ul className="divide-y divide-admin-border">
+              {items.map((item) => (
+                <li key={item.variantId} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words text-[15px] font-semibold text-admin-text">{item.productName}</p>
+                    <p className="mt-0.5 break-words text-[13px] text-admin-muted">{item.variantLabel}</p>
+                    <p className="mt-1 font-mono text-sm tabular-nums text-admin-text">{formatPrice(item.price)}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(item.variantId)}
-                    aria-label="Quitar de la venta"
-                    title="Quitar de la venta"
-                    className="inline-flex h-7 items-center gap-1 px-1 text-xs font-medium text-admin-danger"
-                  >
-                    <Trash2 aria-hidden="true" className="size-3.5" />
-                    Quitar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {items.length > 0 && (
-          <div className="mt-5 space-y-4">
-            <div>
-              <p className="mb-1.5 text-sm font-semibold text-admin-text">Medio de pago</p>
-              <div className="grid grid-cols-2 gap-2">
-                {PAYMENT_METHODS.map((m) => (
-                  <button
-                    key={m.value}
-                    type="button"
-                    onClick={() => onPaymentMethodChange(m.value)}
-                    className={`h-10 rounded-md border text-sm font-semibold transition-colors ${
-                      paymentMethod === m.value
-                        ? "border-black bg-black text-white"
-                        : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
-                    }`}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+                  <Stepper
+                    quantity={item.quantity}
+                    max={item.stockQuantity}
+                    onChange={(q) => onUpdateQuantity(item.variantId, q)}
+                  />
+                </li>
+              ))}
+            </ul>
 
             <div>
-              <p className="mb-1.5 text-sm font-semibold text-admin-text">Descuento</p>
+              <p className={ADMIN_LABEL}>Descuento</p>
               <div role="radiogroup" aria-label="Descuento" className="grid grid-cols-5 gap-2">
                 <button
                   type="button"
@@ -183,7 +194,7 @@ export default function CartPanel({
                   aria-checked={discount.kind === "none"}
                   aria-label="Sin descuento"
                   onClick={() => onDiscountChange({ kind: "none" })}
-                  className={choiceClass(discount.kind === "none")}
+                  className={adminSegment(discount.kind === "none")}
                 >
                   Sin
                 </button>
@@ -196,7 +207,7 @@ export default function CartPanel({
                       role="radio"
                       aria-checked={active}
                       onClick={() => onDiscountChange({ kind: "preset", percent: p })}
-                      className={choiceClass(active)}
+                      className={adminSegment(active)}
                     >
                       {p}%
                     </button>
@@ -206,10 +217,8 @@ export default function CartPanel({
                   type="button"
                   role="radio"
                   aria-checked={discount.kind === "custom"}
-                  onClick={() =>
-                    discount.kind !== "custom" && onDiscountChange({ kind: "custom", text: "" })
-                  }
-                  className={choiceClass(discount.kind === "custom")}
+                  onClick={() => discount.kind !== "custom" && onDiscountChange({ kind: "custom", text: "" })}
+                  className={adminSegment(discount.kind === "custom")}
                 >
                   Otro
                 </button>
@@ -217,9 +226,9 @@ export default function CartPanel({
               {discount.kind === "custom" && (
                 <div className="mt-2">
                   <label htmlFor="descuento-otro" className="sr-only">
-                    Porcentaje de descuento
+                    Otro porcentaje
                   </label>
-                  <div className="relative w-28">
+                  <div className="relative">
                     <input
                       id="descuento-otro"
                       type="number"
@@ -230,18 +239,15 @@ export default function CartPanel({
                       value={discount.text}
                       autoFocus
                       onChange={(e) => onDiscountChange({ kind: "custom", text: e.target.value })}
-                      placeholder="20"
-                      className={`${ADMIN_INPUT} pr-8 text-right font-mono`}
+                      placeholder="Escribí el porcentaje"
+                      className={adminInput({ suffix: true, mono: true })}
                     />
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-admin-muted"
-                    >
+                    <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} right-3.5`}>
                       %
                     </span>
                   </div>
                   {percent === null && (
-                    <p className="mt-1 text-[13px] text-admin-muted">
+                    <p className="mt-1.5 text-[13px] text-admin-muted">
                       Poné un número entero entre 1 y {MAX_DISCOUNT_PERCENT}.
                     </p>
                   )}
@@ -249,34 +255,51 @@ export default function CartPanel({
               )}
             </div>
 
-            <div className="space-y-1 border-t border-admin-border pt-4">
-              {discounted > 0 && (
-                <>
-                  <div className="flex items-center justify-between text-sm text-admin-muted">
-                    <span>Subtotal</span>
-                    <span className="tabular-nums">{formatPrice(subtotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm font-semibold text-emerald-700">
-                    <span>Descuento {percent}%</span>
-                    <span className="tabular-nums">−{formatPrice(discounted)}</span>
-                  </div>
-                </>
-              )}
-              <div className="flex items-center justify-between text-lg font-bold text-admin-text">
-                <span>{discounted > 0 ? "Total a cobrar" : "Total"}</span>
-                <span>{formatPrice(total)}</span>
+            <div className={`${ADMIN_INSET} flex flex-col gap-2`}>
+              <SummaryRow label="Subtotal" value={formatPrice(subtotal)} />
+              <SummaryRow
+                label={discounted > 0 ? `Descuento ${percent}%` : "Descuento"}
+                value={discounted > 0 ? `− ${formatPrice(discounted)}` : "—"}
+                muted={discounted === 0}
+              />
+              <div className="my-1 border-t border-admin-border" />
+              <div className="flex items-baseline justify-between gap-3">
+                <span className={ADMIN_CAP}>Total a cobrar</span>
+                <span className="font-mono text-[2rem] font-bold leading-none tabular-nums text-admin-text">
+                  {formatPrice(total)}
+                </span>
               </div>
             </div>
 
-            {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+            <div>
+              <p className={ADMIN_LABEL}>Medio de pago</p>
+              <div role="radiogroup" aria-label="Medio de pago" className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={paymentMethod === m.value}
+                    onClick={() => onPaymentMethodChange(m.value)}
+                    className={adminSegment(paymentMethod === m.value, "lg")}
+                  >
+                    <m.icon aria-hidden="true" className="size-5" />
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {error && <AdminNotice kind="danger">{error}</AdminNotice>}
 
             <button
               type="button"
               onClick={onConfirm}
               disabled={submitting || percent === null}
-              className={`${ADMIN_BUTTON_PRIMARY} w-full`}
+              className={`${adminButton("primary", "lg")} w-full`}
             >
-              {submitting ? "Confirmando…" : "Confirmar venta"}
+              <Check aria-hidden="true" className="size-[22px]" />
+              {submitting ? "Cobrando…" : `Cobrar ${formatPrice(total)}`}
             </button>
           </div>
         )}
