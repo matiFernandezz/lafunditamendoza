@@ -12,7 +12,7 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
 ];
 
 // Los que se usan con amigos; cualquier otro va por "Otro".
-const DISCOUNT_PRESETS = [10, 15];
+const DISCOUNT_PRESETS = [10, 15, 20];
 
 function choiceClass(active: boolean) {
   return `h-10 rounded-md border text-sm font-semibold transition-colors ${
@@ -176,7 +176,7 @@ export default function CartPanel({
 
             <div>
               <p className="mb-1.5 text-sm font-semibold text-admin-text">Descuento</p>
-              <div role="radiogroup" aria-label="Descuento" className="grid grid-cols-4 gap-2">
+              <div role="radiogroup" aria-label="Descuento" className="grid grid-cols-5 gap-2">
                 <button
                   type="button"
                   role="radio"

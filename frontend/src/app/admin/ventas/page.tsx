@@ -195,8 +195,31 @@ export default function VentasPage() {
       setSaleError(
         err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.",
       );
+      // 409: un precio cambió desde que se armó la venta (el backend cobra el
+      // de la base). Se traen los precios nuevos al carrito para que el total
+      // que se ve sea el que se va a cobrar al confirmar de nuevo.
+      if (err instanceof AdminApiError && err.status === 409) {
+        await syncCartPrices();
+      }
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function syncCartPrices() {
+    try {
+      const result = await loadCatalogData();
+      setCategories(result.categories);
+      setModels(result.models);
+      setProducts(result.products);
+      const priceById = new Map(
+        result.products.flatMap((p) => p.product_variants.map((v) => [v.id, v.price] as const)),
+      );
+      setCart((prev) =>
+        prev.map((item) => ({ ...item, price: priceById.get(item.variantId) ?? item.price })),
+      );
+    } catch {
+      // Si falla, queda el mensaje del 409 y el próximo intento lo vuelve a avisar.
     }
   }
 

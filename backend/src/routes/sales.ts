@@ -3,7 +3,10 @@ import { supabase } from '../lib/supabaseClient';
 import { isUuid, isPositiveInt, isPositiveNumber } from '../lib/validate';
 
 const PAYMENT_METHODS = ['efectivo', 'transferencia'] as const;
-const MAX_DISCOUNT_PERCENT = 99;
+const MAX_DISCOUNT_PERCENT = 100;
+
+const formatPrice = (value: number) =>
+  new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value);
 const CHANNELS = ['feria', 'whatsapp', 'web'] as const;
 
 type SaleItemInput = {
@@ -57,9 +60,35 @@ router.post('/', async (req, res) => {
     });
   }
 
+  // Los montos salen de los precios guardados, no de lo que manda el
+  // navegador: si un precio cambió desde que se armó la venta, se avisa en
+  // vez de cobrar un precio viejo (o uno manipulado).
+  const variantIds = [...new Set(items.map((item) => item.variant_id))];
+  const { data: variants, error: variantsError } = await supabase
+    .from('product_variants')
+    .select('id, sku, price')
+    .in('id', variantIds);
+
+  if (variantsError) {
+    return res.status(500).json({ error: variantsError.message });
+  }
+
+  const priceById = new Map(variants.map((v) => [v.id as string, Number(v.price)]));
+  if (variantIds.some((id) => !priceById.has(id))) {
+    return res.status(400).json({ error: 'Alguna de las variantes de la venta no existe.' });
+  }
+
+  const changed = items.find((item) => priceById.get(item.variant_id) !== item.unit_price);
+  if (changed) {
+    const sku = variants.find((v) => v.id === changed.variant_id)?.sku ?? '';
+    return res.status(409).json({
+      error: `El precio de ${sku} cambió: ahora es ${formatPrice(priceById.get(changed.variant_id)!)}. Revisá el total y volvé a confirmar.`,
+    });
+  }
+
   // El descuento se redondea a pesos enteros: en la feria no se cobran
   // centavos. total_amount es lo que realmente se cobra.
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const subtotal = items.reduce((sum, item) => sum + item.quantity * priceById.get(item.variant_id)!, 0);
   const discount_amount = Math.round((subtotal * discountPercent) / 100);
   const total_amount = subtotal - discount_amount;
 
@@ -69,6 +98,7 @@ router.post('/', async (req, res) => {
       payment_method,
       channel: channel ?? null,
       notes: notes ?? null,
+      subtotal,
       total_amount,
       discount_percent: discountPercent,
       discount_amount,
@@ -82,11 +112,19 @@ router.post('/', async (req, res) => {
 
   const { data: saleItems, error: itemsError } = await supabase
     .from('sale_items')
-    .insert(items.map((item) => ({ ...item, sale_id: sale.id })))
+    .insert(
+      items.map((item) => ({
+        sale_id: sale.id,
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+        unit_price: priceById.get(item.variant_id)!,
+      })),
+    )
     .select();
 
   if (itemsError) {
-    // Compensar: la venta ya se creo pero los items fallaron (p.ej. stock insuficiente).
+    // Deshacer la escritura a medias: la fila de venta se acaba de crear y los
+    // items fallaron (p. ej. stock insuficiente), así que nunca fue una venta.
     await supabase.from('sales').delete().eq('id', sale.id);
     return res.status(400).json({ error: itemsError.message });
   }
@@ -117,7 +155,7 @@ function parseRange(query: Request['query']): { from?: string; to?: string } | {
   }
 }
 
-const SALE_SELECT = `id, sale_date, payment_method, channel, total_amount, discount_percent, discount_amount,
+const SALE_SELECT = `id, sale_date, payment_method, channel, subtotal, total_amount, discount_percent, discount_amount,
   notes, status, voided_at, void_reason,
   sale_items (
     id, variant_id, quantity, unit_price,

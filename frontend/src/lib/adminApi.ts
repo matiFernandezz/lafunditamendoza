@@ -89,7 +89,9 @@ export type CreatedSale = {
   sale_date: string;
   payment_method: string;
   channel: string | null;
-  /** Lo que realmente se cobró: con el descuento ya aplicado. */
+  /** Precio de lista de todos los items, antes del descuento. */
+  subtotal: number;
+  /** Lo que realmente se cobró: subtotal - discount_amount. */
   total_amount: number;
   discount_percent: number;
   discount_amount: number;

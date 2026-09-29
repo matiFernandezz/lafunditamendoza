@@ -129,7 +129,7 @@ export default function SaleRow({
             <dl className="space-y-1 border-t border-admin-border pt-3 text-sm">
               <div className="flex justify-between text-admin-muted">
                 <dt>Subtotal</dt>
-                <dd className="font-mono tabular-nums">{formatPrice(sale.total_amount + sale.discount_amount)}</dd>
+                <dd className="font-mono tabular-nums">{formatPrice(sale.subtotal)}</dd>
               </div>
               <div className="flex justify-between font-semibold text-emerald-700">
                 <dt>Descuento {sale.discount_percent}%</dt>

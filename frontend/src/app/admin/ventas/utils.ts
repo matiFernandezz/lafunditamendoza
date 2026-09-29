@@ -1,9 +1,9 @@
 import type { AdminVariant } from "@/lib/adminApi";
 import type { DiscountChoice } from "./types";
 
-export const MAX_DISCOUNT_PERCENT = 99;
+export const MAX_DISCOUNT_PERCENT = 100;
 
-/** Porcentaje a aplicar, o null si el "Otro" escrito a mano no es válido (1-99). */
+/** Porcentaje a aplicar, o null si el "Otro" escrito a mano no es válido (1-100). */
 export function resolveDiscount(choice: DiscountChoice): number | null {
   if (choice.kind === "none") return 0;
   if (choice.kind === "preset") return choice.percent;
