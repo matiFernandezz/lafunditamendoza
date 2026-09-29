@@ -24,7 +24,8 @@ delete from categories
       select 1 from products where category_id = '11111111-1111-1111-1111-111111111132'
     );
 
--- Modelos de iPhone, de iPhone 11 a iPhone Air, en orden de aparición.
+-- Modelos de iPhone, de iPhone 11 a iPhone 18 Pro Max, en orden de aparición
+-- (dentro de cada línea: base, Air, Pro, Pro Max).
 -- Upsert por nombre (unique en la migración iphone_models_unique_name): re-correrlo
 -- no duplica y deja el sort_order al día; los ids y las variantes existentes no cambian.
 insert into iphone_models (name, sort_order) values
@@ -47,7 +48,11 @@ insert into iphone_models (name, sort_order) values
   ('iPhone 16 Pro', 17),
   ('iPhone 16 Pro Max', 18),
   ('iPhone 17', 19),
-  ('iPhone 17 Pro', 20),
-  ('iPhone 17 Pro Max', 21),
-  ('iPhone Air', 22)
+  ('iPhone 17 Air', 20),
+  ('iPhone 17 Pro', 21),
+  ('iPhone 17 Pro Max', 22),
+  ('iPhone 18', 23),
+  ('iPhone 18 Air', 24),
+  ('iPhone 18 Pro', 25),
+  ('iPhone 18 Pro Max', 26)
 on conflict (name) do update set sort_order = excluded.sort_order;

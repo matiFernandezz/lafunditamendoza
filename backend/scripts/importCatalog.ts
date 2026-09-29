@@ -45,10 +45,10 @@ const MODEL_NAME: Record<string, string> = {
   IP17: 'iPhone 17',
   IP17PRO: 'iPhone 17 Pro',
   IP17PROMAX: 'iPhone 17 Pro Max',
-  IPAIR: 'iPhone Air',
+  IPAIR: 'iPhone 17 Air',
 };
 
-// Todos los modelos reales menos iPhone Air (para los rangos "desde 11 al 17…"
+// Todos los modelos reales menos el iPhone 17 Air (para los rangos "desde 11 al 17…"
 // de vidrios/lentes, truncados en el PDF -- ver aviso en el resumen final).
 const ALL_EXCEPT_AIR = Object.keys(MODEL_NAME).filter((k) => k !== 'IPAIR');
 
