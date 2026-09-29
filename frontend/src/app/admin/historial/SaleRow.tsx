@@ -1,9 +1,9 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { Ban, ChevronDown } from "lucide-react";
 import type { Sale } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
-import { ADMIN_BUTTON_DANGER_OUTLINE } from "../adminStyles";
+import { adminBadge, adminButton } from "../adminStyles";
 import { displayColor } from "../ventas/utils";
 
 // hourCycle h23: es-AR sale por defecto en 12 hs ("06:20 p. m."); acá la hora
@@ -55,29 +55,29 @@ export default function SaleRow({
         onClick={onToggle}
         aria-expanded={expanded}
         aria-controls={detailId}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-admin-bg"
+        className="flex min-h-16 w-full items-start gap-3 px-4 py-3.5 text-left transition-colors duration-200 hover:bg-admin-bg"
       >
         <span className={`w-14 shrink-0 pt-0.5 font-mono text-sm tabular-nums ${voided ? "text-admin-muted" : "text-admin-text"}`}>
           {showDay && <span className="block text-[11px] uppercase text-admin-muted">{dayFormat.format(date)}</span>}
           {formatTime(date)}
         </span>
 
-        <span className="min-w-0 flex-1">
+        <span className={`min-w-0 flex-1 ${voided ? "opacity-60" : ""}`}>
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span
-              className={`font-mono text-base font-semibold tabular-nums ${
+              className={`font-mono text-[17px] font-semibold tabular-nums ${
                 voided ? "text-admin-muted line-through" : "text-admin-text"
               }`}
             >
               {formatPrice(sale.total_amount)}
             </span>
             {sale.discount_percent > 0 && (
-              <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+              <span className={adminBadge("neutral")}>
                 −{sale.discount_percent}%
               </span>
             )}
             {voided && (
-              <span className="rounded-full border border-admin-danger-border bg-admin-danger-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-admin-danger">
+              <span className={adminBadge("danger")}>
                 Anulada
               </span>
             )}
@@ -86,7 +86,7 @@ export default function SaleRow({
             {units === 1 ? "1 producto" : `${units} productos`} · {paymentLabel(sale.payment_method)}
           </span>
           {voided && sale.void_reason && (
-            <span className="mt-1 block break-words text-[13px] text-admin-muted">
+            <span className="mt-0.5 block break-words text-[13px] text-admin-muted">
               Motivo: {sale.void_reason}
             </span>
           )}
@@ -94,12 +94,12 @@ export default function SaleRow({
 
         <ChevronDown
           aria-hidden="true"
-          className={`mt-1 size-4 shrink-0 text-admin-muted transition-transform ${expanded ? "rotate-180" : ""}`}
+          className={`mt-0.5 size-5 shrink-0 text-admin-muted transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
         />
       </button>
 
       {expanded && (
-        <div id={detailId} className="space-y-4 border-t border-admin-border px-4 pb-4 pt-3">
+        <div id={detailId} className="flex flex-col gap-3.5 border-t border-admin-border px-4 pb-4 pt-3.5">
           <ul className="space-y-3">
             {sale.sale_items.map((item) => {
               const variant = item.variant;
@@ -109,7 +109,7 @@ export default function SaleRow({
               return (
                 <li key={item.id} className="flex items-start justify-between gap-3">
                   <span className="min-w-0">
-                    <span className="block break-words text-sm font-semibold text-admin-text">
+                    <span className="block break-words text-[15px] font-semibold text-admin-text">
                       {variant?.product?.name ?? "Producto eliminado"}
                     </span>
                     {detail && <span className="block text-[13px] text-admin-muted">{detail}</span>}
@@ -117,7 +117,7 @@ export default function SaleRow({
                       {item.quantity} × {formatPrice(item.unit_price)}
                     </span>
                   </span>
-                  <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-admin-text">
+                  <span className="shrink-0 font-mono text-[15px] font-semibold tabular-nums text-admin-text">
                     {formatPrice(item.quantity * item.unit_price)}
                   </span>
                 </li>
@@ -126,14 +126,14 @@ export default function SaleRow({
           </ul>
 
           {sale.discount_amount > 0 && (
-            <dl className="space-y-1 border-t border-admin-border pt-3 text-sm">
+            <dl className="flex flex-col gap-1.5 border-t border-dashed border-admin-border-strong pt-3 text-[15px]">
               <div className="flex justify-between text-admin-muted">
                 <dt>Subtotal</dt>
                 <dd className="font-mono tabular-nums">{formatPrice(sale.subtotal)}</dd>
               </div>
-              <div className="flex justify-between font-semibold text-emerald-700">
+              <div className="flex justify-between text-admin-muted">
                 <dt>Descuento {sale.discount_percent}%</dt>
-                <dd className="font-mono tabular-nums">−{formatPrice(sale.discount_amount)}</dd>
+                <dd className="font-mono tabular-nums">− {formatPrice(sale.discount_amount)}</dd>
               </div>
               <div className="flex justify-between font-semibold text-admin-text">
                 <dt>Total cobrado</dt>
@@ -147,7 +147,8 @@ export default function SaleRow({
               Anulada el {voidedFormat.format(new Date(sale.voided_at!))}. No suma en los totales y su stock ya se devolvió.
             </p>
           ) : (
-            <button type="button" onClick={onVoid} className={`${ADMIN_BUTTON_DANGER_OUTLINE} w-full sm:w-auto`}>
+            <button type="button" onClick={onVoid} className={`${adminButton("dangerOutline")} w-full sm:w-auto`}>
+              <Ban aria-hidden="true" className="size-[18px]" />
               Anular venta
             </button>
           )}

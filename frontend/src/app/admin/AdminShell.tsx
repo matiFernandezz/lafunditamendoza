@@ -13,7 +13,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
-import { ADMIN_CAP } from "./adminStyles";
+import { ADMIN_CAP_BASE } from "./adminStyles";
 
 type Tab = { href: string; label: string; long?: string; icon: LucideIcon };
 
@@ -52,7 +52,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <header className="sticky top-0 z-30 hidden h-16 items-center gap-10 bg-admin-ink px-8 lg:flex">
         <div className="flex items-center gap-3.5">
           <Logo size={50} />
-          <span className={`${ADMIN_CAP} text-white/60`}>Panel</span>
+          <span className={`${ADMIN_CAP_BASE} text-white/60`}>Panel</span>
         </div>
         <nav aria-label="Panel" className="flex flex-1 gap-1">
           {TABS.map((tab) => {

@@ -14,7 +14,9 @@ export const ADMIN_SECTION_TITLE = "font-display text-lg font-semibold tracking-
 export const ADMIN_LABEL = "mb-1.5 block text-sm font-semibold text-admin-text";
 export const ADMIN_TEXT_MUTED = "text-[13px] text-admin-muted";
 // Etiqueta chica en mayúsculas ("TOTAL A COBRAR", "NOMBRE").
-export const ADMIN_CAP = "text-xs font-semibold uppercase tracking-[0.06em] text-admin-muted";
+// ADMIN_CAP_BASE no trae color: para usarla sobre fondo negro con text-white/60.
+export const ADMIN_CAP_BASE = "text-xs font-semibold uppercase tracking-[0.06em]";
+export const ADMIN_CAP = `${ADMIN_CAP_BASE} text-admin-muted`;
 export const ADMIN_BODY = "text-[15px] text-admin-text";
 export const ADMIN_NAME = "text-base font-semibold text-admin-text";
 

@@ -10,14 +10,17 @@ import {
   type SalesSummary,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_ALERT_OK,
-  ADMIN_BUTTON_PRIMARY,
-  ADMIN_BUTTON_SECONDARY,
+  ADMIN_CAP_BASE,
+  ADMIN_EMPTY,
   ADMIN_INPUT,
   ADMIN_LABEL,
   ADMIN_PAGE_TITLE,
+  ADMIN_ROW_LIST,
   ADMIN_TEXT_MUTED,
+  adminButton,
+  adminSegment,
 } from "../adminStyles";
 import {
   customRange,
@@ -35,8 +38,8 @@ const PAGE_SIZE = 50;
 
 const PERIODS: { kind: PeriodKind; label: string }[] = [
   { kind: "today", label: "Hoy" },
-  { kind: "week", label: "Esta semana" },
-  { kind: "month", label: "Este mes" },
+  { kind: "week", label: "Semana" },
+  { kind: "month", label: "Mes" },
   { kind: "custom", label: "Personalizado" },
 ];
 
@@ -147,11 +150,11 @@ export default function HistorialPage() {
   const showDay = spansSeveralDays(range);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto flex max-w-[960px] flex-col gap-5">
       <h1 className={ADMIN_PAGE_TITLE}>Historial de ventas</h1>
 
-      <section aria-label="Período" className="space-y-3">
-        <div role="radiogroup" aria-label="Período" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <section aria-label="Período" className="flex flex-col gap-3">
+        <div role="radiogroup" aria-label="Período" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {PERIODS.map((period) => {
             const active = kind === period.kind;
             return (
@@ -161,11 +164,7 @@ export default function HistorialPage() {
                 role="radio"
                 aria-checked={active}
                 onClick={() => selectPeriod(period.kind)}
-                className={`h-10 rounded-md border text-sm font-semibold transition-colors ${
-                  active
-                    ? "border-black bg-black text-white"
-                    : "border-admin-border bg-white text-admin-text hover:bg-admin-bg"
-                }`}
+                className={adminSegment(active)}
               >
                 {period.label}
               </button>
@@ -174,7 +173,7 @@ export default function HistorialPage() {
         </div>
 
         {kind === "custom" && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <label htmlFor="historial-desde" className={ADMIN_LABEL}>
                 Desde
@@ -208,153 +207,154 @@ export default function HistorialPage() {
         )}
 
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-admin-text">
+          <p className="text-[15px] font-semibold text-admin-text">
             {describeRange(kind, range).replace(/^./, (c) => c.toUpperCase())}
           </p>
           <button
             type="button"
             onClick={refresh}
             disabled={loading}
-            title="Actualizar"
-            aria-label="Actualizar"
-            className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-muted transition-colors hover:bg-white hover:text-admin-text disabled:opacity-50"
+            className={adminButton("ghost", "sm")}
           >
-            <RefreshCw aria-hidden="true" className={`size-3.5 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw aria-hidden="true" className={`size-4 ${loading ? "animate-spin" : ""}`} />
             Actualizar
           </button>
         </div>
       </section>
 
       {failed?.key === key ? (
-        <div className="space-y-4 py-6 text-center">
-          <p role="alert" className="text-sm text-admin-text">
-            {failed.message}
-          </p>
-          <button type="button" onClick={refresh} className={ADMIN_BUTTON_PRIMARY}>
+        <div className="flex flex-col items-center gap-4 py-6">
+          <AdminNotice kind="danger">{failed.message}</AdminNotice>
+          <button type="button" onClick={refresh} className={adminButton("primary")}>
             Reintentar
           </button>
         </div>
       ) : !loaded ? (
         <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
       ) : (
-        <div className={`space-y-6 transition-opacity ${loading ? "opacity-50" : ""}`} aria-busy={loading}>
-          <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <div className="col-span-2 rounded-md bg-black p-4 text-white lg:col-span-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-white/70">Total ingresado</p>
-              <p className="mt-1 font-mono text-2xl font-bold tabular-nums">{formatPrice(summary!.total_amount)}</p>
-              <p className="mt-1 text-xs text-white/70">
-                Ticket promedio {formatPrice(summary!.average_ticket)}
-              </p>
-              {summary!.discount_total > 0 && (
-                <p className="mt-0.5 text-xs text-white/70">
-                  Descuentos otorgados −{formatPrice(summary!.discount_total)}
-                </p>
-              )}
-            </div>
-            <SummaryCard label="Efectivo" amount={cash!.amount} detail={salesLabel(cash!.count)} />
-            <SummaryCard label="Transferencia" amount={transfer!.amount} detail={salesLabel(transfer!.count)} />
-            {/* En mobile ocupa el ancho entero: fila compacta en vez de una
-                tarjeta alta con un solo número. */}
-            <div className={`${SUMMARY_CARD} col-span-2 flex items-center justify-between lg:col-span-1 lg:block`}>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-admin-muted">Ventas</p>
-                <p className="mt-1 text-xs text-admin-muted lg:hidden">sin contar anuladas</p>
-              </div>
-              <p className="font-mono text-2xl font-bold tabular-nums text-admin-text lg:mt-1">
-                {summary!.sales_count}
-              </p>
-              <p className="mt-1 hidden text-xs text-admin-muted lg:block">sin contar anuladas</p>
-            </div>
+        <div
+          className={`flex flex-col gap-5 transition-opacity duration-200 ${loading ? "opacity-50" : ""}`}
+          aria-busy={loading}
+        >
+          <section aria-label="Resumen" className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <SummaryTile
+              inverse
+              wide
+              label="Total ingresado"
+              value={formatPrice(summary!.total_amount)}
+              detail={
+                summary!.sales_count > 0
+                  ? `Ticket promedio ${formatPrice(summary!.average_ticket)}${
+                      summary!.discount_total > 0
+                        ? ` · Descuentos − ${formatPrice(summary!.discount_total)}`
+                        : ""
+                    }`
+                  : "Sin ventas todavía"
+              }
+            />
+            <SummaryTile label="Efectivo" value={formatPrice(cash!.amount)} detail={salesLabel(cash!.count)} />
+            <SummaryTile
+              label="Transferencia"
+              value={formatPrice(transfer!.amount)}
+              detail={salesLabel(transfer!.count)}
+            />
+            <SummaryTile wide label="Ventas" value={String(summary!.sales_count)} detail="sin contar anuladas" />
           </section>
 
-          {notice && <p role="status" className={ADMIN_ALERT_OK}>{notice}</p>}
-
-          <div role="tablist" aria-label="Detalle del período" className="flex border-b border-admin-border">
-            {(
-              [
-                ["ventas", `Ventas (${loaded.pagination.total})`],
-                ["top", "Más vendidos"],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="tab"
-                aria-selected={tab === value}
-                onClick={() => setTab(value)}
-                className={`-mb-px h-10 border-b-2 px-4 text-sm font-semibold transition-colors ${
-                  tab === value
-                    ? "border-black text-admin-text"
-                    : "border-transparent text-admin-muted hover:text-admin-text"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {tab === "ventas" ? (
-            loaded.sales.length === 0 ? (
-              <p className="rounded-md border border-dashed border-admin-border p-6 text-center text-sm text-admin-muted">
-                No hubo ventas en este período.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                <ul className="divide-y divide-admin-border overflow-hidden rounded-md border border-admin-border">
-                  {loaded.sales.map((sale) => (
-                    <SaleRow
-                      key={sale.id}
-                      sale={sale}
-                      showDay={showDay}
-                      expanded={expandedId === sale.id}
-                      onToggle={() => setExpandedId((id) => (id === sale.id ? null : sale.id))}
-                      onVoid={() => {
-                        setNotice(null);
-                        setVoidTarget(sale);
-                      }}
-                    />
-                  ))}
-                </ul>
-                {loaded.pagination.page < loaded.pagination.total_pages && (
-                  <button
-                    type="button"
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className={`${ADMIN_BUTTON_SECONDARY} w-full`}
-                  >
-                    {loadingMore
-                      ? "Cargando…"
-                      : `Ver más (${loaded.pagination.total - loaded.sales.length} restantes)`}
-                  </button>
-                )}
-              </div>
-            )
-          ) : summary!.top_products.length === 0 ? (
-            <p className="rounded-md border border-dashed border-admin-border p-6 text-center text-sm text-admin-muted">
-              Todavía no hay productos vendidos en este período.
-            </p>
-          ) : (
-            <ol className="divide-y divide-admin-border overflow-hidden rounded-md border border-admin-border bg-white">
-              {summary!.top_products.map((product, index) => (
-                <li key={product.product_id} className="flex items-center gap-3 px-4 py-3">
-                  <span className="w-6 shrink-0 font-mono text-sm font-bold tabular-nums text-admin-muted">
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1 break-words text-sm font-semibold text-admin-text">
-                    {product.product_name}
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block font-mono text-sm font-semibold tabular-nums text-admin-text">
-                      {product.units} u.
-                    </span>
-                    <span className="block font-mono text-[13px] tabular-nums text-admin-muted">
-                      {formatPrice(product.revenue)}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ol>
+          {notice && (
+            <AdminNotice kind="ink" onClose={() => setNotice(null)}>
+              {notice}
+            </AdminNotice>
           )}
+
+          <div>
+            <div role="tablist" aria-label="Detalle del período" className="flex border-b border-admin-border">
+              {(
+                [
+                  ["ventas", `Ventas (${loaded.pagination.total})`],
+                  ["top", "Más vendidos"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === value}
+                  onClick={() => setTab(value)}
+                  className={`-mb-px h-12 border-b-2 px-4 text-[15px] font-semibold transition-colors duration-200 ${
+                    tab === value
+                      ? "border-admin-ink text-admin-text"
+                      : "border-transparent text-admin-muted hover:text-admin-text"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {tab === "ventas" ? (
+              loaded.sales.length === 0 ? (
+                <p className={`mt-5 ${ADMIN_EMPTY}`}>No hubo ventas en este período.</p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <ul className="divide-y divide-admin-border overflow-hidden rounded-b-md border border-t-0 border-admin-border">
+                    {loaded.sales.map((sale) => (
+                      <SaleRow
+                        key={sale.id}
+                        sale={sale}
+                        showDay={showDay}
+                        expanded={expandedId === sale.id}
+                        onToggle={() => setExpandedId((id) => (id === sale.id ? null : sale.id))}
+                        onVoid={() => {
+                          setNotice(null);
+                          setVoidTarget(sale);
+                        }}
+                      />
+                    ))}
+                  </ul>
+                  {loaded.pagination.page < loaded.pagination.total_pages && (
+                    <button
+                      type="button"
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                      className={`${adminButton("secondary")} w-full`}
+                    >
+                      {loadingMore
+                        ? "Cargando…"
+                        : `Ver más (${loaded.pagination.total - loaded.sales.length} restantes)`}
+                    </button>
+                  )}
+                </div>
+              )
+            ) : summary!.top_products.length === 0 ? (
+              <p className={`mt-5 ${ADMIN_EMPTY}`}>Todavía no hay productos vendidos en este período.</p>
+            ) : (
+              <ol className={`mt-5 ${ADMIN_ROW_LIST}`}>
+                {summary!.top_products.map((product, index) => (
+                  <li key={product.product_id} className="flex items-center gap-3 px-4 py-3.5">
+                    <span
+                      className={`w-7 shrink-0 font-display text-xl font-semibold ${
+                        index < 3 ? "text-admin-text" : "text-admin-muted"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 break-words text-[15px] font-semibold text-admin-text">
+                      {product.product_name}
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block font-mono text-[15px] font-semibold tabular-nums text-admin-text">
+                        {product.units} u.
+                      </span>
+                      <span className="block font-mono text-[13px] tabular-nums text-admin-muted">
+                        {formatPrice(product.revenue)}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </div>
         </div>
       )}
 
@@ -382,15 +382,35 @@ function salesLabel(count: number) {
   return count === 1 ? "1 venta" : `${count} ventas`;
 }
 
-// Como ADMIN_CARD pero con padding fijo de 16px: tarjetas chicas en grilla.
-const SUMMARY_CARD = "rounded-md border border-admin-border bg-white p-4";
-
-function SummaryCard({ label, amount, detail }: { label: string; amount: number; detail: string }) {
+// "wide" ocupa las dos columnas en mobile (en desktop son cuatro iguales).
+function SummaryTile({
+  label,
+  value,
+  detail,
+  inverse,
+  wide,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  inverse?: boolean;
+  wide?: boolean;
+}) {
   return (
-    <div className={SUMMARY_CARD}>
-      <p className="text-xs font-semibold uppercase tracking-wide text-admin-muted">{label}</p>
-      <p className="mt-1 break-all font-mono text-xl font-bold tabular-nums text-admin-text">{formatPrice(amount)}</p>
-      <p className="mt-1 text-xs text-admin-muted">{detail}</p>
+    <div
+      className={`min-w-0 rounded-md p-4 ${wide ? "col-span-2 lg:col-span-1" : ""} ${
+        inverse ? "bg-admin-ink text-white" : "border border-admin-border bg-white text-admin-text"
+      }`}
+    >
+      <p className={`${ADMIN_CAP_BASE} ${inverse ? "text-white/70" : "text-admin-muted"}`}>{label}</p>
+      <p
+        className={`mt-1.5 break-all font-mono font-bold leading-[1.1] tabular-nums ${
+          inverse ? "text-[28px]" : "text-[21px]"
+        }`}
+      >
+        {value}
+      </p>
+      <p className={`mt-1.5 text-xs ${inverse ? "text-white/70" : "text-admin-muted"}`}>{detail}</p>
     </div>
   );
 }

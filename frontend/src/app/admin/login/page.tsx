@@ -6,7 +6,7 @@ import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
 import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_CAP,
+  ADMIN_CAP_BASE,
   ADMIN_INPUT,
   ADMIN_LABEL,
   ADMIN_PAGE_SUBTITLE,
@@ -58,7 +58,7 @@ export default function AdminLoginPage() {
           <span className="hidden lg:block">
             <Logo size={96} />
           </span>
-          <span className={`${ADMIN_CAP} text-white/60`}>Panel de administración</span>
+          <span className={`${ADMIN_CAP_BASE} text-white/60`}>Panel de administración</span>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-5 py-7 lg:p-8">

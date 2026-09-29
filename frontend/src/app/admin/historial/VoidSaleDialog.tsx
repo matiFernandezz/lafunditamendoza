@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { AdminApiError, voidSale, type Sale } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_ALERT_ERROR,
   ADMIN_BUTTON_DANGER,
   ADMIN_BUTTON_SECONDARY,
   ADMIN_LABEL,
@@ -57,14 +57,14 @@ export default function VoidSaleDialog({
       ref={dialogRef}
       aria-labelledby="anular-titulo"
       onClose={onClose}
-      className="fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-md rounded-md border border-admin-border bg-white p-6 backdrop:bg-black/40"
+      className="fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-[440px] rounded-lg bg-white p-6 backdrop:bg-black/45"
     >
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         <div>
           <h2 id="anular-titulo" className={ADMIN_SECTION_TITLE}>
             Anular venta
           </h2>
-          <p className="mt-1 text-[13px] text-admin-muted">
+          <p className="mt-1 text-sm text-admin-muted">
             {formatTime(new Date(sale.sale_date))} · {formatPrice(sale.total_amount)} ·{" "}
             {paymentLabel(sale.payment_method)}
           </p>
@@ -89,15 +89,15 @@ export default function VoidSaleDialog({
           />
         </div>
 
-        <p className="text-sm text-admin-text">
+        <p className="text-[15px] text-admin-text">
           Se van a devolver{" "}
           <strong className="font-semibold">{units === 1 ? "1 unidad" : `${units} unidades`}</strong> al stock.
           ¿Confirmás?
         </p>
 
-        {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+        {error && <AdminNotice kind="danger">{error}</AdminNotice>}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => dialogRef.current?.close()}
