@@ -1,6 +1,6 @@
 "use client";
 
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, PackageCheck, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getIphoneModels, type IphoneModel } from "@/lib/catalog";
 import {
@@ -13,18 +13,21 @@ import {
   type Supplier,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_ALERT_ERROR,
-  ADMIN_ALERT_OK,
-  ADMIN_BUTTON_PRIMARY,
+  ADMIN_CAP,
   ADMIN_CARD,
-  ADMIN_ICON_BUTTON,
+  ADMIN_EMPTY,
   ADMIN_INPUT,
+  ADMIN_INPUT_ADORNMENT,
   ADMIN_LABEL,
+  ADMIN_PAGE_SUBTITLE,
   ADMIN_PAGE_TITLE,
   ADMIN_ROW_LIST,
-  ADMIN_SECTION_TITLE,
   ADMIN_TEXT_MUTED,
+  adminButton,
+  adminIconButton,
+  adminInput,
 } from "../adminStyles";
 import { variantLabel } from "../ventas/utils";
 import SupplierField from "./SupplierField";
@@ -219,7 +222,13 @@ export default function ComprasPage() {
           unit_cost: parseCost(l.unitCost)!,
         })),
       });
-      setSuccess(`Compra registrada. Total ${formatPrice(res.data.total_amount)}.`);
+      const supplierName = suppliers.find((s) => s.id === supplierId)?.name;
+      const entered = lines.reduce((sum, l) => sum + (parseQuantity(l.quantity) ?? 0), 0);
+      setSuccess(
+        `Compra registrada${supplierName ? ` · ${supplierName}` : ""} · ${formatPrice(res.data.total_amount)} · se ${
+          entered === 1 ? "sumó 1 unidad" : `sumaron ${entered} unidades`
+        } al stock.`,
+      );
       setLines([]);
       setSupplierId("");
       setDate("");
@@ -243,245 +252,284 @@ export default function ComprasPage() {
 
   if (loadError) {
     return (
-      <div className="space-y-4 py-10 text-center">
-        <p role="alert">{loadError}</p>
-        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-10">
+        <AdminNotice kind="danger">{loadError}</AdminNotice>
+        <button type="button" onClick={retryLoad} className={adminButton("primary")}>
           Reintentar
         </button>
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-3xl space-y-8">
-      <h1 className={ADMIN_PAGE_TITLE}>Registrar compra</h1>
+  const units = lines.reduce((sum, l) => sum + (parseQuantity(l.quantity) ?? 0), 0);
 
-      <section className={`${ADMIN_CARD} space-y-4`}>
-        <SupplierField
-          suppliers={suppliers}
-          value={supplierId}
-          onChange={(id) => {
-            touch();
-            setSupplierId(id);
-          }}
-          onCreated={(supplier) => {
-            touch();
-            setSuppliers((prev) =>
-              [...prev, supplier].sort((a, b) => a.name.localeCompare(b.name, "es")),
-            );
-            setSupplierId(supplier.id);
-          }}
-        />
-        <div>
-          <label htmlFor="fecha" className={ADMIN_LABEL}>
-            Fecha (opcional, por defecto hoy)
-          </label>
-          <input
-            id="fecha"
-            type="date"
-            value={date}
-            onChange={(e) => {
-              touch();
-              setDate(e.target.value);
-            }}
-            className={ADMIN_INPUT}
-          />
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className={ADMIN_SECTION_TITLE}>Productos</h2>
-        <div>
-          <label htmlFor="buscar" className="sr-only">
-            Buscar por producto, modelo o SKU
-          </label>
-          <input
-            id="buscar"
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por producto, modelo o SKU…"
-            className={ADMIN_INPUT}
-          />
-        </div>
-
-        {search.trim() === "" ? (
-          <p className={ADMIN_TEXT_MUTED}>Escribí un producto, modelo o SKU para agregarlo.</p>
-        ) : results.length === 0 ? (
-          <p className="rounded-md border border-dashed border-admin-border p-4 text-center text-sm text-admin-muted">
-            No hay variantes que coincidan.
-          </p>
-        ) : (
-          <ul className={ADMIN_ROW_LIST}>
-            {results.slice(0, MAX_RESULTS).map(({ product, variant, label }) => {
-              const inLine = lines.find((l) => l.variantId === variant.id);
-              return (
-                <li key={variant.id}>
-                  <button
-                    type="button"
-                    onClick={() => addVariant(product, variant, label)}
-                    className="flex min-h-16 w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-admin-bg"
-                  >
-                    <span className="min-w-0">
-                      <span className="block break-words text-sm font-semibold text-admin-text">
-                        {product.name}
-                      </span>
-                      <span className="block break-words text-[13px] text-admin-muted">
-                        {label}
-                        {!variant.active && " (inactiva)"}
-                      </span>
-                      <span className="block font-mono text-xs text-admin-muted">{variant.sku}</span>
-                    </span>
-                    <span className="shrink-0 text-right text-sm tabular-nums text-admin-text">
-                      <span className="block">Stock {variant.stock_quantity}</span>
-                      <span className="block font-mono text-[13px] text-admin-muted">
-                        {variant.cost_price > 0 ? formatPrice(variant.cost_price) : "sin costo"}
-                      </span>
-                      {inLine && <span className="block font-semibold">En la compra</span>}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {results.length > MAX_RESULTS && (
-          <p className={ADMIN_TEXT_MUTED}>
-            Mostrando {MAX_RESULTS} de {results.length}. Afiná la búsqueda para ver el resto.
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <h2 className={ADMIN_SECTION_TITLE}>Líneas de la compra</h2>
-        {lines.length === 0 ? (
-          <p className="rounded-md border border-dashed border-admin-border p-4 text-center text-sm text-admin-muted">
-            Tocá una variante de arriba para agregarla.
-          </p>
-        ) : (
-          <ul className="space-y-3">
-            {lines.map((line, index) => {
-              const q = parseQuantity(line.quantity);
-              const c = parseCost(line.unitCost);
-              const invalid = lineErrors[index];
-              return (
-                <li
-                  key={line.variantId}
-                  className={`space-y-3 rounded-md border bg-white p-4 ${
-                    invalid ? "border-admin-danger" : "border-admin-border"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-admin-text">{line.productName}</p>
-                      <p className="text-[13px] text-admin-muted">{line.label}</p>
-                      <p className="font-mono text-xs text-admin-muted">{line.sku}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeLine(line.variantId)}
-                      title="Quitar de la compra"
-                      aria-label="Quitar de la compra"
-                      className={ADMIN_ICON_BUTTON}
-                    >
-                      <Trash2 aria-hidden="true" className="size-4" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label htmlFor={`qty-${line.variantId}`} className={ADMIN_LABEL}>
-                        Cantidad
-                      </label>
-                      <div className="flex gap-1.5">
-                        <button
-                          type="button"
-                          aria-label="Restar una unidad"
-                          title="Restar una unidad"
-                          onClick={() => stepQuantity(line, -1)}
-                          className={ADMIN_ICON_BUTTON}
-                        >
-                          <Minus aria-hidden="true" className="size-4" />
-                        </button>
-                        <input
-                          id={`qty-${line.variantId}`}
-                          type="number"
-                          inputMode="numeric"
-                          min={1}
-                          step={1}
-                          value={line.quantity}
-                          onChange={(e) => updateLine(line.variantId, { quantity: e.target.value })}
-                          className={`${ADMIN_INPUT} min-w-0 px-1 text-center`}
-                        />
-                        <button
-                          type="button"
-                          aria-label="Sumar una unidad"
-                          title="Sumar una unidad"
-                          onClick={() => stepQuantity(line, 1)}
-                          className={ADMIN_ICON_BUTTON}
-                        >
-                          <Plus aria-hidden="true" className="size-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label htmlFor={`cost-${line.variantId}`} className={ADMIN_LABEL}>
-                        Costo unitario
-                      </label>
-                      <input
-                        id={`cost-${line.variantId}`}
-                        type="number"
-                        inputMode="decimal"
-                        min={0}
-                        step="any"
-                        value={line.unitCost}
-                        onChange={(e) => updateLine(line.variantId, { unitCost: e.target.value })}
-                        placeholder="$"
-                        className={`${ADMIN_INPUT} font-mono`}
-                      />
-                    </div>
-                  </div>
-
-                  <p className="flex justify-between text-sm">
-                    <span className="text-admin-muted">
-                      {invalid ? "Completá cantidad y costo (mayores a 0)" : "Subtotal"}
-                    </span>
-                    <span className="font-mono font-semibold tabular-nums text-admin-text">
-                      {q !== null && c !== null ? formatPrice(q * c) : "—"}
-                    </span>
-                  </p>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <div className="sticky bottom-0 -mx-4 space-y-3 border-t border-admin-border bg-admin-bg px-4 py-3 md:mx-0 md:rounded-t-md md:border">
-        {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
-        {success && <p role="status" className={ADMIN_ALERT_OK}>{success}</p>}
-        <div className="flex items-baseline justify-between text-lg font-bold text-admin-text">
-          <span>Total</span>
-          <span className="font-mono tabular-nums">{formatPrice(total)}</span>
-        </div>
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className={`${ADMIN_BUTTON_PRIMARY} w-full`}
-        >
-          {submitting ? "Registrando…" : "Registrar compra"}
-        </button>
-        {!canSubmit && !submitting && (
-          <p className={ADMIN_TEXT_MUTED}>
-            {supplierId === ""
-              ? "Elegí un proveedor para registrar la compra."
-              : lines.length === 0
-                ? "Agregá al menos una línea."
-                : "Revisá las líneas marcadas."}
-          </p>
-        )}
+  const summary = (
+    <div className={`${ADMIN_CARD} flex flex-col gap-2.5 lg:p-5`}>
+      <SummaryRow label="Productos" value={String(lines.length)} />
+      <SummaryRow label="Unidades que entran" value={String(units)} />
+      <div className="my-0.5 border-t border-admin-border" />
+      <div className="flex items-baseline justify-between gap-3">
+        <span className={ADMIN_CAP}>Costo total</span>
+        <span className="font-mono text-[28px] font-bold tabular-nums text-admin-text">{formatPrice(total)}</span>
       </div>
+      {error && <AdminNotice kind="danger">{error}</AdminNotice>}
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={!canSubmit}
+        className={`${adminButton("primary", "lg")} mt-1.5 w-full`}
+      >
+        <PackageCheck aria-hidden="true" className="size-[22px]" />
+        {submitting ? "Registrando…" : "Registrar compra"}
+      </button>
+      {!canSubmit && !submitting && (
+        <p className={`text-center ${ADMIN_TEXT_MUTED}`}>
+          {supplierId === ""
+            ? "Elegí un proveedor."
+            : lines.length === 0
+              ? "Agregá al menos un producto."
+              : "Completá cantidad y costo de cada producto."}
+        </p>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto flex max-w-[1040px] flex-col gap-5">
+      <div>
+        <h1 className={ADMIN_PAGE_TITLE}>Cargar compra</h1>
+        <p className={ADMIN_PAGE_SUBTITLE}>Mercadería que entra de un proveedor. Se suma al stock.</p>
+      </div>
+
+      {success && (
+        <AdminNotice kind="ok" onClose={() => setSuccess(null)}>
+          {success}
+        </AdminNotice>
+      )}
+
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SupplierField
+              suppliers={suppliers}
+              value={supplierId}
+              onChange={(id) => {
+                touch();
+                setSupplierId(id);
+              }}
+              onCreated={(supplier) => {
+                touch();
+                setSuppliers((prev) =>
+                  [...prev, supplier].sort((a, b) => a.name.localeCompare(b.name, "es")),
+                );
+                setSupplierId(supplier.id);
+              }}
+            />
+            <div>
+              <label htmlFor="fecha" className={ADMIN_LABEL}>
+                Fecha <span className="font-normal text-admin-muted">(opcional, por defecto hoy)</span>
+              </label>
+              <input
+                id="fecha"
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  touch();
+                  setDate(e.target.value);
+                }}
+                className={ADMIN_INPUT}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="buscar" className="block text-sm font-semibold text-admin-text">
+              Productos que entran
+            </label>
+            <div className="relative">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3.5 top-1/2 size-5 -translate-y-1/2 text-admin-muted"
+              />
+              <input
+                id="buscar"
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar producto, modelo o SKU para agregar"
+                className={adminInput({ prefix: "icon" })}
+              />
+            </div>
+
+            {search.trim() !== "" &&
+              (results.length === 0 ? (
+                <p className={`${ADMIN_CARD} ${ADMIN_TEXT_MUTED}`}>
+                  Sin resultados. Si es un producto nuevo, crealo en “Nuevo producto”.
+                </p>
+              ) : (
+                <ul className={ADMIN_ROW_LIST}>
+                  {results.slice(0, MAX_RESULTS).map(({ product, variant, label }) => {
+                    const inLine = lines.some((l) => l.variantId === variant.id);
+                    return (
+                      <li key={variant.id}>
+                        <button
+                          type="button"
+                          onClick={() => addVariant(product, variant, label)}
+                          className="flex min-h-14 w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-colors duration-200 hover:bg-admin-bg"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block break-words text-[15px] font-semibold text-admin-text">
+                              {product.name}
+                            </span>
+                            <span className={`block break-words ${ADMIN_TEXT_MUTED}`}>
+                              {label}
+                              {!variant.active && " (inactiva)"} · stock {variant.stock_quantity}
+                              {inLine && <span className="font-semibold text-admin-text"> · en la compra</span>}
+                            </span>
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-admin-ink text-white"
+                          >
+                            <Plus className="size-5" strokeWidth={2.2} />
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ))}
+            {results.length > MAX_RESULTS && (
+              <p className={ADMIN_TEXT_MUTED}>
+                Mostrando {MAX_RESULTS} de {results.length}. Afiná la búsqueda para ver el resto.
+              </p>
+            )}
+          </div>
+
+          {lines.length === 0 ? (
+            <p className={ADMIN_EMPTY}>Buscá y agregá los productos de esta compra.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {lines.map((line, index) => {
+                const q = parseQuantity(line.quantity);
+                const c = parseCost(line.unitCost);
+                const invalid = lineErrors[index];
+                return (
+                  <li
+                    key={line.variantId}
+                    className={`min-w-0 rounded-md border bg-white p-4 ${
+                      invalid && line.unitCost !== "" ? "border-admin-danger-border" : "border-admin-border"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="break-words text-[15px] font-semibold text-admin-text">{line.productName}</p>
+                        <p className={`mt-0.5 ${ADMIN_TEXT_MUTED}`}>
+                          {line.label} · <span className="font-mono">{line.sku}</span>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeLine(line.variantId)}
+                        title="Quitar de la compra"
+                        aria-label="Quitar de la compra"
+                        className={adminIconButton("danger")}
+                      >
+                        <Trash2 aria-hidden="true" className="size-5" />
+                      </button>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-end gap-3 lg:grid-cols-[auto_minmax(0,180px)_1fr]">
+                      <div>
+                        <label htmlFor={`qty-${line.variantId}`} className={ADMIN_LABEL}>
+                          Cantidad
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            aria-label="Restar una unidad"
+                            title="Restar una unidad"
+                            onClick={() => stepQuantity(line, -1)}
+                            disabled={(q ?? 0) <= 1}
+                            className={adminIconButton()}
+                          >
+                            <Minus aria-hidden="true" className="size-5" />
+                          </button>
+                          <input
+                            id={`qty-${line.variantId}`}
+                            type="number"
+                            inputMode="numeric"
+                            min={1}
+                            step={1}
+                            value={line.quantity}
+                            onChange={(e) => updateLine(line.variantId, { quantity: e.target.value })}
+                            className={`${adminInput({ align: "center", mono: true })} max-w-16`}
+                          />
+                          <button
+                            type="button"
+                            aria-label="Sumar una unidad"
+                            title="Sumar una unidad"
+                            onClick={() => stepQuantity(line, 1)}
+                            className={adminIconButton()}
+                          >
+                            <Plus aria-hidden="true" className="size-5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div>
+                        <label htmlFor={`cost-${line.variantId}`} className={ADMIN_LABEL}>
+                          Costo unitario
+                        </label>
+                        <div className="relative">
+                          <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} left-3`}>
+                            $
+                          </span>
+                          <input
+                            id={`cost-${line.variantId}`}
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step="any"
+                            value={line.unitCost}
+                            onChange={(e) => updateLine(line.variantId, { unitCost: e.target.value })}
+                            placeholder="0"
+                            className={adminInput({
+                              prefix: "text",
+                              align: "right",
+                              mono: true,
+                              state: line.unitCost === "" ? null : "dirty",
+                            })}
+                          />
+                        </div>
+                      </div>
+                      <p className="col-span-2 text-right font-mono text-[15px] font-semibold tabular-nums text-admin-text lg:col-span-1 lg:self-center">
+                        {q !== null && c !== null ? (
+                          `Subtotal ${formatPrice(q * c)}`
+                        ) : (
+                          <span className="font-sans text-[13px] font-normal text-admin-muted">
+                            Completá cantidad y costo (mayores a 0)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        <aside className="min-w-0 lg:sticky lg:top-[88px]">{summary}</aside>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-[15px] text-admin-text">
+      <span>{label}</span>
+      <span className="font-mono font-medium tabular-nums">{value}</span>
     </div>
   );
 }

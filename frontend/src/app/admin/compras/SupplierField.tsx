@@ -2,14 +2,8 @@
 
 import { useState } from "react";
 import { AdminApiError, createSupplier, type Supplier } from "@/lib/adminApi";
-import {
-  ADMIN_ALERT_ERROR,
-  ADMIN_BUTTON_PRIMARY,
-  ADMIN_BUTTON_SECONDARY,
-  ADMIN_CARD,
-  ADMIN_INPUT,
-  ADMIN_LABEL,
-} from "../adminStyles";
+import AdminNotice from "../AdminNotice";
+import { ADMIN_INPUT, ADMIN_INSET, ADMIN_LABEL, adminButton } from "../adminStyles";
 
 const NEW_SUPPLIER = "__new__";
 
@@ -60,7 +54,7 @@ export default function SupplierField({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       <div>
         <label htmlFor="proveedor" className={ADMIN_LABEL}>
           Proveedor
@@ -82,7 +76,7 @@ export default function SupplierField({
       </div>
 
       {creating && (
-        <div className={`${ADMIN_CARD} space-y-3`}>
+        <div className={`${ADMIN_INSET} flex flex-col gap-3`}>
           <div>
             <label htmlFor="proveedor-nombre" className={ADMIN_LABEL}>
               Nombre
@@ -108,7 +102,7 @@ export default function SupplierField({
               className={ADMIN_INPUT}
             />
           </div>
-          {error && <p role="alert" className={ADMIN_ALERT_ERROR}>{error}</p>}
+          {error && <AdminNotice kind="danger">{error}</AdminNotice>}
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -116,7 +110,7 @@ export default function SupplierField({
                 setCreating(false);
                 setError(null);
               }}
-              className={ADMIN_BUTTON_SECONDARY}
+              className={adminButton("secondary")}
             >
               Cancelar
             </button>
@@ -124,9 +118,9 @@ export default function SupplierField({
               type="button"
               onClick={handleSave}
               disabled={saving || !name.trim()}
-              className={ADMIN_BUTTON_PRIMARY}
+              className={adminButton("primary")}
             >
-              {saving ? "Guardando…" : "Guardar proveedor"}
+              {saving ? "Guardando…" : "Guardar"}
             </button>
           </div>
         </div>
