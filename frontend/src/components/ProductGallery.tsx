@@ -6,6 +6,13 @@ import type { ProductImage } from "@/lib/catalog";
 
 const THUMBNAIL_THRESHOLD = 2;
 
+// Marco de la foto: rectángulo con esquinas apenas redondeadas (12px), cuadrado
+// pero con tope. Mobile: todo el ancho y como mucho 360px de alto. Desktop: como
+// mucho 440×440 (la columna tampoco pasa de 440px). object-cover adentro.
+const FRAME =
+  "relative aspect-square w-full max-h-[360px] overflow-hidden rounded-xl bg-rule/40 md:max-h-[440px] md:max-w-[440px]";
+const SIZES = "(min-width: 768px) 440px, 100vw";
+
 // Detalle de producto: una sola foto se muestra fija sin controles; con más
 // de una, scroll horizontal con snap (swipe nativo en mobile) + flechas y
 // puntos, más una fila de thumbnails debajo si hay más de 2 fotos.
@@ -21,24 +28,13 @@ export default function ProductGallery({
   const [active, setActive] = useState(0);
 
   if (sorted.length === 0) {
-    return (
-      <div className="flex aspect-square w-full items-center justify-center rounded-[28px] bg-rule/40 text-graphite">
-        Sin foto
-      </div>
-    );
+    return <div className={`${FRAME} flex items-center justify-center text-graphite`}>Sin foto</div>;
   }
 
   if (sorted.length === 1) {
     return (
-      <div className="relative aspect-square w-full overflow-hidden rounded-[28px] bg-rule/40">
-        <Image
-          src={sorted[0].url}
-          alt={alt}
-          fill
-          sizes="(min-width: 768px) 45vw, 100vw"
-          className="object-cover"
-          priority
-        />
+      <div className={FRAME}>
+        <Image src={sorted[0].url} alt={alt} fill sizes={SIZES} className="object-cover" priority />
       </div>
     );
   }
@@ -56,20 +52,20 @@ export default function ProductGallery({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 md:max-w-[440px]">
       <div className="relative">
         <div
           ref={containerRef}
           onScroll={handleScroll}
-          className="flex snap-x snap-mandatory overflow-x-auto rounded-[28px]"
+          className={`${FRAME} flex snap-x snap-mandatory overflow-x-auto`}
         >
           {sorted.map((img, i) => (
-            <div key={img.id} className="relative aspect-square w-full shrink-0 snap-start bg-rule/40">
+            <div key={img.id} className="relative h-full w-full shrink-0 snap-start">
               <Image
                 src={img.url}
                 alt={alt}
                 fill
-                sizes="(min-width: 768px) 45vw, 100vw"
+                sizes={SIZES}
                 className="object-cover"
                 priority={i === 0}
               />

@@ -60,18 +60,15 @@ export default function ProductDetail({
     .join(" - ");
 
   return (
-    <div className="grid gap-8 md:grid-cols-2 md:gap-12">
+    // La columna de la foto no pasa de 440px (el tope de alto lo pone la
+    // galería): en 1440×800 entran sin scroll foto, nombre, modelo y precio.
+    <div className="grid gap-8 md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] md:gap-12">
       <ProductGallery images={product.product_images} alt={product.name} />
 
       <div className="space-y-6">
-        <div>
-          <h1 className="font-display text-3xl font-black tracking-tight text-pretty md:text-4xl">
-            {product.name}
-          </h1>
-          {product.description && (
-            <p className="mt-2 text-graphite text-pretty">{product.description}</p>
-          )}
-        </div>
+        <h1 className="font-display text-section font-semibold leading-heading tracking-tight text-pretty">
+          {product.name}
+        </h1>
 
         {modelOptions.length > 0 && (
           <div>
@@ -145,6 +142,12 @@ export default function ProductDetail({
           >
             Consultar por WhatsApp
           </a>
+        )}
+
+        {/* Después del precio y no debajo del nombre (como en el diseño): una
+            descripción larga empujaría el precio fuera de la pantalla. */}
+        {product.description && (
+          <p className="font-light text-graphite text-pretty">{product.description}</p>
         )}
       </div>
     </div>
