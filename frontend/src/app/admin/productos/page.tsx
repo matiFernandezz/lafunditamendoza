@@ -13,18 +13,21 @@ import {
   type AdminProduct,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import AdminNotice from "../AdminNotice";
 import {
-  ADMIN_ALERT_ERROR,
-  ADMIN_ALERT_OK,
-  ADMIN_BUTTON_PRIMARY,
+  ADMIN_CAP,
   ADMIN_CARD,
   ADMIN_INPUT,
+  ADMIN_INPUT_ADORNMENT,
   ADMIN_LABEL,
+  ADMIN_PAGE_SUBTITLE,
   ADMIN_PAGE_TITLE,
   ADMIN_ROW_LIST,
   ADMIN_SECTION_TITLE,
   ADMIN_TEXTAREA,
   ADMIN_TEXT_MUTED,
+  adminButton,
+  adminInput,
 } from "../adminStyles";
 import { displayColor } from "../ventas/utils";
 import Combobox from "./Combobox";
@@ -220,9 +223,9 @@ export default function ProductosPage() {
 
   if (loadError) {
     return (
-      <div className="space-y-4 py-10 text-center">
-        <p role="alert">{loadError}</p>
-        <button type="button" onClick={retryLoad} className={ADMIN_BUTTON_PRIMARY}>
+      <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-10">
+        <AdminNotice kind="danger">{loadError}</AdminNotice>
+        <button type="button" onClick={retryLoad} className={adminButton("primary")}>
           Reintentar
         </button>
       </div>
@@ -230,13 +233,16 @@ export default function ProductosPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8">
-      <h1 className={ADMIN_PAGE_TITLE}>Productos</h1>
+    <div className="mx-auto flex max-w-[1040px] flex-col gap-5">
+      <div>
+        <h1 className={ADMIN_PAGE_TITLE}>Nuevo producto</h1>
+        <p className={ADMIN_PAGE_SUBTITLE}>Primero creá el producto; después sumale una variante por modelo y color.</p>
+      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <section aria-labelledby="nuevo-producto" className={`${ADMIN_CARD} space-y-4`}>
+      <div className="grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-6">
+        <section aria-labelledby="nuevo-producto" className={`${ADMIN_CARD} flex flex-col gap-4 lg:p-5`}>
           <h2 id="nuevo-producto" className={ADMIN_SECTION_TITLE}>
-            Nuevo producto
+            1. Datos del producto
           </h2>
 
           <div>
@@ -259,7 +265,7 @@ export default function ProductosPage() {
 
           <div>
             <label htmlFor="producto-descripcion" className={ADMIN_LABEL}>
-              Descripción (opcional)
+              Descripción <span className="font-normal text-admin-muted">(opcional)</span>
             </label>
             <textarea
               id="producto-descripcion"
@@ -302,14 +308,14 @@ export default function ProductosPage() {
             </select>
           </div>
 
-          {productError && <p role="alert" className={ADMIN_ALERT_ERROR}>{productError}</p>}
-          {productOk && <p role="status" className={ADMIN_ALERT_OK}>{productOk}</p>}
+          {productError && <AdminNotice kind="danger">{productError}</AdminNotice>}
+          {productOk && <AdminNotice kind="ok">{productOk}</AdminNotice>}
 
           <button
             type="button"
             onClick={handleCreateProduct}
             disabled={!canSaveProduct}
-            className={`${ADMIN_BUTTON_PRIMARY} w-full`}
+            className={`${adminButton("primary", "lg")} w-full`}
           >
             {savingProduct ? "Creando…" : "Crear producto"}
           </button>
@@ -318,10 +324,10 @@ export default function ProductosPage() {
         <section
           ref={variantSectionRef}
           aria-labelledby="agregar-variante"
-          className={`${ADMIN_CARD} scroll-mt-20 space-y-4`}
+          className={`${ADMIN_CARD} flex scroll-mt-24 flex-col gap-4 lg:p-5`}
         >
           <h2 id="agregar-variante" className={ADMIN_SECTION_TITLE}>
-            Agregar variante
+            2. Agregar variante
           </h2>
 
           <Combobox
@@ -366,7 +372,7 @@ export default function ProductosPage() {
 
           <div>
             <label htmlFor="variante-color" className={ADMIN_LABEL}>
-              Color (opcional)
+              Color <span className="font-normal text-admin-muted">(opcional)</span>
             </label>
             <input
               id="variante-color"
@@ -395,7 +401,7 @@ export default function ProductosPage() {
                 setVariantError(null);
               }}
               autoCapitalize="characters"
-              className={`${ADMIN_INPUT} font-mono`}
+              className={adminInput({ mono: true })}
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
@@ -415,61 +421,71 @@ export default function ProductosPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <label htmlFor="variante-precio" className={ADMIN_LABEL}>
                 Precio
               </label>
-              <input
-                id="variante-precio"
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step="any"
-                value={price}
-                onChange={(e) => {
-                  setPrice(e.target.value);
-                  setVariantError(null);
-                }}
-                placeholder="$"
-                className={`${ADMIN_INPUT} font-mono`}
-              />
+              <div className="relative">
+                <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} left-3`}>
+                  $
+                </span>
+                <input
+                  id="variante-precio"
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="any"
+                  value={price}
+                  onChange={(e) => {
+                    setPrice(e.target.value);
+                    setVariantError(null);
+                  }}
+                  placeholder="0"
+                  className={adminInput({ prefix: "text", align: "right", mono: true })}
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="variante-stock" className={ADMIN_LABEL}>
                 Stock inicial
               </label>
-              <input
-                id="variante-stock"
-                type="number"
-                inputMode="numeric"
-                min={0}
-                step={1}
-                value={stock}
-                onChange={(e) => {
-                  setStock(e.target.value);
-                  setVariantError(null);
-                }}
-                className={`${ADMIN_INPUT} font-mono`}
-              />
+              <div className="relative">
+                <input
+                  id="variante-stock"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  step={1}
+                  value={stock}
+                  onChange={(e) => {
+                    setStock(e.target.value);
+                    setVariantError(null);
+                  }}
+                  className={adminInput({ suffix: true, align: "right", mono: true })}
+                />
+                <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} right-3.5`}>
+                  u.
+                </span>
+              </div>
             </div>
           </div>
 
-          {variantError && <p role="alert" className={ADMIN_ALERT_ERROR}>{variantError}</p>}
-          {variantOk && <p role="status" className={ADMIN_ALERT_OK}>{variantOk}</p>}
+          {variantError && <AdminNotice kind="danger">{variantError}</AdminNotice>}
+          {variantOk && <AdminNotice kind="ok">{variantOk}</AdminNotice>}
 
           <button
             type="button"
             onClick={handleCreateVariant}
             disabled={!canSaveVariant}
-            className={`${ADMIN_BUTTON_PRIMARY} w-full`}
+            className={`${adminButton("primary", "lg")} w-full`}
           >
             {savingVariant ? "Agregando…" : "Agregar variante"}
           </button>
 
           {selectedProduct && (
-            <div className="space-y-2 pt-2">
-              <h3 className="text-sm font-semibold text-admin-text">
+            <div className="flex flex-col gap-2 pt-2">
+              <h3 className={ADMIN_CAP}>
                 Variantes de {selectedProduct.name} ({selectedProduct.product_variants.length})
               </h3>
               {selectedProduct.product_variants.length === 0 ? (
@@ -480,7 +496,7 @@ export default function ProductosPage() {
                     <li key={v.id} className="flex items-start justify-between gap-3 px-4 py-3">
                       <span className="min-w-0">
                         <span className="block font-mono text-xs text-admin-muted">{v.sku}</span>
-                        <span className="mt-0.5 block text-sm text-admin-text">
+                        <span className="mt-0.5 block text-[15px] text-admin-text">
                           {[
                             v.iphone_model_id ? modelNamesById.get(v.iphone_model_id) : "Todos los modelos",
                             displayColor(v.color),

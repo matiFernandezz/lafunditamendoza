@@ -65,7 +65,9 @@ export default function Combobox({
         aria-expanded={open}
         aria-controls={listboxId}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 w-full items-center justify-between gap-3 rounded-md border border-admin-border bg-white px-3 text-left text-sm text-admin-text"
+        className={`flex h-12 w-full items-center justify-between gap-3 rounded-md border bg-white px-3.5 text-left text-base text-admin-text transition-colors duration-200 ${
+          open ? "border-admin-ink" : "border-admin-border-strong"
+        }`}
       >
         {selected ? (
           <span className="min-w-0 truncate">
@@ -79,7 +81,7 @@ export default function Combobox({
         )}
         <ChevronDown
           aria-hidden="true"
-          className={`size-4 shrink-0 text-admin-muted transition-transform ${open ? "rotate-180" : ""}`}
+          className={`size-5 shrink-0 text-admin-muted transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -88,7 +90,7 @@ export default function Combobox({
           id={listboxId}
           role="listbox"
           aria-labelledby={id}
-          className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-admin-border bg-white py-1 shadow-lg"
+          className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-admin-border-strong bg-white py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
         >
           {options.length === 0 ? (
             <li className="px-3 py-2.5 text-sm text-admin-muted">No hay opciones</li>
@@ -101,7 +103,7 @@ export default function Combobox({
                     onChange(o.id);
                     setOpen(false);
                   }}
-                  className={`block min-h-10 w-full px-3 py-2 text-left text-sm ${
+                  className={`block min-h-12 w-full px-3.5 py-2.5 text-left text-[15px] ${
                     o.id === value ? "bg-admin-bg font-semibold" : "text-admin-text hover:bg-admin-bg"
                   }`}
                 >
