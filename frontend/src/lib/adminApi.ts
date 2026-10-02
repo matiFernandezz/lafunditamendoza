@@ -311,6 +311,14 @@ export function updateProductName(id: string, name: string): Promise<{ data: Adm
   });
 }
 
+/** Texto vacío borra la descripción. */
+export function updateProductDescription(id: string, description: string): Promise<{ data: AdminProduct }> {
+  return adminFetch(`/api/products/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ description }),
+  });
+}
+
 export function addProductImage(
   productId: string,
   file: File,

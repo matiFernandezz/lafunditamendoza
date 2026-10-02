@@ -92,23 +92,44 @@ router.post('/', async (req, res) => {
   res.status(201).json({ data });
 });
 
+// Edita el nombre y/o la descripción (al menos uno de los dos). Una
+// descripción vacía o null la borra.
 router.patch('/:id', async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body ?? {};
+  const { name, description } = req.body ?? {};
 
   if (!isUuid(id)) {
     return res.status(400).json({ error: 'id debe ser un uuid valido' });
   }
 
-  if (typeof name !== 'string' || name.trim() === '' || name.trim().length > MAX_NAME_LENGTH) {
-    return res.status(400).json({
-      error: `name es obligatorio (texto de hasta ${MAX_NAME_LENGTH} caracteres)`,
-    });
+  if (name === undefined && description === undefined) {
+    return res.status(400).json({ error: 'Mandá name o description' });
+  }
+
+  const update: { name?: string; description?: string | null } = {};
+
+  if (name !== undefined) {
+    if (typeof name !== 'string' || name.trim() === '' || name.trim().length > MAX_NAME_LENGTH) {
+      return res.status(400).json({
+        error: `name es obligatorio (texto de hasta ${MAX_NAME_LENGTH} caracteres)`,
+      });
+    }
+    update.name = name.trim();
+  }
+
+  if (description !== undefined) {
+    if (description !== null && (typeof description !== 'string' || description.length > MAX_DESCRIPTION_LENGTH)) {
+      return res.status(400).json({
+        error: `description debe ser texto de hasta ${MAX_DESCRIPTION_LENGTH} caracteres`,
+      });
+    }
+    const trimmed = typeof description === 'string' ? description.trim() : '';
+    update.description = trimmed === '' ? null : trimmed;
   }
 
   const { data, error } = await supabase
     .from('products')
-    .update({ name: name.trim() })
+    .update(update)
     .eq('id', id)
     .select(PRODUCT_SELECT)
     .maybeSingle();

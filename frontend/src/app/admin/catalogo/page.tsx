@@ -37,6 +37,7 @@ import { suggestSku } from "../productos/sku";
 import { displayColor } from "../ventas/utils";
 import BulkPriceEditor from "./BulkPriceEditor";
 import ProductImageGallery from "./ProductImageGallery";
+import ProductDescriptionEditor from "./ProductDescriptionEditor";
 import ProductNameEditor from "./ProductNameEditor";
 import VariantNumberInput from "./VariantNumberInput";
 
@@ -634,6 +635,13 @@ export default function CatalogoPage() {
                           productId={product.id}
                           name={product.name}
                           onSaved={(name) => patchProductInState(product.id, { name })}
+                        />
+                      </EditorSection>
+                      <EditorSection title="Descripción en la web">
+                        <ProductDescriptionEditor
+                          productId={product.id}
+                          description={product.description}
+                          onSaved={(description) => patchProductInState(product.id, { description })}
                         />
                       </EditorSection>
                       <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
