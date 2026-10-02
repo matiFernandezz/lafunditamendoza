@@ -85,18 +85,16 @@ Referencias: **(a)** ya existe, solo cambia la apariencia · **(b)** hay que con
 
 ---
 
-## Migraciones a aplicar en PRODUCCIÓN antes del push (en este orden)
+## Migraciones de producción
 
-Ninguna se aplicó a producción: solo corrieron en la base local.
+**Ya aplicadas** (el 1/10, antes del push `ebd2858`):
+1. `20260929180000_iphone_17_air_and_18_line.sql`
+2. `20260929190000_sales_subtotal_and_full_discount.sql`
 
-1. `supabase/migrations/20260929180000_iphone_17_air_and_18_line.sql`: renombra "iPhone Air" a "iPhone 17 Air" (slug `iphone-17-air`), reordena la línea 17 y agrega iPhone 18, 18 Air, 18 Pro y 18 Pro Max.
-2. `supabase/migrations/20260929190000_sales_subtotal_and_full_discount.sql`: agrega `sales.subtotal`, completa el de las ventas existentes (`total + descuento`), agrega los chequeos `total = subtotal − descuento` y `total ≥ 0`, y amplía el descuento a 0–100%.
+**Pendiente, a aplicar ANTES del próximo push:**
+3. `supabase/migrations/20261001120000_web_orders.sql` (ventas web). Sin ella, la compra desde la tienda y la pestaña Ventas web fallan; el resto del sitio sigue andando.
 
-**Aplicarlas antes del push es obligatorio.** El backend nuevo inserta `subtotal`: si se sube el código sin la migración 2, **todas las ventas en producción fallan**.
-
-Las anteriores (`20260928120000_sales_void_and_summary.sql` y `20260929120000_sales_discount.sql`) ya estaban en producción según lo que se subió en la sesión anterior. No lo volví a consultar porque la regla era no tocar producción. Antes de aplicar, confirmalo con `npx supabase migration list --linked`: las dos de arriba tienen que ser las únicas pendientes.
-
-Comando sugerido (desde la raíz, con el proyecto linkeado): `npx supabase db push --linked`. Aplica las pendientes en orden.
+Antes de aplicarla, `npx supabase migration list --linked` tiene que mostrar pendiente solo esa; después, `npx supabase db push --linked`.
 
 ---
 
@@ -177,12 +175,7 @@ Además, las 27 ventas que ya había en la base local cumplen `total = subtotal 
 
 Tal como pediste, solo las anoto.
 
-- **Ventas web**:
-  - pantalla de reservas desde la tienda (pendiente / pagada / cancelada, vencimiento de 24 h, WhatsApp);
-  - solapa "Web" con contador;
-  - etiqueta "Web" en el historial.
-
-  Necesita un carrito y un checkout en la tienda que no existen.
+- ~~**Ventas web**~~: construida después, a pedido (ver "Ventas web" más abajo).
 - **Login**: botón para mostrar u ocultar la contraseña.
 - **Ventas**:
   - chips por línea de iPhone (11…18) en lugar de por categoría;
@@ -214,12 +207,65 @@ Tal como pediste, solo las anoto.
 14. **Ventas de prueba.** Las que crearon las pruebas quedaron en la base local **anuladas**, con motivo, sin borrar: el stock volvió a su valor.
 15. **Usuario admin local.** Para las pruebas se usó un usuario admin creado solo en la base local (sus datos no se guardan en el repo).
 
+## Ventas web (pedido del 1/10)
+
+Construida según `design/ui_kits/storefront/CartScreens.jsx`, `design/ui_kits/admin/WebVentasScreen.jsx` y `design/ui_kits/shared/reservas.js`.
+
+| Commit | Qué |
+|---|---|
+| `435b453` | Migración `20261001120000_web_orders.sql`: reservas, sus productos y las funciones que mueven el stock en una sola transacción |
+| `fc633d2` | Backend `/api/web-orders`: crear, ver por link, contar, listar, pagada y cancelar. Código "Web LF-…" en el historial |
+| `9ce735c` | Tienda: "Agregar al carrito", barra "Ver carrito", `/carrito`, `/carrito/finalizar` y `/reserva/<link>` |
+| `e94c49d` | Panel: solapa "Ventas web" con contador rojo, filtros, Pagada, Cancelar con motivo y WhatsApp al cliente |
+
+**Cómo funciona el stock**
+- La reserva descuenta el stock al confirmarse. Durante esas 24 h nadie más puede comprar esas unidades, ni en la web ni en la feria.
+- **Pagada**: la reserva pasa al historial como venta por transferencia, canal web. El stock no se vuelve a descontar.
+- **Cancelada**: el stock vuelve.
+- Los precios salen siempre de la base, nunca del navegador.
+
+**Decisiones que tomé solo**
+- **Vencimiento.** A las 24 h la reserva no se cancela sola: queda "Vencida" y la cancela una persona, como en el diseño.
+- **Link de la reserva.** El cliente la ve en `/reserva/<código largo>`. Es imposible de adivinar, así que nadie puede ver la reserva de otro, y la vista no muestra el teléfono.
+- **Topes por compra.** Hasta 20 productos distintos y 10 unidades de cada uno. Sirven para que alguien no reserve todo el stock de una. No hay límite por persona ni por IP.
+- **Datos de cobro de prueba** hasta cargar `NEXT_PUBLIC_TRANSFER_ALIAS`, `NEXT_PUBLIC_TRANSFER_CBU`, `NEXT_PUBLIC_TRANSFER_HOLDER` y `NEXT_PUBLIC_TRANSFER_BANK`. Mientras tanto, la pantalla de la reserva avisa "datos de prueba". El WhatsApp de la tienda sale de `NEXT_PUBLIC_WHATSAPP_NUMBER`, o de uno de prueba si no está cargado.
+- **Botón de la ficha.** "Consultar por WhatsApp" se reemplazó por "Agregar al carrito", como en el diseño.
+- **Botón "Actualizar"** en la pestaña Ventas web, que no está en el diseño, para traer las reservas nuevas sin recargar la página.
+- **Anular una venta web.** Si después se anula en el historial una venta web ya pagada, el stock vuelve, pero la reserva sigue figurando "pagada" en la pestaña Web.
+
+**Pruebas contra la base LOCAL** (script temporal, ya borrado): 25 de 25 OK.
+- La reserva entra pendiente, con vencimiento a 24 h, el total con el precio de la base, y descuenta el stock (5 → 3).
+- El link del cliente muestra la reserva sin el teléfono; un link inexistente da 404.
+- El contador suma las pendientes.
+- **Pagada:**
+  - el stock no se descuenta dos veces (sigue en 3);
+  - queda como venta por transferencia, canal web, de $20.000;
+  - el historial la muestra como "Web LF-…" y el resumen la suma;
+  - marcarla pagada de nuevo o cancelarla da 409.
+- **Cancelada:**
+  - devuelve el stock y guarda el motivo;
+  - cancelarla de nuevo da 409 y no devuelve dos veces;
+  - marcarla pagada da 409.
+- **Límites:**
+  - pedir más que el stock da 409 y no reserva nada;
+  - más de 10 unidades, un WhatsApp inválido o un carrito vacío dan 400.
+- **Limpieza:** anular la venta web devolvió el stock a 5.
+- **Por la tienda (Next):**
+  - la compra calcula con el precio de la base aunque el navegador mande otro;
+  - la página de la reserva carga con el alias, el CBU y el botón de WhatsApp;
+  - las rutas del panel sin sesión dan 401.
+
+Typecheck del frontend y del backend, lint (0 errores) y `next build`: OK.
+
+---
+
 ## Pendiente de tu revisión antes de pushear
 
-`main` está 13 commits adelante de `origin/main`, contando el de este informe. Además de lo de este informe, incluye el catálogo público con el diseño (`634cfb9`, `281dfcb`, `3611bf7`), que todavía no aprobaste. Orden sugerido:
+1. Probar con `npm run dev`:
+   - agregar al carrito, comprar y ver la reserva;
+   - en el panel, la pestaña Web: Pagada y Cancelar.
+2. Aplicar en producción la migración `20261001120000_web_orders.sql`.
+3. Cargar en Vercel el alias, el CBU, el titular y el banco reales (o dejar los de prueba por ahora).
+4. Hacer el push.
 
-1. Revisar con `npm run dev`.
-2. Aplicar las 2 migraciones de arriba en producción.
-3. Hacer el push.
-
-Si algo no te gusta, cada parte se revierte con `git revert <commit>`.
+Cada parte se revierte con `git revert <commit>`.
