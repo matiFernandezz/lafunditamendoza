@@ -7,6 +7,7 @@ import type { CategoryGroup } from "@/lib/catalog";
 import { PAGE_PADDING } from "@/lib/layout";
 import Logo from "./Logo";
 import CartBar from "./store/CartBar";
+import HeaderCartLink from "./store/HeaderCartLink";
 
 type NavLink = { key: string; label: string; href: string };
 
@@ -82,26 +83,30 @@ export default function AppShell({
             ))}
           </nav>
 
-          <button
-            type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-expanded={menuOpen}
-            aria-controls="menu-movil"
-            className="flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-paper md:hidden"
-          >
-            <span className="sr-only">{menuOpen ? "Cerrar menú" : "Abrir menú"}</span>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              aria-hidden="true"
-              className="size-6"
+          {/* Carrito siempre a mano; en mobile, al lado del menú. */}
+          <div className="flex items-center gap-1">
+            <HeaderCartLink />
+            <button
+              type="button"
+              onClick={() => setMenuOpen((o) => !o)}
+              aria-expanded={menuOpen}
+              aria-controls="menu-movil"
+              className="flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-paper md:hidden"
             >
-              {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
-            </svg>
-          </button>
+              <span className="sr-only">{menuOpen ? "Cerrar menú" : "Abrir menú"}</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+                className="size-6"
+              >
+                {menuOpen ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {menuOpen && (
