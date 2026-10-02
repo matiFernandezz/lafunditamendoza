@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Globe,
   LogOut,
   Package,
   PackagePlus,
@@ -11,16 +12,19 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import Logo from "@/components/Logo";
+import { getWebOrderCounts } from "@/lib/adminApi";
 import { createClient } from "@/lib/supabase/client";
 import { ADMIN_CAP_BASE } from "./adminStyles";
 
 type Tab = { href: string; label: string; long?: string; icon: LucideIcon };
 
-// Mismas solapas y orden que design/ui_kits/admin (sin "Web": ventas web no
-// existe todavía). "Nuevo producto" es la pantalla /admin/productos.
+// Mismas solapas y orden que design/ui_kits/admin. "Nuevo producto" es la
+// pantalla /admin/productos.
 const TABS: Tab[] = [
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
+  { href: "/admin/web", label: "Web", long: "Ventas web", icon: Globe },
   { href: "/admin/historial", label: "Historial", icon: ReceiptText },
   { href: "/admin/compras", label: "Compras", icon: Truck },
   { href: "/admin/productos", label: "Nuevo", long: "Nuevo producto", icon: PackagePlus },
@@ -33,11 +37,50 @@ const TABS: Tab[] = [
  * 56px arriba y navegación fija abajo, al alcance del pulgar en la feria.
  * El login no lleva shell: arma su propia pantalla.
  */
+/** Avisa al shell que cambiaron las reservas web (para refrescar el contador). */
+export const WEB_ORDERS_CHANGED = "lf-web-orders-changed";
+
+// Círculo rojo con las reservas web sin cobrar.
+function PendingDot({ count, floating }: { count: number; floating?: boolean }) {
+  if (count <= 0) return null;
+  return (
+    <span
+      aria-label={`${count} sin cobrar`}
+      className={`inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-admin-danger px-[5px] text-[11px] font-bold leading-none text-white ${
+        floating ? "absolute -right-2.5 -top-1.5" : ""
+      }`}
+    >
+      {count}
+    </span>
+  );
+}
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isLogin = pathname === "/admin/login";
+  const [pendingWeb, setPendingWeb] = useState(0);
 
-  if (pathname === "/admin/login") return <>{children}</>;
+  // Se pide al entrar, al cambiar de pantalla y cuando la pestaña Web avisa
+  // que marcó o canceló una reserva. Si falla, el contador no se muestra.
+  useEffect(() => {
+    if (isLogin) return;
+    let ignore = false;
+    const load = () =>
+      getWebOrderCounts()
+        .then((res) => {
+          if (!ignore) setPendingWeb(res.data.pendiente);
+        })
+        .catch(() => {});
+    load();
+    window.addEventListener(WEB_ORDERS_CHANGED, load);
+    return () => {
+      ignore = true;
+      window.removeEventListener(WEB_ORDERS_CHANGED, load);
+    };
+  }, [isLogin, pathname]);
+
+  if (isLogin) return <>{children}</>;
 
   async function handleLogout() {
     const supabase = createClient();
@@ -68,6 +111,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               >
                 <tab.icon aria-hidden="true" className="size-[18px]" />
                 {tab.long ?? tab.label}
+                {tab.href === "/admin/web" && <PendingDot count={pendingWeb} />}
               </Link>
             );
           })}
@@ -100,7 +144,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
       <nav
         aria-label="Panel"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-admin-border bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-admin-border bg-white pb-[env(safe-area-inset-bottom)] lg:hidden"
       >
         {TABS.map((tab) => {
           const current = pathname.startsWith(tab.href);
@@ -119,7 +163,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                   className="absolute inset-x-[22%] top-0 h-[3px] rounded-b-sm bg-admin-ink"
                 />
               )}
-              <tab.icon aria-hidden="true" className="size-[22px]" strokeWidth={current ? 2.1 : 1.75} />
+              <span className="relative">
+                <tab.icon aria-hidden="true" className="size-[22px]" strokeWidth={current ? 2.1 : 1.75} />
+                {tab.href === "/admin/web" && <PendingDot count={pendingWeb} floating />}
+              </span>
               {tab.label}
             </Link>
           );

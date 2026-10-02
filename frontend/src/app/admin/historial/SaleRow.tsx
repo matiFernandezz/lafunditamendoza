@@ -76,6 +76,7 @@ export default function SaleRow({
                 −{sale.discount_percent}%
               </span>
             )}
+            {sale.web_order && <span className={adminBadge("ink")}>Web {sale.web_order.code}</span>}
             {voided && (
               <span className={adminBadge("danger")}>
                 Anulada

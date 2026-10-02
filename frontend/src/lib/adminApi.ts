@@ -127,7 +127,8 @@ export type SaleRecord = CreatedSale & {
   void_reason: string | null;
 };
 
-export type Sale = SaleRecord & { sale_items: SaleLine[] };
+// web_order: la reserva web de la que salió la venta (canal web), si hay.
+export type Sale = SaleRecord & { sale_items: SaleLine[]; web_order: { code: string } | null };
 
 export type Pagination = { page: number; page_size: number; total: number; total_pages: number };
 
@@ -333,5 +334,48 @@ export function reorderProductImages(
   return adminFetch(`/api/products/${productId}/images/reorder`, {
     method: "PATCH",
     body: JSON.stringify({ order }),
+  });
+}
+
+export type WebOrderStatus = "pendiente" | "pagada" | "cancelada";
+
+export type WebOrder = {
+  id: string;
+  code: string;
+  public_token: string;
+  customer_name: string;
+  customer_phone: string;
+  status: WebOrderStatus;
+  total_amount: number;
+  created_at: string;
+  expires_at: string;
+  paid_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  sale_id: string | null;
+  items: {
+    id: string;
+    quantity: number;
+    unit_price: number;
+    variant: SaleLine["variant"];
+  }[];
+};
+
+export function getWebOrders(status: WebOrderStatus): Promise<{ data: WebOrder[] }> {
+  return adminFetch(`/api/web-orders?status=${status}`);
+}
+
+export function getWebOrderCounts(): Promise<{ data: Record<WebOrderStatus, number> }> {
+  return adminFetch("/api/web-orders/counts");
+}
+
+export function markWebOrderPaid(id: string): Promise<{ data: WebOrder }> {
+  return adminFetch(`/api/web-orders/${id}/paid`, { method: "POST" });
+}
+
+export function cancelWebOrder(id: string, reason: string | null): Promise<{ data: WebOrder }> {
+  return adminFetch(`/api/web-orders/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
   });
 }
