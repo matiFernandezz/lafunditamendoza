@@ -11,6 +11,7 @@ import suppliersRouter from './routes/suppliers';
 import categoriesRouter from './routes/categories';
 import iphoneModelsRouter from './routes/iphoneModels';
 import productVariantsRouter from './routes/productVariants';
+import webOrdersRouter from './routes/webOrders';
 import { apiKeyAuth } from './middleware/apiKeyAuth';
 
 const app = express();
@@ -31,6 +32,7 @@ app.use('/api/suppliers', suppliersRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/iphone-models', iphoneModelsRouter);
 app.use('/api/product-variants', productVariantsRouter);
+app.use('/api/web-orders', webOrdersRouter);
 
 const PORT = Number(process.env.PORT) || 3001;
 app.listen(PORT, () => {

@@ -157,6 +157,7 @@ function parseRange(query: Request['query']): { from?: string; to?: string } | {
 
 const SALE_SELECT = `id, sale_date, payment_method, channel, subtotal, total_amount, discount_percent, discount_amount,
   notes, status, voided_at, void_reason,
+  web_order:web_orders ( code ),
   sale_items (
     id, variant_id, quantity, unit_price,
     variant:product_variants (
