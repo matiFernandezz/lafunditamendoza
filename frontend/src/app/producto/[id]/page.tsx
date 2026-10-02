@@ -16,7 +16,7 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   if (!product) notFound();
 
   return (
-    <div className="space-y-8 md:space-y-10">
+    <div className="mx-auto w-full max-w-[960px] space-y-8 md:space-y-10">
       <nav aria-label="Ubicación" className="flex flex-wrap items-center gap-1.5 text-sm text-graphite">
         <Link href="/" className="transition-colors duration-200 hover:text-ink">
           Inicio

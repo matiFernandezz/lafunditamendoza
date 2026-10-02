@@ -78,12 +78,13 @@ export default function ProductDetail({
   }
 
   return (
-    // La columna de la foto no pasa de 440px (el tope de alto lo pone la
-    // galería): en 1440×800 entran sin scroll foto, nombre, modelo y precio.
+    // Bloque centrado de 960px (lo pone la página): foto de hasta 440px, una
+    // línea vertical negra de 1px y la columna de compra (~420px), así el
+    // selector y el botón no se estiran a todo el ancho de la pantalla.
     <div className="grid gap-8 md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] md:gap-12">
       <ProductGallery images={product.product_images} alt={product.name} />
 
-      <div className="space-y-6">
+      <div className="space-y-6 md:border-l md:border-ink md:pl-12">
         <h1 className="font-display text-section font-semibold leading-heading tracking-tight text-pretty">
           {product.name}
         </h1>

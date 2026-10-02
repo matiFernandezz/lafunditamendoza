@@ -16,10 +16,11 @@ export default function CartBar() {
   return (
     <Link
       href="/carrito"
-      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex h-[60px] w-[calc(min(100%,430px)-32px)] -translate-x-1/2 items-center justify-between rounded-full bg-ink px-6 text-paper shadow-[0_10px_30px_rgb(0_0_0/0.22)] md:left-auto md:right-8 md:w-[360px] md:translate-x-0"
+      className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 inline-flex h-12 -translate-x-1/2 items-center gap-3 whitespace-nowrap rounded-full bg-ink px-5 text-paper shadow-[0_8px_24px_rgb(0_0_0/0.2)] md:left-auto md:right-8 md:translate-x-0"
     >
-      <span className="text-base font-medium">Ver carrito ({count})</span>
-      <span className="font-mono text-[17px] tabular-nums">{formatPrice(total)}</span>
+      <span className="text-[15px] font-medium">Ver carrito ({count})</span>
+      <span aria-hidden="true" className="h-4 w-px bg-paper/30" />
+      <span className="font-mono text-[15px] tabular-nums">{formatPrice(total)}</span>
     </Link>
   );
 }
