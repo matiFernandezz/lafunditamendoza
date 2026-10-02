@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { CategoryGroup } from "@/lib/catalog";
 import { PAGE_PADDING } from "@/lib/layout";
 import Logo from "./Logo";
+import CartBar from "./store/CartBar";
 
 type NavLink = { key: string; label: string; href: string };
 
@@ -124,7 +125,8 @@ export default function AppShell({
           </nav>
         )}
       </header>
-      <main className={`mx-auto w-full flex-1 ${width} pb-20 pt-8 md:pt-14`}>{children}</main>
+      <main className={`mx-auto w-full flex-1 ${width} pb-24 pt-8 md:pt-14`}>{children}</main>
+      <CartBar />
     </>
   );
 }

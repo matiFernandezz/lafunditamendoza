@@ -1,12 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
-import type { Product } from "@/lib/catalog";
+import { useCart } from "@/lib/cart";
+import { coverImage, type Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
+import { STORE_BUTTON, STORE_TEXT_LINK } from "@/lib/storeStyles";
 
 const LOW_STOCK = 3;
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
 export default function ProductDetail({
   product,
@@ -51,13 +53,29 @@ export default function ProductDetail({
     availableVariants.find((v) => (color ? v.color === color : true)) ?? availableVariants[0];
 
   const selectedModelName = modelOptions.find((m) => m.id === modelId)?.name;
-  const waMessage = [
-    `Hola! Te consulto por "${product.name}"`,
-    selectedModelName,
-    color,
-  ]
-    .filter(Boolean)
-    .join(" - ");
+
+  const cart = useCart();
+  // "Agregado" se refiere a la variante que estaba elegida al tocar el botón.
+  const [addedVariantId, setAddedVariantId] = useState<string | null>(null);
+  const stock = selectedVariant?.stock_quantity ?? 0;
+  const inCart = selectedVariant ? cart.quantityOf(selectedVariant.id) : 0;
+  const atLimit = stock > 0 && inCart >= stock;
+
+  function handleAdd() {
+    if (!selectedVariant || stock <= 0 || atLimit) return;
+    cart.add({
+      variantId: selectedVariant.id,
+      productId: product.id,
+      name: product.name,
+      detail: [selectedVariant.iphone_models?.name ?? selectedModelName, selectedVariant.color]
+        .filter(Boolean)
+        .join(" · "),
+      price: selectedVariant.price,
+      max: stock,
+      image: coverImage(product),
+    });
+    setAddedVariantId(selectedVariant.id);
+  }
 
   return (
     // La columna de la foto no pasa de 440px (el tope de alto lo pone la
@@ -133,15 +151,25 @@ export default function ProductDetail({
           </div>
         )}
 
-        {WHATSAPP_NUMBER && (
-          <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-ink text-base font-semibold text-paper transition-transform duration-200 active:scale-[0.98]"
-          >
-            Consultar por WhatsApp
-          </a>
+        {selectedVariant && (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={stock <= 0 || atLimit}
+              className={`${STORE_BUTTON} w-full`}
+            >
+              {stock <= 0 ? "Sin stock" : atLimit ? "Ya tenés todo el stock en el carrito" : "Agregar al carrito"}
+            </button>
+            {addedVariantId === selectedVariant.id && (
+              <div role="status" className="flex items-center justify-between gap-3 text-[15px] text-ink">
+                <span>Agregado al carrito.</span>
+                <Link href="/carrito" className={`${STORE_TEXT_LINK} font-medium`}>
+                  Ver carrito
+                </Link>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Después del precio y no debajo del nombre (como en el diseño): una

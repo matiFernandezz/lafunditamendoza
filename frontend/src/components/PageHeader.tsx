@@ -10,7 +10,7 @@ export default function PageHeader({
 }: {
   title: string;
   parent?: string;
-  count: number;
+  count?: number;
   countSuffix?: string;
   back: { href: string; label: string };
 }) {
@@ -21,10 +21,12 @@ export default function PageHeader({
         {parent && <span className="text-graphite">{parent} / </span>}
         {title}
       </h1>
-      <p className="mt-3 tabular-nums text-graphite">
-        {count === 1 ? "1 producto" : `${count} productos`}
-        {countSuffix && <span> {countSuffix}</span>}
-      </p>
+      {count !== undefined && (
+        <p className="mt-3 tabular-nums text-graphite">
+          {count === 1 ? "1 producto" : `${count} productos`}
+          {countSuffix && <span> {countSuffix}</span>}
+        </p>
+      )}
     </div>
   );
 }
