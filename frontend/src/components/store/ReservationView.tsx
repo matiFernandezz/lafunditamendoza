@@ -112,16 +112,13 @@ export default function ReservationView({ reservation: r }: { reservation: Publi
 
           <div className="border-b border-rule">
             <CopyRow label="Alias" value={TRANSFER.alias} />
-            <CopyRow label="CBU" value={TRANSFER.cbu} small />
-            <p className="pb-4 pt-3 text-sm text-graphite">
-              Titular: {TRANSFER.holder} · {TRANSFER.bank}
-              {TRANSFER.isTestData && " · datos de prueba"}
-            </p>
+            {TRANSFER.cbu && <CopyRow label="CBU" value={TRANSFER.cbu} small />}
+            <p className="pb-4 pt-3 text-sm text-graphite">A nombre de {TRANSFER.holder}</p>
           </div>
 
           <ol className="flex flex-col gap-3">
             {[
-              "Transferí el total al alias o al CBU.",
+              TRANSFER.cbu ? "Transferí el total al alias o al CBU." : "Transferí el total al alias.",
               "Mandanos el comprobante por WhatsApp.",
               "Te confirmamos el pago y coordinamos la entrega.",
             ].map((step, index) => (
