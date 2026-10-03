@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Los tests corren contra el stack local completo: Supabase (supabase start,
-// :54321) tiene que estar arriba antes; el backend y el frontend los levanta
-// Playwright solo si no están corriendo ya.
+// :54321) tiene que estar arriba antes; la app (Next) la levanta Playwright
+// solo si no está corriendo ya.
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -28,19 +28,10 @@ export default defineConfig({
     },
   ],
 
-  webServer: [
-    {
-      command: "npm run dev",
-      cwd: "../backend",
-      url: "http://localhost:3001/",
-      reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
-    },
-    {
-      command: "npm run dev",
-      url: "http://localhost:3000",
-      reuseExistingServer: !process.env.CI,
-      timeout: 120_000,
-    },
-  ],
+  webServer: {
+    command: "npm run dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });
