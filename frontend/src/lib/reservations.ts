@@ -1,8 +1,11 @@
-// Solo se importa desde componentes de servidor (usa BACKEND_API_KEY).
-import { requireEnv } from "@/lib/requireEnv";
+import "server-only";
+import { WEB_ORDER_PUBLIC_SELECT } from "@/lib/server/selects";
+import { isUuid } from "@/lib/server/validate";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
-// Lectura de una reserva web para la tienda, del lado del servidor (la API key
-// del backend nunca llega al navegador).
+// Lectura de una reserva web para la tienda, del lado del servidor: web_orders
+// no es legible con la anon key, así que se lee con la secret key y solo se
+// devuelve lo que puede ver el cliente (sin teléfono ni ids internos).
 
 export type ReservationItem = {
   id: string;
@@ -27,21 +30,21 @@ export type PublicReservation = {
 };
 
 export async function getPublicReservation(token: string): Promise<PublicReservation | null> {
-  const backendUrl = requireEnv(process.env.BACKEND_URL, "BACKEND_URL");
-  const apiKey = requireEnv(process.env.BACKEND_API_KEY, "BACKEND_API_KEY");
+  if (!isUuid(token)) return null;
 
-  const res = await fetch(`${backendUrl}/api/web-orders/public/${encodeURIComponent(token)}`, {
-    headers: { "x-api-key": apiKey },
-    cache: "no-store",
-  });
+  const { data, error } = await supabaseAdmin()
+    .from("web_orders")
+    .select(WEB_ORDER_PUBLIC_SELECT)
+    .eq("public_token", token)
+    .maybeSingle()
+    .overrideTypes<PublicReservation | null, { merge: false }>();
 
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`No se pudo leer la reserva (HTTP ${res.status})`);
+  if (error) throw new Error(`No se pudo leer la reserva: ${error.message}`);
+  if (!data) return null;
 
-  const json = (await res.json()) as { data: PublicReservation };
   return {
-    ...json.data,
-    total_amount: Number(json.data.total_amount),
-    items: json.data.items.map((i) => ({ ...i, unit_price: Number(i.unit_price) })),
+    ...data,
+    total_amount: Number(data.total_amount),
+    items: data.items.map((i) => ({ ...i, unit_price: Number(i.unit_price) })),
   };
 }
