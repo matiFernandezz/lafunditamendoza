@@ -9,10 +9,13 @@ import {
   reorderProductImages,
   type AdminProductImage,
 } from "@/lib/adminApi";
+import {
+  MAX_PRODUCT_IMAGE_SIZE,
+  MAX_PRODUCT_IMAGE_SIZE_MB,
+  PRODUCT_IMAGE_TYPES as ACCEPTED_TYPES,
+} from "@/lib/productImages";
 import AdminNotice from "../AdminNotice";
 import { ADMIN_TEXT_MUTED, adminButton } from "../adminStyles";
-
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /**
  * Galería de fotos del producto, como en el diseño: fila de miniaturas (la
@@ -41,6 +44,10 @@ export default function ProductImageGallery({
   async function upload(file: File) {
     if (!ACCEPTED_TYPES.includes(file.type)) {
       setError("Formato no soportado. Usá JPG, PNG o WEBP.");
+      return;
+    }
+    if (file.size > MAX_PRODUCT_IMAGE_SIZE) {
+      setError(`La imagen no puede superar ${MAX_PRODUCT_IMAGE_SIZE_MB}MB`);
       return;
     }
     setUploading(true);

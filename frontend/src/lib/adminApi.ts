@@ -1,6 +1,9 @@
-// Llama a los Route Handlers de Next (/app/api/*), no al backend directo:
-// son ellos los que verifican la sesión de Supabase Auth y agregan la
-// x-api-key del backend del lado del servidor. Ver src/lib/adminProxy.ts.
+// Llama a los Route Handlers de Next (/app/api/*): son ellos los que
+// verifican la sesión de Supabase Auth (requireAdmin) y hablan con la base
+// con la secret key, que nunca sale del servidor.
+
+import { PRODUCT_IMAGE_BUCKET } from "@/lib/productImages";
+import { createClient } from "@/lib/supabase/client";
 
 export class AdminApiError extends Error {
   status: number;
@@ -11,14 +14,10 @@ export class AdminApiError extends Error {
 }
 
 async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  // FormData (subida de archivos) no lleva Content-Type manual: el browser
-  // pone el suyo con el boundary correcto.
-  const isFormData = init?.body instanceof FormData;
-
   const res = await fetch(path, {
     ...init,
     headers: {
-      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      "Content-Type": "application/json",
       ...init?.headers,
     },
   });
@@ -319,15 +318,35 @@ export function updateProductDescription(id: string, description: string): Promi
   });
 }
 
-export function addProductImage(
+/**
+ * Sube una foto en tres pasos, sin que el archivo pase por nuestro servidor
+ * (Vercel limita el tamaño del body): 1) el servidor valida tipo y tamaño y
+ * firma la subida, 2) el navegador sube directo a Supabase Storage, 3) el
+ * servidor registra la foto en el producto.
+ */
+export async function addProductImage(
   productId: string,
   file: File,
 ): Promise<{ data: AdminProductImage }> {
-  const formData = new FormData();
-  formData.append("image", file);
+  const signed = await adminFetch<{ data: { path: string; token: string } }>(
+    `/api/products/${productId}/images/upload-url`,
+    {
+      method: "POST",
+      body: JSON.stringify({ content_type: file.type, size: file.size }),
+    },
+  );
+
+  const { error } = await createClient()
+    .storage.from(PRODUCT_IMAGE_BUCKET)
+    .uploadToSignedUrl(signed.data.path, signed.data.token, file, { contentType: file.type });
+
+  if (error) {
+    throw new AdminApiError(500, "No se pudo subir la imagen. Probá de nuevo.");
+  }
+
   return adminFetch(`/api/products/${productId}/images`, {
     method: "POST",
-    body: formData,
+    body: JSON.stringify({ path: signed.data.path }),
   });
 }
 
