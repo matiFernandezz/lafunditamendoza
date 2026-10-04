@@ -252,6 +252,7 @@ export function getLastPurchaseCosts(): Promise<{ data: LastPurchaseCost[] }> {
 export type AdminCategory = {
   id: string;
   name: string;
+  slug: string;
   parent_id: string | null;
 };
 
@@ -422,6 +423,102 @@ export function updateColor(
 /** "No es un color": sus variantes conservan el texto como descripción. */
 export async function deleteColor(id: string): Promise<void> {
   await adminFetch(`/api/colors/${id}`, { method: "DELETE" });
+}
+
+// --- colores de un producto / de una categoría --------------------------------
+
+export type AddColorResult = {
+  product_id: string;
+  product_name: string;
+  /** Variantes nuevas (una por modelo, con stock 0). */
+  created: number;
+  /** Variantes de ese color que estaban dadas de baja y se reactivaron. */
+  reactivated: number;
+  /** Variantes de ese color que ya estaban activas. */
+  existing: number;
+  skus: string[];
+  dry_run: boolean;
+};
+
+/** Con dryRun devuelve qué pasaría, sin crear nada. */
+export function addColorToProduct(
+  productId: string,
+  colorId: string,
+  dryRun = false,
+): Promise<{ data: AddColorResult }> {
+  return adminFetch(`/api/products/${productId}/colors`, {
+    method: "POST",
+    body: JSON.stringify({ color_id: colorId, dry_run: dryRun }),
+  });
+}
+
+export type RemoveColorResult = {
+  product_id: string;
+  product_name: string;
+  /** Variantes activas de ese color. */
+  variants: number;
+  deactivated: number;
+  /** Unidades en stock de esas variantes. */
+  units: number;
+  with_stock: { id: string; sku: string; model: string | null; stock: number }[];
+  /** Hay stock y no se forzó: no se hizo nada. */
+  blocked: boolean;
+  dry_run: boolean;
+};
+
+/** Da de baja las variantes de ese color (no las borra). */
+export function removeColorFromProduct(
+  productId: string,
+  colorId: string,
+  options: { force?: boolean; dryRun?: boolean } = {},
+): Promise<{ data: RemoveColorResult }> {
+  const query = new URLSearchParams();
+  if (options.force) query.set("force", "1");
+  if (options.dryRun) query.set("dry_run", "1");
+  return adminFetch(`/api/products/${productId}/colors/${colorId}?${query}`, { method: "DELETE" });
+}
+
+export type AddColorToCategoryResult = {
+  category_name: string;
+  /** Productos a los que se les creó o reactivó alguna variante. */
+  products: number;
+  created: number;
+  reactivated: number;
+  existing: number;
+  changed: Omit<AddColorResult, "dry_run">[];
+  skipped: { product_id: string; product_name: string; reason: string }[];
+  dry_run: boolean;
+};
+
+export function addColorToCategory(
+  categoryId: string,
+  colorId: string,
+  dryRun = false,
+): Promise<{ data: AddColorToCategoryResult }> {
+  return adminFetch(`/api/categories/${categoryId}/colors`, {
+    method: "POST",
+    body: JSON.stringify({ color_id: colorId, dry_run: dryRun }),
+  });
+}
+
+export type RemoveColorFromCategoryResult = {
+  category_name: string;
+  products: number;
+  deactivated: number;
+  /** Variantes con stock: no se dan de baja en bloque. */
+  omitted: { product_id: string; product_name: string; sku: string; model: string | null; stock: number }[];
+  omitted_units: number;
+  dry_run: boolean;
+};
+
+export function removeColorFromCategory(
+  categoryId: string,
+  colorId: string,
+  dryRun = false,
+): Promise<{ data: RemoveColorFromCategoryResult }> {
+  return adminFetch(`/api/categories/${categoryId}/colors/${colorId}${dryRun ? "?dry_run=1" : ""}`, {
+    method: "DELETE",
+  });
 }
 
 export type WebOrderStatus = "pendiente" | "pagada" | "cancelada";

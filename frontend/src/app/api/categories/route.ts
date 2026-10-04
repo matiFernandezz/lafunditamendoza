@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin()
     .from("categories")
-    .select("id, name, parent_id")
+    .select("id, name, slug, parent_id")
     .order("name", { ascending: true });
 
   if (error) return jsonError(500, error.message);
