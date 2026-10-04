@@ -43,7 +43,8 @@ import ProductNameEditor from "./ProductNameEditor";
 import VariantNumberInput from "./VariantNumberInput";
 
 const UNIVERSAL = "__universal__";
-const PAGE_SIZE = 40;
+// Productos (tarjetas) por página: todas las páginas traen la misma cantidad.
+const PAGE_SIZE = 10;
 
 type StockFilter = "all" | "zero" | "positive";
 
@@ -183,63 +184,60 @@ export default function CatalogoPage() {
 
   const modelNameById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
 
-  const filteredEntries = useMemo(() => {
+  const modelOrderById = useMemo(() => new Map(models.map((m) => [m.id, m.sort_order])), [models]);
+
+  // Un grupo por producto, con las variantes que pasan los filtros. Un producto
+  // recién creado todavía no tiene variantes: se muestra igual (si no, no hay
+  // forma de cargárselas), salvo que haya un filtro de modelo o de stock.
+  const filteredGroups = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const entries: { product: AdminProduct; variant: AdminVariant }[] = [];
+    const filteringVariants = selectedModelId !== "" || stockFilter !== "all";
+    const result: { product: AdminProduct; variants: AdminVariant[] }[] = [];
 
     for (const product of products) {
-      const nameMatches = term === "" || product.name.toLowerCase().includes(term);
-      if (!nameMatches) continue;
+      if (term !== "" && !product.name.toLowerCase().includes(term)) continue;
 
-      for (const variant of product.product_variants) {
-        const modelMatches =
-          selectedModelId === ""
-            ? true
-            : selectedModelId === UNIVERSAL
-              ? variant.iphone_model_id === null
-              : variant.iphone_model_id === selectedModelId;
-        if (!modelMatches) continue;
+      const variants = product.product_variants.filter((variant) => {
+        if (selectedModelId === UNIVERSAL && variant.iphone_model_id !== null) return false;
+        if (selectedModelId !== "" && selectedModelId !== UNIVERSAL && variant.iphone_model_id !== selectedModelId)
+          return false;
+        if (stockFilter === "zero" && variant.stock_quantity !== 0) return false;
+        if (stockFilter === "positive" && variant.stock_quantity <= 0) return false;
+        return true;
+      });
 
-        if (stockFilter === "zero" && variant.stock_quantity !== 0) continue;
-        if (stockFilter === "positive" && variant.stock_quantity <= 0) continue;
+      if (variants.length === 0 && (filteringVariants || product.product_variants.length > 0)) continue;
 
-        entries.push({ product, variant });
-      }
+      const modelOrder = (v: AdminVariant) =>
+        v.iphone_model_id === null ? Infinity : modelOrderById.get(v.iphone_model_id) ?? Infinity;
+      variants.sort((a, b) => {
+        const byModel = modelOrder(a) - modelOrder(b);
+        // Infinity - Infinity es NaN: dos variantes sin modelo empatan.
+        if (byModel) return byModel;
+        return (a.color ?? "").localeCompare(b.color ?? "", "es");
+      });
+
+      result.push({ product, variants });
     }
 
-    entries.sort((a, b) => {
-      const byName = a.product.name.localeCompare(b.product.name, "es");
-      if (byName !== 0) return byName;
-      return (a.variant.color ?? "").localeCompare(b.variant.color ?? "", "es");
-    });
+    result.sort((a, b) => a.product.name.localeCompare(b.product.name, "es"));
+    return result;
+  }, [products, selectedModelId, stockFilter, search, modelOrderById]);
 
-    return entries;
-  }, [products, selectedModelId, stockFilter, search]);
+  const filteredVariantCount = filteredGroups.reduce((sum, g) => sum + g.variants.length, 0);
 
-  const filteredProductCount = useMemo(
-    () => new Set(filteredEntries.map((e) => e.product.id)).size,
-    [filteredEntries],
-  );
-
-  const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
+  // Se pagina por producto, no por variante: paginar variantes dejaba páginas
+  // con 2 tarjetas y otras con 5 según cuántas variantes tuviera cada producto.
+  const totalPages = Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageEntries = filteredEntries.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const groups = filteredGroups.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, { product: AdminProduct; variants: AdminVariant[] }>();
-    for (const { product, variant } of pageEntries) {
-      const group = map.get(product.id);
-      if (group) {
-        group.variants.push(variant);
-      } else {
-        map.set(product.id, { product, variants: [variant] });
-      }
-    }
-    return [...map.values()];
-  }, [pageEntries]);
+  // Cambiar de página vuelve arriba y deja abierta la primera tarjeta de la página.
+  function goToPage(next: number) {
+    setPage(Math.min(totalPages, Math.max(1, next)));
+    setOpenId(undefined);
+    window.scrollTo({ top: 0 });
+  }
 
   const selectedProduct = products.find((p) => p.id === productId);
   const addModelName =
@@ -325,8 +323,8 @@ export default function CatalogoPage() {
         <div>
           <h1 className={ADMIN_PAGE_TITLE}>Catálogo y stock</h1>
           <p className={ADMIN_PAGE_SUBTITLE}>
-            {filteredProductCount === 1 ? "1 producto" : `${filteredProductCount} productos`} ·{" "}
-            {filteredEntries.length === 1 ? "1 variante" : `${filteredEntries.length} variantes`}
+            {filteredGroups.length === 1 ? "1 producto" : `${filteredGroups.length} productos`} ·{" "}
+            {filteredVariantCount === 1 ? "1 variante" : `${filteredVariantCount} variantes`}
           </p>
         </div>
         <button type="button" onClick={() => openAddDialog()} className={adminButton("primary")}>
@@ -607,7 +605,11 @@ export default function CatalogoPage() {
                       {outs > 0 && <span className="font-semibold text-admin-danger">· {outs} sin stock</span>}
                       <span className="hidden lg:inline">
                         · {categoryPath(product.category_id)} ·{" "}
-                        {prices.length === 1 ? formatPrice(prices[0]) : "varios precios"}
+                        {prices.length === 0
+                          ? "sin precio"
+                          : prices.length === 1
+                            ? formatPrice(prices[0])
+                            : "varios precios"}
                       </span>
                     </span>
                   </span>
@@ -644,24 +646,30 @@ export default function CatalogoPage() {
                           onChange={(images) => patchProductInState(product.id, { product_images: images })}
                         />
                       </EditorSection>
-                      <EditorSection title="Precio">
-                        <BulkPriceEditor
-                          productId={product.id}
-                          productName={product.name}
-                          variantCount={all.length}
-                          onApplied={(updated) => applyVariantPrices(product.id, updated)}
-                        />
-                      </EditorSection>
+                      {all.length > 0 && (
+                        <EditorSection title="Precio">
+                          <BulkPriceEditor
+                            productId={product.id}
+                            productName={product.name}
+                            variantCount={all.length}
+                            onApplied={(updated) => applyVariantPrices(product.id, updated)}
+                          />
+                        </EditorSection>
+                      )}
                     </div>
 
                     <EditorSection
                       title={`Variantes (${variants.length}${variants.length !== all.length ? ` de ${all.length}` : ""})`}
                     >
-                      <div className="hidden grid-cols-[minmax(0,1fr)_108px_140px] gap-2 text-xs text-admin-muted lg:grid">
-                        <span>Modelo · color · SKU</span>
-                        <span className="text-right">Stock</span>
-                        <span className="text-right">Precio</span>
-                      </div>
+                      {all.length === 0 ? (
+                        <p className={ADMIN_EMPTY}>Todavía no tiene variantes. Agregale la primera.</p>
+                      ) : (
+                        <div className="hidden grid-cols-[minmax(0,1fr)_108px_140px] gap-2 text-xs text-admin-muted lg:grid">
+                          <span>Modelo · color · SKU</span>
+                          <span className="text-right">Stock</span>
+                          <span className="text-right">Precio</span>
+                        </div>
+                      )}
                       <ul className="divide-y divide-admin-border">
                         {variants.map((v) => {
                           const modelName = v.iphone_model_id ? modelNameById.get(v.iphone_model_id) : "Sin modelo";
@@ -718,19 +726,24 @@ export default function CatalogoPage() {
         <div className="flex items-center justify-between gap-3 pt-2">
           <button
             type="button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => goToPage(currentPage - 1)}
             disabled={currentPage <= 1}
             className={adminButton("secondary")}
           >
             <ChevronLeft aria-hidden="true" className="size-[18px]" />
             Anterior
           </button>
-          <span className={ADMIN_TEXT_MUTED}>
+          <span className={`text-center ${ADMIN_TEXT_MUTED}`}>
             Página {currentPage} de {totalPages}
+            <span className="hidden sm:inline">
+              {" "}
+              · productos {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, filteredGroups.length)} de {filteredGroups.length}
+            </span>
           </span>
           <button
             type="button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            onClick={() => goToPage(currentPage + 1)}
             disabled={currentPage >= totalPages}
             className={adminButton("secondary")}
           >
