@@ -519,7 +519,7 @@ export default function ComprasPage() {
           )}
         </div>
 
-        <aside className="min-w-0 lg:sticky lg:top-[88px]">{summary}</aside>
+        <aside className="min-w-0 lg:sticky lg:top-8">{summary}</aside>
       </div>
     </div>
   );

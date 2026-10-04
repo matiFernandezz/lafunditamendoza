@@ -115,7 +115,7 @@ export default function CartPanel({
         <button
           type="button"
           onClick={() => onOpenChange(true)}
-          className="fixed inset-x-4 bottom-[calc(4rem+env(safe-area-inset-bottom)+0.75rem)] z-[35] flex h-[60px] items-center justify-between rounded-md bg-admin-ink pl-[18px] pr-4 text-white shadow-[0_8px_24px_rgb(0_0_0/0.18)] md:hidden"
+          className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-[35] flex h-[60px] items-center justify-between rounded-md bg-admin-ink pl-[18px] pr-4 text-white shadow-[0_8px_24px_rgb(0_0_0/0.18)] md:hidden"
         >
           <span className="flex items-center gap-2.5 text-[15px] font-semibold">
             <span className="flex h-[26px] min-w-[26px] items-center justify-center rounded-full bg-white px-1.5 font-mono text-sm font-bold text-black">
@@ -138,7 +138,7 @@ export default function CartPanel({
         aria-label="Venta actual"
         className={`fixed inset-x-0 bottom-0 z-50 max-h-[92vh] overflow-y-auto rounded-t-[14px] bg-white px-4 pb-6 pt-2 transition-transform duration-200 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
-        } md:sticky md:top-[72px] md:z-auto md:max-h-[calc(100vh-6rem)] md:w-[360px] md:shrink-0 md:translate-y-0 md:rounded-md md:border md:border-admin-border md:p-5 lg:top-[88px] lg:w-[400px]`}
+        } md:sticky md:top-[72px] md:z-auto md:max-h-[calc(100vh-6rem)] md:w-[360px] md:shrink-0 md:translate-y-0 md:rounded-md md:border md:border-admin-border md:p-5 lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:w-[400px]`}
       >
         <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded bg-admin-border-strong md:hidden" />
 
