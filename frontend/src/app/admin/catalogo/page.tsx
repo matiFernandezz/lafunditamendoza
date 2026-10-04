@@ -597,7 +597,10 @@ export default function CatalogoPage() {
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block break-words text-base font-semibold text-admin-text">{product.name}</span>
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-base font-semibold text-admin-text">
+                      {product.name}
+                      {product.product_images.length === 0 && <span className={adminBadge("warn")}>Sin foto</span>}
+                    </span>
                     <span className={`mt-0.5 flex flex-wrap gap-x-1.5 ${ADMIN_TEXT_MUTED}`}>
                       <span>
                         {all.length === 1 ? "1 variante" : `${all.length} variantes`} · {units} u.
