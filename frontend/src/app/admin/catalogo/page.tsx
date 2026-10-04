@@ -8,8 +8,8 @@ import {
   getAdminCategories,
   getAdminIphoneModels,
   getAdminProducts,
-  updateVariantPrice,
-  updateVariantStock,
+  updateProduct,
+  updateVariant,
   type AdminCategory,
   type AdminIphoneModel,
   type AdminProduct,
@@ -19,7 +19,6 @@ import { formatPrice } from "@/lib/format";
 import AdminNotice from "../AdminNotice";
 import { categoryPathById } from "../categoryPath";
 import {
-  ADMIN_CAP,
   ADMIN_EMPTY,
   ADMIN_INPUT,
   ADMIN_INPUT_ADORNMENT,
@@ -35,12 +34,8 @@ import {
 } from "../adminStyles";
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
-import { displayColor } from "../ventas/utils";
-import BulkPriceEditor from "./BulkPriceEditor";
-import ProductImageGallery from "./ProductImageGallery";
-import ProductDescriptionEditor from "./ProductDescriptionEditor";
-import ProductNameEditor from "./ProductNameEditor";
-import VariantNumberInput from "./VariantNumberInput";
+import ProductEditor from "./ProductEditor";
+import { EMPTY_DRAFT, draftChanges, type CatalogDraft } from "./catalogDraft";
 
 const UNIVERSAL = "__universal__";
 // Productos (tarjetas) por página: todas las páginas traen la misma cantidad.
@@ -81,6 +76,13 @@ export default function CatalogoPage() {
   const [page, setPage] = useState(1);
   // Tarjeta desplegada; null = todas cerradas (así arranca cada página).
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Cambios sin guardar por producto (ver catalogDraft). Sobreviven a cerrar
+  // la tarjeta o cambiar de página: la tarjeta queda marcada "Sin guardar".
+  const [drafts, setDrafts] = useState<Record<string, CatalogDraft>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<{ productId: string; message: string } | null>(null);
 
   // Formulario de "agregar variante nueva"
   const [productId, setProductId] = useState("");
@@ -159,20 +161,90 @@ export default function CatalogoPage() {
     setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)));
   }
 
-  function applyVariantPrices(productId: string, updated: Pick<AdminVariant, "id" | "price">[]) {
-    const priceById = new Map(updated.map((v) => [v.id, v.price]));
+  function updateDraft(productId: string, update: (draft: CatalogDraft) => CatalogDraft) {
+    setDrafts((prev) => ({ ...prev, [productId]: update(prev[productId] ?? EMPTY_DRAFT) }));
+    setSaveError(null);
+    setSavedId(null);
+  }
+
+  function discardDraft(productId: string) {
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[productId];
+      return next;
+    });
+    setSaveError(null);
+  }
+
+  // Guarda de una vez todo lo que cambió en el producto: nombre, descripción y
+  // el stock y precio de cada variante tocada. Lo que se guardó sale del
+  // borrador; si algo falla, ese campo queda marcado para reintentar.
+  async function handleSave(product: AdminProduct) {
+    const draft = drafts[product.id] ?? EMPTY_DRAFT;
+    const changes = draftChanges(product, draft);
+    if (savingId !== null || changes.invalid.size > 0 || changes.count === 0) return;
+
+    setSavingId(product.id);
+    setSaveError(null);
+    setSavedId(null);
+
+    const hasProductPatch = Object.keys(changes.productPatch).length > 0;
+    const [productResult, ...variantResults] = await Promise.allSettled([
+      hasProductPatch ? updateProduct(product.id, changes.productPatch) : Promise.resolve(null),
+      ...changes.variants.map(({ id, ...patch }) => updateVariant(id, patch)),
+    ]);
+
+    const failures: unknown[] = [];
+    const saved = new Map<string, AdminVariant>();
+    variantResults.forEach((result, index) => {
+      if (result.status === "fulfilled" && result.value) saved.set(changes.variants[index].id, result.value.data);
+      else if (result.status === "rejected") failures.push(result.reason);
+    });
+    const productSaved = productResult.status === "fulfilled" ? productResult.value?.data ?? null : null;
+    if (productResult.status === "rejected") failures.push(productResult.reason);
+
     setProducts((prev) =>
       prev.map((p) =>
-        p.id !== productId
+        p.id !== product.id
           ? p
           : {
               ...p,
-              product_variants: p.product_variants.map((v) =>
-                priceById.has(v.id) ? { ...v, price: priceById.get(v.id)! } : v,
-              ),
+              ...(productSaved ? { name: productSaved.name, description: productSaved.description } : {}),
+              product_variants: p.product_variants.map((v) => {
+                const fresh = saved.get(v.id);
+                return fresh ? { ...v, stock_quantity: fresh.stock_quantity, price: fresh.price } : v;
+              }),
             },
       ),
     );
+
+    setDrafts((prev) => {
+      const current = prev[product.id];
+      if (!current) return prev;
+      const rest: CatalogDraft = { ...current, stock: { ...current.stock }, price: { ...current.price } };
+      if (productResult.status === "fulfilled") {
+        delete rest.name;
+        delete rest.description;
+      }
+      for (const id of saved.keys()) {
+        delete rest.stock[id];
+        delete rest.price[id];
+      }
+      return { ...prev, [product.id]: rest };
+    });
+
+    if (failures.length > 0) {
+      setSaveError({
+        productId: product.id,
+        message: `${
+          failures.length === 1 ? "No se pudo guardar 1 cambio" : `No se pudieron guardar ${failures.length} cambios`
+        }: ${errorMessage(failures[0]).replace(/\.?$/, ".")} El resto quedó guardado.`,
+      });
+    } else {
+      setSavedId(product.id);
+      setTimeout(() => setSavedId((id) => (id === product.id ? null : id)), 2500);
+    }
+    setSavingId(null);
   }
 
   const categoryPath = useMemo(() => categoryPathById(categories), [categories]);
@@ -447,7 +519,7 @@ export default function CatalogoPage() {
 
           <div>
             <label htmlFor="catalogo-color" className={ADMIN_LABEL}>
-              Color
+              Descripción
             </label>
             <input
               id="catalogo-color"
@@ -457,10 +529,10 @@ export default function CatalogoPage() {
                 setColor(e.target.value);
                 setVariantError(null);
               }}
-              placeholder="Ej.: rosa"
+              placeholder="Ej.: rosa, tipo C a C, 20W"
               className={ADMIN_INPUT}
             />
-            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>Opcional. Vacío = color único.</p>
+            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>Opcional: color, tipo o lo que distinga a esta variante. Vacío = variante única.</p>
           </div>
 
           <div>
@@ -480,7 +552,7 @@ export default function CatalogoPage() {
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
-                "Sugerido según producto, modelo y color. Podés editarlo."
+                "Sugerido según producto, modelo y descripción. Podés editarlo."
               ) : (
                 <>
                   Editado a mano.{" "}
@@ -575,9 +647,11 @@ export default function CatalogoPage() {
             const prices = [...new Set(all.map((v) => v.price))];
             const thumb = [...product.product_images].sort((a, b) => a.sort_order - b.sort_order)[0]?.url;
             const panelId = `producto-${product.id}`;
+            const draft = drafts[product.id] ?? EMPTY_DRAFT;
+            const unsaved = draftChanges(product, draft).dirty;
 
             return (
-              <li key={product.id} className="min-w-0 overflow-hidden rounded-md border border-admin-border bg-white">
+              <li key={product.id} className="min-w-0 overflow-clip rounded-md border border-admin-border bg-white">
                 <button
                   type="button"
                   onClick={() => setOpenId(open ? null : product.id)}
@@ -597,6 +671,7 @@ export default function CatalogoPage() {
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-base font-semibold text-admin-text">
                       {product.name}
                       {product.product_images.length === 0 && <span className={adminBadge("warn")}>Sin foto</span>}
+                      {unsaved && <span className={adminBadge("ink")}>Sin guardar</span>}
                     </span>
                     <span className={`mt-0.5 flex flex-wrap gap-x-1.5 ${ADMIN_TEXT_MUTED}`}>
                       <span>
@@ -620,100 +695,21 @@ export default function CatalogoPage() {
                 </button>
 
                 {open && (
-                  <div
-                    id={panelId}
-                    className="grid items-start gap-6 border-t border-admin-border p-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-8 lg:p-6"
-                  >
-                    <div className="flex min-w-0 flex-col gap-6">
-                      <EditorSection title="Nombre">
-                        <ProductNameEditor
-                          productId={product.id}
-                          name={product.name}
-                          onSaved={(name) => patchProductInState(product.id, { name })}
-                        />
-                      </EditorSection>
-                      <EditorSection title="Descripción en la web">
-                        <ProductDescriptionEditor
-                          productId={product.id}
-                          description={product.description}
-                          onSaved={(description) => patchProductInState(product.id, { description })}
-                        />
-                      </EditorSection>
-                      <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
-                        <ProductImageGallery
-                          productId={product.id}
-                          images={product.product_images}
-                          onChange={(images) => patchProductInState(product.id, { product_images: images })}
-                        />
-                      </EditorSection>
-                      {all.length > 0 && (
-                        <EditorSection title="Precio">
-                          <BulkPriceEditor
-                            productId={product.id}
-                            productName={product.name}
-                            variantCount={all.length}
-                            onApplied={(updated) => applyVariantPrices(product.id, updated)}
-                          />
-                        </EditorSection>
-                      )}
-                    </div>
-
-                    <EditorSection
-                      title={`Variantes (${variants.length}${variants.length !== all.length ? ` de ${all.length}` : ""})`}
-                    >
-                      {all.length === 0 ? (
-                        <p className={ADMIN_EMPTY}>Todavía no tiene variantes. Agregale la primera.</p>
-                      ) : (
-                        <div className="hidden grid-cols-[minmax(0,1fr)_108px_140px] gap-2 text-xs text-admin-muted lg:grid">
-                          <span>Modelo · color · SKU</span>
-                          <span className="text-right">Stock</span>
-                          <span className="text-right">Precio</span>
-                        </div>
-                      )}
-                      <ul className="divide-y divide-admin-border">
-                        {variants.map((v) => {
-                          const modelName = v.iphone_model_id ? modelNameById.get(v.iphone_model_id) : "Sin modelo";
-                          const detail = [modelName, displayColor(v.color)].filter(Boolean).join(" · ");
-                          return (
-                            <li
-                              key={v.id}
-                              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-start gap-2 py-3 first:pt-0 lg:grid-cols-[minmax(0,1fr)_108px_140px]"
-                            >
-                              <div className="col-span-2 min-w-0 lg:col-span-1 lg:self-center">
-                                <span className="flex flex-wrap items-center gap-2">
-                                  <span className="text-[15px] font-semibold text-admin-text">{detail}</span>
-                                  {v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
-                                </span>
-                                <span className="mt-0.5 block font-mono text-xs text-admin-muted">{v.sku}</span>
-                              </div>
-                              {/* El stock guardado no se sube al estado a propósito: con el
-                                  filtro "Sin stock" la fila desaparecería al guardar. */}
-                              <VariantNumberInput
-                                kind="stock"
-                                label={`Stock ${detail}`}
-                                value={v.stock_quantity}
-                                save={(stock) => updateVariantStock(v.id, stock)}
-                              />
-                              <VariantNumberInput
-                                kind="price"
-                                label={`Precio ${detail}`}
-                                value={v.price}
-                                save={(price) => updateVariantPrice(v.id, price)}
-                                onSaved={(price) => applyVariantPrices(product.id, [{ ...v, price }])}
-                              />
-                            </li>
-                          );
-                        })}
-                      </ul>
-                      <button
-                        type="button"
-                        onClick={() => openAddDialog(product.id)}
-                        className={`${adminButton("secondary")} w-full`}
-                      >
-                        <Plus aria-hidden="true" className="size-[18px]" />
-                        Agregar variante
-                      </button>
-                    </EditorSection>
+                  <div id={panelId}>
+                    <ProductEditor
+                      product={product}
+                      variants={variants}
+                      draft={draft}
+                      onDraftChange={(update) => updateDraft(product.id, update)}
+                      modelNameById={modelNameById}
+                      saving={savingId === product.id}
+                      error={saveError?.productId === product.id ? saveError.message : null}
+                      justSaved={savedId === product.id}
+                      onSave={() => handleSave(product)}
+                      onDiscard={() => discardDraft(product.id)}
+                      onImagesChange={(images) => patchProductInState(product.id, { product_images: images })}
+                      onAddVariant={() => openAddDialog(product.id)}
+                    />
                   </div>
                 )}
               </li>
@@ -753,14 +749,5 @@ export default function CatalogoPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function EditorSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="flex min-w-0 flex-col gap-2.5">
-      <h3 className={ADMIN_CAP}>{title}</h3>
-      {children}
-    </section>
   );
 }

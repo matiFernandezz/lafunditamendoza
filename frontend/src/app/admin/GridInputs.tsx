@@ -8,6 +8,8 @@ type Props = {
   label: string;
   caption?: string;
   invalid?: boolean;
+  /** Cambió y falta guardar: borde negro. */
+  dirty?: boolean;
   disabled?: boolean;
   id?: string;
   className?: string;
@@ -19,7 +21,7 @@ function Caption({ text }: { text?: string }) {
 }
 
 /** Monto en pesos: "$" adelante, teclado decimal en el celular. */
-export function MoneyInput({ value, onChange, label, caption, invalid, disabled, id, className = "" }: Props) {
+export function MoneyInput({ value, onChange, label, caption, invalid, dirty, disabled, id, className = "" }: Props) {
   return (
     <label className={`block min-w-0 ${className}`}>
       <Caption text={caption} />
@@ -39,7 +41,7 @@ export function MoneyInput({ value, onChange, label, caption, invalid, disabled,
           aria-invalid={invalid || undefined}
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
-          className={adminInput({ prefix: "text", align: "right", mono: true, state: invalid ? "error" : null })}
+          className={adminInput({ prefix: "text", align: "right", mono: true, state: invalid ? "error" : dirty ? "dirty" : null })}
         />
       </span>
     </label>
@@ -56,6 +58,7 @@ export function UnitsInput({
   label,
   caption,
   invalid,
+  dirty,
   disabled,
   id,
   className = "",
@@ -78,7 +81,7 @@ export function UnitsInput({
           onChange={(e) => onChange(e.target.value)}
           placeholder="0"
           {...(purchaseNav ? { ...QUANTITY_INPUT, onKeyDown: handleQuantityKeyDown } : {})}
-          className={adminInput({ suffix: true, align: "right", mono: true, state: invalid ? "error" : null })}
+          className={adminInput({ suffix: true, align: "right", mono: true, state: invalid ? "error" : dirty ? "dirty" : null })}
         />
         <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} right-3.5`}>
           u.

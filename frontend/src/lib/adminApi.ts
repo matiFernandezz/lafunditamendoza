@@ -309,20 +309,14 @@ export function createProductVariant(payload: {
   });
 }
 
-export function updateVariantStock(
+/** Cambia el stock y/o el precio de una variante. */
+export function updateVariant(
   id: string,
-  stock_quantity: number,
+  patch: { stock_quantity?: number; price?: number },
 ): Promise<{ data: AdminVariant }> {
   return adminFetch(`/api/product-variants/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ stock_quantity }),
-  });
-}
-
-export function updateVariantPrice(id: string, price: number): Promise<{ data: AdminVariant }> {
-  return adminFetch(`/api/product-variants/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ price }),
+    body: JSON.stringify(patch),
   });
 }
 
@@ -337,18 +331,14 @@ export function updateProductPrice(
   });
 }
 
-export function updateProductName(id: string, name: string): Promise<{ data: AdminProduct }> {
+/** Cambia el nombre y/o la descripción. Una descripción vacía la borra. */
+export function updateProduct(
+  id: string,
+  patch: { name?: string; description?: string },
+): Promise<{ data: AdminProduct }> {
   return adminFetch(`/api/products/${id}`, {
     method: "PATCH",
-    body: JSON.stringify({ name }),
-  });
-}
-
-/** Texto vacío borra la descripción. */
-export function updateProductDescription(id: string, description: string): Promise<{ data: AdminProduct }> {
-  return adminFetch(`/api/products/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ description }),
+    body: JSON.stringify(patch),
   });
 }
 
