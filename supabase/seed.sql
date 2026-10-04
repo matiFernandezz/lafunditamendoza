@@ -3,26 +3,35 @@
 -- Solo datos reales de catálogo: sin productos, variantes, proveedores ni
 -- movimientos de prueba.
 
--- Categorías (IDs fijos: las referencian los productos). El on conflict
--- actualiza nombre y padre si cambian, para poder reaplicar el seed tras una
--- reestructuración sin perder el id (ni las referencias de productos ya cargados).
-insert into categories (id, name, parent_id) values
-  ('11111111-1111-1111-1111-111111111111', 'Fundas', null),
-  ('11111111-1111-1111-1111-111111111112', 'Accesorios', null),
-  ('11111111-1111-1111-1111-111111111121', 'Transparentes', '11111111-1111-1111-1111-111111111111'),
-  ('11111111-1111-1111-1111-111111111122', 'De diseño', '11111111-1111-1111-1111-111111111111'),
-  ('11111111-1111-1111-1111-111111111123', 'De silicona', '11111111-1111-1111-1111-111111111111'),
-  ('11111111-1111-1111-1111-111111111131', 'Cargadores y cables', null)
-on conflict (id) do update set name = excluded.name, parent_id = excluded.parent_id;
-
--- "Vidrios templados" deja de ser categoría: el vidrio templado pasa a ser un
--- producto más dentro de Accesorios. Solo se borra si no quedó ningún producto
--- cargado ahí (si alguna vez se cargó uno, el delete no hace nada y no rompe el seed).
+-- Categorías (IDs fijos: las referencian los productos). El menú de la
+-- tienda son las dos de tope (Fundas, Accesorios); sus hijas son los "tipos"
+-- que se filtran con chips. El on conflict actualiza nombre, slug, padre y
+-- orden, para poder reaplicar el seed tras una reestructuración sin perder el
+-- id (ni las referencias de productos ya cargados). El slug va explícito: el
+-- trigger que lo calcula solo corre al insertar.
+-- Resto de una estructura anterior: una "Vidrios templados" de tope con otro id.
+-- Si quedó vacía se borra antes, para que no choque el slug con la nueva.
 delete from categories
   where id = '11111111-1111-1111-1111-111111111132'
     and not exists (
       select 1 from products where category_id = '11111111-1111-1111-1111-111111111132'
     );
+
+insert into categories (id, name, slug, parent_id, sort_order) values
+  ('11111111-1111-1111-1111-111111111111', 'Fundas', 'fundas', null, 1),
+  ('11111111-1111-1111-1111-111111111112', 'Accesorios', 'accesorios', null, 2),
+  ('11111111-1111-1111-1111-111111111123', 'Silicona', 'silicona', '11111111-1111-1111-1111-111111111111', 1),
+  ('11111111-1111-1111-1111-111111111121', 'Transparentes', 'transparentes', '11111111-1111-1111-1111-111111111111', 2),
+  ('11111111-1111-1111-1111-111111111122', 'Diseño', 'diseno', '11111111-1111-1111-1111-111111111111', 3),
+  ('11111111-1111-1111-1111-111111111141', 'Lentes de cámara', 'lentes-de-camara', '11111111-1111-1111-1111-111111111112', 1),
+  ('11111111-1111-1111-1111-111111111142', 'Vidrios templados', 'vidrios-templados', '11111111-1111-1111-1111-111111111112', 2),
+  ('11111111-1111-1111-1111-111111111143', 'Straps', 'straps', '11111111-1111-1111-1111-111111111112', 3),
+  ('11111111-1111-1111-1111-111111111144', 'Soportes', 'soportes', '11111111-1111-1111-1111-111111111112', 4),
+  ('11111111-1111-1111-1111-111111111145', 'Auriculares', 'auriculares', '11111111-1111-1111-1111-111111111112', 5),
+  ('11111111-1111-1111-1111-111111111131', 'Cargadores y cables', 'cargadores-y-cables', '11111111-1111-1111-1111-111111111112', 6),
+  ('11111111-1111-1111-1111-111111111146', 'Protectores de cargador', 'protectores-de-cargador', '11111111-1111-1111-1111-111111111112', 7)
+on conflict (id) do update
+  set name = excluded.name, slug = excluded.slug, parent_id = excluded.parent_id, sort_order = excluded.sort_order;
 
 -- Modelos de iPhone, de iPhone 11 a iPhone 18 Pro Max, en orden de aparición
 -- (dentro de cada línea: base, Air, Pro, Pro Max).

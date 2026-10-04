@@ -58,10 +58,10 @@ type ProductDef = { name: string; category: string; entries: Entry[] };
 const U = ['Único'];
 
 const products: ProductDef[] = [
-  // ------------------------------------------------------------ De diseño --
+  // --------------------------------------------------------------- Diseño --
   {
     name: 'Estelar Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: U, price: 9500 },
       { models: ['IP13', 'IP14'], colors: U, price: 9500 },
@@ -78,7 +78,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Chessy Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: U, price: 9000 },
       { models: ['IP13', 'IP14'], colors: U, price: 9000 },
@@ -95,7 +95,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Lines Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: U, price: 9000 },
       { models: ['IP13', 'IP14'], colors: U, price: 9000 },
@@ -117,7 +117,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'MagCase',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: ['blanco', 'bordo', 'rosa'], price: 8000 },
       { models: ['IP17'], colors: ['bordo'], price: 8000 },
@@ -134,7 +134,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Wave Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: ['bordo', 'rosa'], price: 9000 },
       { models: ['IP13', 'IP14'], colors: ['cherry', 'marrón', 'rosa'], price: 9000 },
@@ -152,7 +152,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Loop Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: U, price: 8800 },
       { models: ['IP13', 'IP14'], colors: U, price: 8800 },
@@ -169,7 +169,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Smoky Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: ['gris', 'verde'], price: 8500 },
       { models: ['IP11'], colors: ['gris', 'verde'], price: 8500 },
@@ -184,7 +184,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Star Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: ['negro', 'plateado'], price: 8000 },
       { models: ['IP13', 'IP14'], colors: ['negro', 'plateado'], price: 8000 },
@@ -200,7 +200,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Fire Case Mate',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13PRO'], colors: ['negro', 'plateado'], price: 9999 },
       { models: ['IP12', 'IP12PRO'], colors: ['negro', 'plateado'], price: 9999 },
@@ -214,7 +214,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Funda Cerecita',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 10000 },
       { models: ['IP17PROMAX'], colors: U, price: 10000 },
@@ -228,7 +228,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Funda Smile',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 10000 },
       { models: ['IP17PROMAX'], colors: U, price: 10000 },
@@ -242,7 +242,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Cherry Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 8500 },
       { models: ['IP17PROMAX'], colors: U, price: 8500 },
@@ -256,7 +256,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Leather Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 10500 },
       { models: ['IP16PROMAX'], colors: U, price: 10500 },
@@ -269,7 +269,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Gum Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 10000 },
       { models: ['IP11'], colors: U, price: 10000 },
@@ -284,7 +284,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Ring Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 9999 },
       { models: ['IP16PROMAX'], colors: U, price: 9999 },
@@ -296,7 +296,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Shiny Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 9000 },
       { models: ['IP16PROMAX'], colors: U, price: 9000 },
@@ -310,7 +310,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Cowy Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: U, price: 8999 },
       { models: ['IP11'], colors: U, price: 8999 },
@@ -326,7 +326,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'MagMatte',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP13', 'IP14'], colors: ['blanco', 'celeste'], price: 8499 },
       { models: ['IP11'], colors: ['blanco', 'azul', 'celeste'], price: 8499 },
@@ -342,7 +342,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Rave Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP12', 'IP12PRO'], colors: ['violeta'], price: 9999 },
       { models: ['IP11'], colors: ['blanco', 'violeta', 'azul'], price: 9999 },
@@ -358,7 +358,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Metal Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP17PROMAX'], colors: U, price: 15000 },
       { models: ['IP17PRO'], colors: U, price: 15000 },
@@ -368,7 +368,7 @@ const products: ProductDef[] = [
   },
   {
     name: 'Print Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [
       { models: ['IP17'], colors: U, price: 9000 },
       { models: ['IP16PROMAX'], colors: U, price: 9000 },
@@ -382,14 +382,14 @@ const products: ProductDef[] = [
   },
   {
     name: 'Road Case',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [{ models: ['IP16PRO'], colors: U, price: 5500 }],
   },
   {
     // Confirmado con el dueño: es una funda de silicona con correa incluida,
     // con nombre propio -- mismo criterio que "Road Case", no "Accesorios".
     name: 'MagSafe Silicona Correa',
-    category: 'De diseño',
+    category: 'Diseño',
     entries: [{ models: ['IP15PROMAX'], colors: U, price: 5500 }],
   },
 
@@ -464,10 +464,10 @@ const products: ProductDef[] = [
     ],
   },
 
-  // ------------------------------------------------------------ De silicona --
+  // --------------------------------------------------------------- Silicona --
   {
     name: 'Silicona',
-    category: 'De silicona',
+    category: 'Silicona',
     entries: [
       // iPhone 13 Pro
       { models: ['IP13PRO'], colors: ['vinotinto', 'marrón', 'azul marino', 'rosa', 'verde agua', 'morada', 'negra'], price: 6500 },
@@ -525,57 +525,57 @@ const products: ProductDef[] = [
   },
   {
     name: 'Funda Cargador + Comecable',
-    category: 'Cargadores y cables',
+    category: 'Protectores de cargador',
     entries: [
       { models: null, colors: ['BOB', 'BATMAN', 'CAP AMÉRICA', 'IRON MAN'], price: 6500 },
     ],
   },
   {
     name: 'Funda cargador + comecables',
-    category: 'Cargadores y cables',
+    category: 'Protectores de cargador',
     entries: [{ models: null, colors: ['rosa', 'cereza'], price: 7000 }],
   },
   {
     name: 'COMBO Funda + Funda Cargador',
-    category: 'Cargadores y cables',
+    category: 'Protectores de cargador',
     entries: [{ models: null, colors: ['rosa', 'cereza'], price: 15000 }],
   },
   {
     name: 'Funda Cargador STRASS',
-    category: 'Cargadores y cables',
+    category: 'Protectores de cargador',
     entries: [{ models: null, colors: U, price: 7500 }],
   },
 
   // ------------------------------------------------------------ Accesorios --
   {
     name: 'AirPods Pro 2da Generación',
-    category: 'Accesorios',
+    category: 'Auriculares',
     entries: [{ models: null, colors: U, price: 40000 }],
   },
   {
     name: 'Straps/Correas perlas',
-    category: 'Accesorios',
+    category: 'Straps',
     entries: [{ models: null, colors: U, price: 5000 }],
   },
   {
     name: 'Soporte Ventosa Doble',
-    category: 'Accesorios',
+    category: 'Soportes',
     entries: [{ models: null, colors: U, price: 3500 }],
   },
   // *** SUPUESTO (texto truncado en el PDF): ver aviso final ***
   {
     name: 'Vidrio templado Anti Espía',
-    category: 'Accesorios',
+    category: 'Vidrios templados',
     entries: [{ models: ALL_EXCEPT_AIR, colors: U, price: 5000 }],
   },
   {
     name: 'Vidrio templado 9D/SD',
-    category: 'Accesorios',
+    category: 'Vidrios templados',
     entries: [{ models: ALL_EXCEPT_AIR, colors: U, price: 4000 }],
   },
   {
     name: 'Lentes de cámara metalizados',
-    category: 'Accesorios',
+    category: 'Lentes de cámara',
     entries: [{ models: ALL_EXCEPT_AIR, colors: U, price: 3000 }],
   },
   // Depende del modelo (el lente calza sobre el módulo de cámara específico):
@@ -583,7 +583,7 @@ const products: ProductDef[] = [
   // propio para este ítem puntual.
   {
     name: 'Lentes de cámara con Glitter',
-    category: 'Accesorios',
+    category: 'Lentes de cámara',
     entries: [{ models: ALL_EXCEPT_AIR, colors: ['plateado', 'negro', 'dorado'], price: 3000 }],
   },
 ];
@@ -662,7 +662,8 @@ type VariantRow = {
 
 async function main() {
   const categoryIds = new Map<string, string>();
-  for (const catName of ['Transparentes', 'De diseño', 'De silicona', 'Cargadores y cables', 'Accesorios']) {
+  // Las categorías salen de los productos: no hay una lista aparte que mantener.
+  for (const catName of new Set(products.map((p) => p.category))) {
     categoryIds.set(catName, await getCategoryId(catName));
   }
 
