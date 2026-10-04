@@ -248,7 +248,8 @@ as $$
     join product_variants pv on pv.id = pi.variant_id
     order by pi.variant_id, p.purchase_date desc, p.created_at desc
   ) latest
-  order by purchase_date desc, created_at desc;
+  -- Dentro de una misma compra no hay orden entre items: gana el costo más alto.
+  order by purchase_date desc, created_at desc, unit_cost desc;
 $$;
 
 -- Igual que create_sale / create_purchase: solo el servidor (service_role).

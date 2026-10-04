@@ -211,6 +211,40 @@ export function createPurchase(
   });
 }
 
+export type CreatedPurchaseGrid = CreatedPurchase & {
+  /** Productos nuevos creados con la compra; `block` es su posición en `products`. */
+  created_products: { block: number; id: string; name: string }[];
+  created_variants: number;
+  updated_prices: number;
+};
+
+/**
+ * Compra con grilla: varios productos (existentes o nuevos) en una sola
+ * transacción. El body lo arma buildPurchasePayload (compras/purchaseLogic).
+ */
+export function createPurchaseGrid(payload: {
+  supplier_id: string;
+  purchase_date: string;
+  products: unknown[];
+}): Promise<{ data: CreatedPurchaseGrid }> {
+  return adminFetch("/api/purchases", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export type LastPurchaseCost = {
+  variant_id: string;
+  product_id: string;
+  unit_cost: number;
+  purchase_date: string;
+};
+
+/** Último costo de compra por variante, de la compra más nueva a la más vieja. */
+export function getLastPurchaseCosts(): Promise<{ data: LastPurchaseCost[] }> {
+  return adminFetch("/api/purchases/last-costs");
+}
+
 export type AdminCategory = {
   id: string;
   name: string;

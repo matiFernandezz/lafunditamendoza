@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AdminApiError, createSupplier, type Supplier } from "@/lib/adminApi";
 import AdminNotice from "../AdminNotice";
-import { ADMIN_INPUT, ADMIN_INSET, ADMIN_LABEL, adminButton } from "../adminStyles";
+import { ADMIN_INPUT, ADMIN_INSET, ADMIN_LABEL, adminButton, adminInput } from "../adminStyles";
 
 const NEW_SUPPLIER = "__new__";
 
@@ -12,11 +12,14 @@ export default function SupplierField({
   value,
   onChange,
   onCreated,
+  invalid = false,
 }: {
   suppliers: Supplier[];
   value: string;
   onChange: (supplierId: string) => void;
   onCreated: (supplier: Supplier) => void;
+  /** Falta elegirlo: borde rojo. */
+  invalid?: boolean;
 }) {
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
@@ -62,8 +65,9 @@ export default function SupplierField({
         <select
           id="proveedor"
           value={creating ? NEW_SUPPLIER : value}
+          aria-invalid={invalid || undefined}
           onChange={(e) => handleSelect(e.target.value)}
-          className={ADMIN_INPUT}
+          className={adminInput({ state: invalid && !creating ? "error" : null })}
         >
           <option value="">Elegí un proveedor</option>
           {suppliers.map((s) => (
