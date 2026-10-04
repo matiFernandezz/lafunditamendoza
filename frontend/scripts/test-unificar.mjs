@@ -538,8 +538,18 @@ async function main() {
   await api("PATCH", `/api/product-variants/${vA.id}`, { price: 1234 });
 
   eq("GET / -> 200", (await page("/")).status, 200);
-  const cat = await page(`/categoria/${category.slug}`);
-  eq(`GET /categoria/${category.slug} -> 200`, cat.status, 200);
+  // Un tipo (categoría hija) no tiene página propia: es un filtro de su
+  // categoría de tope, y su URL suelta redirige ahí de forma permanente.
+  const parentCategory = categories.find((c) => c.id === category.parent_id);
+  const listPath = parentCategory
+    ? `/categoria/${parentCategory.slug}?tipo=${category.slug}`
+    : `/categoria/${category.slug}`;
+  if (parentCategory) {
+    eq(`GET /categoria/${category.slug} -> 308 (al filtro)`, (await page(`/categoria/${category.slug}`)).status, 308);
+    check("el producto aparece en la categoría de tope (sin filtro)", (await page(`/categoria/${parentCategory.slug}`)).html.includes(MARK));
+  }
+  const cat = await page(listPath);
+  eq(`GET ${listPath} -> 200`, cat.status, 200);
   check("el producto con stock aparece en su categoría", cat.html.includes(MARK));
   const mod = await page(`/modelo/${model.slug}`);
   eq(`GET /modelo/${model.slug} -> 200`, mod.status, 200);
