@@ -25,6 +25,7 @@ type Mode = "list" | "new" | "text";
  * crear uno nuevo ahí mismo. El valor es el nombre del color, que es lo que
  * guarda la variante. "Otra descripción" queda para lo que no es un color
  * ("Tipo C a C"): ese texto no entra en la lista de colores.
+ * La lista se filtra con el buscador de arriba.
  */
 export default function ColorField({
   value,
@@ -34,6 +35,10 @@ export default function ColorField({
   label,
   disabled = false,
   className = "",
+  placeholder = "Sin color",
+  allowEmpty = true,
+  allowText = true,
+  takenIds,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -43,12 +48,21 @@ export default function ColorField({
   label: string;
   disabled?: boolean;
   className?: string;
+  /** Texto del botón cuando no hay nada elegido. */
+  placeholder?: string;
+  /** Ofrecer "Sin color". */
+  allowEmpty?: boolean;
+  /** Ofrecer "Otra descripción (no es un color)". */
+  allowText?: boolean;
+  /** Colores que ya están en uso: se muestran marcados y no se pueden elegir. */
+  takenIds?: Set<string>;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("list");
   const [newName, setNewName] = useState("");
   const [newHex, setNewHex] = useState(DEFAULT_NEW_HEX);
   const [text, setText] = useState("");
+  const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -75,9 +89,15 @@ export default function ColorField({
     };
   }, [open]);
 
+  // Búsqueda por nombre, sin distinguir mayúsculas ni tildes.
+  const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const term = fold(search.trim());
+  const visibleColors = term === "" ? colors : colors.filter((c) => fold(c.name).includes(term));
+
   function toggle() {
     setOpen((o) => !o);
     setMode("list");
+    setSearch("");
     setError(null);
   }
 
@@ -134,7 +154,7 @@ export default function ColorField({
         ) : trimmed !== "" ? (
           <span className="min-w-0 flex-1 truncate">{trimmed}</span>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-admin-muted">Sin color</span>
+          <span className="min-w-0 flex-1 truncate text-admin-muted">{placeholder}</span>
         )}
         <ChevronDown
           aria-hidden="true"
@@ -149,41 +169,77 @@ export default function ColorField({
         >
           {mode === "list" && (
             <>
+              <div className="border-b border-admin-border p-2">
+                <input
+                  type="search"
+                  value={search}
+                  autoFocus
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar color"
+                  aria-label="Buscar color"
+                  className={adminInput()}
+                />
+              </div>
               <ul role="listbox" aria-label={label} className="max-h-60 overflow-y-auto">
-                <li role="option" aria-selected={trimmed === ""}>
-                  <button type="button" onClick={() => pick("")} className={`${option} text-admin-muted`}>
-                    Sin color
-                  </button>
-                </li>
-                {colors.map((color) => (
-                  <li key={color.id} role="option" aria-selected={color.id === selected?.id}>
-                    <button
-                      type="button"
-                      onClick={() => pick(color.name)}
-                      className={`${option} ${color.id === selected?.id ? "bg-admin-bg font-semibold" : ""}`}
-                    >
-                      <ColorDot hex={color.hex} />
-                      <span className="min-w-0 flex-1 break-words">{color.name}</span>
-                      {!color.assigned && <span className={ADMIN_TEXT_MUTED}>sin color asignado</span>}
+                {allowEmpty && term === "" && (
+                  <li role="option" aria-selected={trimmed === ""}>
+                    <button type="button" onClick={() => pick("")} className={`${option} text-admin-muted`}>
+                      Sin color
                     </button>
                   </li>
-                ))}
+                )}
+                {visibleColors.map((color) => {
+                  const taken = takenIds?.has(color.id) ?? false;
+                  return (
+                    <li key={color.id} role="option" aria-selected={color.id === selected?.id} aria-disabled={taken}>
+                      <button
+                        type="button"
+                        onClick={() => pick(color.name)}
+                        disabled={taken}
+                        className={`${option} disabled:opacity-50 disabled:hover:bg-white ${
+                          color.id === selected?.id ? "bg-admin-bg font-semibold" : ""
+                        }`}
+                      >
+                        <ColorDot hex={color.hex} />
+                        <span className="min-w-0 flex-1 break-words">{color.name}</span>
+                        {taken ? (
+                          <span className={ADMIN_TEXT_MUTED}>ya lo tiene</span>
+                        ) : (
+                          !color.assigned && <span className={ADMIN_TEXT_MUTED}>sin color asignado</span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+                {visibleColors.length === 0 && (
+                  <li className={`px-3.5 py-2.5 ${ADMIN_TEXT_MUTED}`}>Ningún color con ese nombre.</li>
+                )}
               </ul>
               <div className="border-t border-admin-border">
-                <button type="button" onClick={() => setMode("new")} className={`${option} font-semibold`}>
-                  <Plus aria-hidden="true" className="size-[18px]" />
-                  Crear color nuevo
-                </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setText(selected ? "" : trimmed);
-                    setMode("text");
+                    // Lo que se venía buscando es, casi seguro, el nombre del color nuevo.
+                    if (visibleColors.length === 0) setNewName(search.trim());
+                    setMode("new");
                   }}
-                  className={`${option} text-admin-muted`}
+                  className={`${option} font-semibold`}
                 >
-                  Otra descripción (no es un color)
+                  <Plus aria-hidden="true" className="size-[18px]" />
+                  Crear color nuevo
                 </button>
+                {allowText && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setText(selected ? "" : trimmed);
+                      setMode("text");
+                    }}
+                    className={`${option} text-admin-muted`}
+                  >
+                    Otra descripción (no es un color)
+                  </button>
+                )}
               </div>
             </>
           )}

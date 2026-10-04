@@ -18,6 +18,7 @@ import {
   adminInput,
 } from "../adminStyles";
 import { displayColor } from "../ventas/utils";
+import ProductColors from "./ProductColors";
 import ProductImageGallery from "./ProductImageGallery";
 import { draftChanges, type CatalogDraft } from "./catalogDraft";
 
@@ -35,6 +36,9 @@ export default function ProductEditor({
   onDraftChange,
   modelNameById,
   colors,
+  colorControls,
+  onColorCreated,
+  onColorsChanged,
   saving,
   error,
   justSaved,
@@ -50,6 +54,13 @@ export default function ProductEditor({
   onDraftChange: (update: (draft: CatalogDraft) => CatalogDraft) => void;
   modelNameById: Map<string, string>;
   colors: AdminColor[];
+  /**
+   * Mostrar "Colores" (agregar / quitar un color en todos los modelos). No va
+   * en Accesorios ni en productos que no manejan colores.
+   */
+  colorControls: boolean;
+  onColorCreated: (color: AdminColor) => void;
+  onColorsChanged: (message: string) => void;
   saving: boolean;
   error: string | null;
   justSaved: boolean;
@@ -119,6 +130,17 @@ export default function ProductEditor({
               {description.length}/{MAX_DESCRIPTION}
             </span>
           </EditorSection>
+
+          {colorControls && (
+            <EditorSection title="Colores">
+              <ProductColors
+                product={product}
+                colors={colors}
+                onColorCreated={onColorCreated}
+                onChanged={onColorsChanged}
+              />
+            </EditorSection>
+          )}
 
           <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
             {productColors.length > 0 && (
@@ -202,7 +224,8 @@ export default function ProductEditor({
                   <div className="col-span-2 min-w-0 lg:col-span-1 lg:self-center">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="text-[15px] font-semibold text-admin-text">{detail}</span>
-                      {v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
+                      {!v.active && <span className={adminBadge("neutral")}>Dada de baja</span>}
+                      {v.active && v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
                     </span>
                     <span className="mt-0.5 block font-mono text-xs text-admin-muted">{v.sku}</span>
                   </div>

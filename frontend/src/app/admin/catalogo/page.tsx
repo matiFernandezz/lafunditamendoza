@@ -21,7 +21,7 @@ import { formatPrice } from "@/lib/format";
 import { colorsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
 import ColorField from "../ColorField";
-import { categoryPathById } from "../categoryPath";
+import { categoryPathById, categorySubtree, isAccessoryCategory } from "../categoryPath";
 import {
   ADMIN_EMPTY,
   ADMIN_INPUT,
@@ -38,6 +38,7 @@ import {
 } from "../adminStyles";
 import Combobox from "../productos/Combobox";
 import { suggestSku } from "../productos/sku";
+import CategoryColors from "./CategoryColors";
 import ProductEditor from "./ProductEditor";
 import { EMPTY_DRAFT, draftChanges, type CatalogDraft } from "./catalogDraft";
 
@@ -77,6 +78,7 @@ export default function CatalogoPage() {
 
   // Filtros
   const [selectedModelId, setSelectedModelId] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -133,7 +135,7 @@ export default function CatalogoPage() {
   // Cambiar cualquier filtro vuelve a la primera página. Se ajusta durante el
   // render (comparando contra el filtro anterior guardado en estado), no en
   // un efecto: https://react.dev/learn/you-might-not-need-an-effect
-  const filterKey = `${selectedModelId}|${stockFilter}|${search}`;
+  const filterKey = `${selectedCategoryId}|${selectedModelId}|${stockFilter}|${search}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
   if (prevFilterKey !== filterKey) {
     setPrevFilterKey(filterKey);
@@ -154,6 +156,17 @@ export default function CatalogoPage() {
         setLoadError(err instanceof Error ? err.message : "No se pudieron cargar los datos.");
       })
       .finally(() => setLoading(false));
+  }
+
+  function addColor(created: AdminColor) {
+    setColors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, "es")));
+  }
+
+  // Se agregó o quitó un color (de un producto o de una categoría): se muestra
+  // el resultado y se vuelve a pedir la lista, que ahora tiene otras variantes.
+  async function handleColorsChanged(message: string) {
+    setAddedNotice(message);
+    await refreshProducts();
   }
 
   async function refreshProducts() {
@@ -269,13 +282,26 @@ export default function CatalogoPage() {
   // Un grupo por producto, con las variantes que pasan los filtros. Un producto
   // recién creado todavía no tiene variantes: se muestra igual (si no, no hay
   // forma de cargárselas), salvo que haya un filtro de modelo o de stock.
+  const isAccessory = useMemo(() => isAccessoryCategory(categories), [categories]);
+  // Categorías de tope con sus tipos, para el filtro.
+  const categoryTree = useMemo(() => {
+    const byName = (a: AdminCategory, b: AdminCategory) => a.name.localeCompare(b.name, "es");
+    return categories
+      .filter((c) => c.parent_id === null)
+      .sort(byName)
+      .map((parent) => ({ parent, children: categories.filter((c) => c.parent_id === parent.id).sort(byName) }));
+  }, [categories]);
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+
   const filteredGroups = useMemo(() => {
     const term = search.trim().toLowerCase();
+    const inCategory = selectedCategoryId === "" ? null : categorySubtree(categories, selectedCategoryId);
     const filteringVariants = selectedModelId !== "" || stockFilter !== "all";
     const result: { product: AdminProduct; variants: AdminVariant[] }[] = [];
 
     for (const product of products) {
       if (term !== "" && !product.name.toLowerCase().includes(term)) continue;
+      if (inCategory && !inCategory.has(product.category_id)) continue;
 
       const variants = product.product_variants.filter((variant) => {
         if (selectedModelId === UNIVERSAL && variant.iphone_model_id !== null) return false;
@@ -302,7 +328,7 @@ export default function CatalogoPage() {
 
     result.sort((a, b) => a.product.name.localeCompare(b.product.name, "es"));
     return result;
-  }, [products, selectedModelId, stockFilter, search, modelOrderById]);
+  }, [products, categories, selectedCategoryId, selectedModelId, stockFilter, search, modelOrderById]);
 
   const filteredVariantCount = filteredGroups.reduce((sum, g) => sum + g.variants.length, 0);
 
@@ -419,7 +445,7 @@ export default function CatalogoPage() {
 
       <section
         aria-label="Filtros"
-        className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]"
       >
         <div className="relative">
           <label htmlFor="catalogo-buscar" className="sr-only">
@@ -437,6 +463,36 @@ export default function CatalogoPage() {
             placeholder="Buscar producto: Estelar, MagCase…"
             className={adminInput({ prefix: "icon" })}
           />
+        </div>
+
+        <div>
+          <label htmlFor="catalogo-categoria" className="sr-only">
+            Categoría
+          </label>
+          <select
+            id="catalogo-categoria"
+            value={selectedCategoryId}
+            onChange={(e) => setSelectedCategoryId(e.target.value)}
+            className={ADMIN_INPUT}
+          >
+            <option value="">Todas las categorías</option>
+            {categoryTree.map(({ parent, children }) =>
+              children.length > 0 ? (
+                <optgroup key={parent.id} label={parent.name}>
+                  <option value={parent.id}>{parent.name} (todo)</option>
+                  {children.map((child) => (
+                    <option key={child.id} value={child.id}>
+                      {child.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                <option key={parent.id} value={parent.id}>
+                  {parent.name}
+                </option>
+              ),
+            )}
+          </select>
         </div>
 
         <div>
@@ -474,6 +530,17 @@ export default function CatalogoPage() {
           ))}
         </div>
       </section>
+
+      {/* Colores en bloque: solo al filtrar por una categoría que no sea de Accesorios. */}
+      {selectedCategory && !isAccessory(selectedCategory.id) && (
+        <CategoryColors
+          key={selectedCategory.id}
+          category={selectedCategory}
+          colors={colors}
+          onColorCreated={addColor}
+          onChanged={handleColorsChanged}
+        />
+      )}
 
       <dialog
         ref={addDialogRef}
@@ -535,9 +602,7 @@ export default function CatalogoPage() {
                 setColor(value);
                 setVariantError(null);
               }}
-              onColorCreated={(created) =>
-                setColors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, "es")))
-              }
+              onColorCreated={addColor}
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               Opcional. Si lo que distingue a la variante no es un color (un cable “tipo C a C”), elegí “Otra
@@ -716,6 +781,9 @@ export default function CatalogoPage() {
                       onDraftChange={(update) => updateDraft(product.id, update)}
                       modelNameById={modelNameById}
                       colors={colors}
+                      colorControls={!isAccessory(product.category_id) && all.some((v) => v.color_id !== null)}
+                      onColorCreated={addColor}
+                      onColorsChanged={handleColorsChanged}
                       saving={savingId === product.id}
                       error={saveError?.productId === product.id ? saveError.message : null}
                       justSaved={savedId === product.id}
