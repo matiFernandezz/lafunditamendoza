@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -10,7 +11,18 @@ import SiteFooter from "./SiteFooter";
 import CartBar from "./store/CartBar";
 import HeaderCartLink from "./store/HeaderCartLink";
 
-type NavLink = { key: string; label: string; href: string };
+const NAV_LINK =
+  "text-sm font-semibold tracking-wide text-paper/85 transition-colors duration-200 hover:text-paper";
+const DROPDOWN_LINK =
+  "flex min-h-11 items-center whitespace-nowrap px-5 text-sm font-medium text-paper/85 transition-colors duration-200 hover:bg-paper/10 hover:text-paper";
+
+type NavLink = {
+  key: string;
+  label: string;
+  href: string;
+  // Subcategorías (Fundas: de diseño, de silicona, transparentes).
+  children?: { key: string; label: string; href: string }[];
+};
 
 // Nav real: las categorías de tope tal cual están en la base (Fundas agrupa
 // sus subcategorías, no se listan por separado) + Nosotros, fija. Primero
@@ -22,6 +34,11 @@ function toNavLinks(categories: CategoryGroup[]): NavLink[] {
       key: group.id,
       label: group.name,
       href: `/categoria/${group.slug}`,
+      children: group.children.map((child) => ({
+        key: child.id,
+        label: child.name,
+        href: `/categoria/${child.slug}`,
+      })),
     }));
   return [...fromCategories, { key: "nosotros", label: "Nosotros", href: "/nosotros" }];
 }
@@ -41,6 +58,8 @@ export default function AppShell({
   const width = `w-full ${PAGE_PADDING}`;
   const [menuOpen, setMenuOpen] = useState(false);
   const navLinks = toNavLinks(categories);
+  // Desplegable abierto en el menú de desktop (hover o foco).
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
   // Cerrar el menú móvil al cambiar de página: se ajusta durante el render
   // (comparando contra el pathname anterior), no en un efecto.
@@ -48,6 +67,7 @@ export default function AppShell({
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
     if (menuOpen) setMenuOpen(false);
+    if (openKey) setOpenKey(null);
   }
 
   // El panel arma su propia barra, navegación y contenedor (app/admin/AdminShell).
@@ -73,15 +93,58 @@ export default function AppShell({
           </Link>
 
           <nav aria-label="Categorías" className="hidden md:flex md:items-center md:gap-8">
-            {navLinks.map((link) => (
-              <Link
-                key={link.key}
-                href={link.href}
-                className="text-sm font-semibold tracking-wide text-paper/85 transition-colors duration-200 hover:text-paper"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) =>
+              link.children?.length ? (
+                // Con subcategorías: el nombre lleva a todas y el desplegable
+                // (hover o foco con teclado) filtra por tipo.
+                <div
+                  key={link.key}
+                  className="relative flex h-20 items-center"
+                  onMouseEnter={() => setOpenKey(link.key)}
+                  onMouseLeave={() => setOpenKey(null)}
+                  onFocus={() => setOpenKey(link.key)}
+                  onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) setOpenKey(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") setOpenKey(null);
+                  }}
+                >
+                  <Link
+                    href={link.href}
+                    aria-haspopup="true"
+                    aria-expanded={openKey === link.key}
+                    className={`inline-flex items-center gap-1 ${NAV_LINK}`}
+                  >
+                    {link.label}
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`size-4 transition-transform duration-200 ${openKey === link.key ? "rotate-180" : ""}`}
+                    />
+                  </Link>
+                  {openKey === link.key && (
+                    <ul className="absolute left-1/2 top-full min-w-[220px] -translate-x-1/2 border-t border-paper/15 bg-black py-2 shadow-[0_16px_32px_rgb(0_0_0/0.25)]">
+                      <li>
+                        <Link href={link.href} className={DROPDOWN_LINK}>
+                          Todas las {link.label.toLowerCase()}
+                        </Link>
+                      </li>
+                      {link.children.map((child) => (
+                        <li key={child.key}>
+                          <Link href={child.href} className={DROPDOWN_LINK}>
+                            {child.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : (
+                <Link key={link.key} href={link.href} className={NAV_LINK}>
+                  {link.label}
+                </Link>
+              ),
+            )}
           </nav>
 
           {/* Carrito siempre a mano; en mobile, al lado del menú. */}
@@ -125,6 +188,17 @@ export default function AppShell({
                   >
                     {link.label}
                   </Link>
+                  {link.children && link.children.length > 0 && (
+                    <ul className="-mt-1 pb-3">
+                      {link.children.map((child) => (
+                        <li key={child.key}>
+                          <Link href={child.href} className="flex min-h-11 items-center pl-4 text-paper/75">
+                            {child.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>
