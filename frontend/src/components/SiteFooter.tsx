@@ -1,45 +1,13 @@
 import Link from "next/link";
-import { RESERVATION_HOURS, STORE_WHATSAPP } from "@/lib/storeConfig";
+import { INSTAGRAM, RESERVATION_HOURS, TIKTOK, WHATSAPP } from "@/lib/storeConfig";
 import Logo from "./Logo";
+import { InstagramIcon, TikTokIcon, WhatsAppIcon } from "./SocialIcons";
 
 // Pie de la tienda: mismo negro y mismo padding lateral que el header, para
 // que la página abra y cierre igual. Tres columnas en desktop (marca, tienda,
 // contacto) y una debajo de la otra en mobile.
 
 type FooterLink = { key: string; label: string; href: string };
-
-const INSTAGRAM = { url: "https://www.instagram.com/lafunditamza/", handle: "@lafunditamza" };
-const TIKTOK = { url: "https://www.tiktok.com/@lafunditamza", handle: "@lafunditamza" };
-const WHATSAPP = { url: `https://wa.me/${STORE_WHATSAPP}`, handle: "261 673 2438" };
-
-// lucide ya no trae logos de marcas: van como SVG propios, del mismo trazo fino.
-function InstagramIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
-      <rect x="3" y="3" width="18" height="18" rx="5" />
-      <circle cx="12" cy="12" r="4" />
-      <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
-    </svg>
-  );
-}
-
-function TikTokIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
-      <path d="M14 3v11.5a4 4 0 1 1-4-4" />
-      <path d="M14 3c.4 2.6 2.2 4.6 5 5" />
-    </svg>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="size-5">
-      <path d="M3.5 20.5l1.3-4.6A8.5 8.5 0 1 1 8.2 19.3z" />
-      <path d="M9 8.8c0 3 2.4 5.6 5.4 6.1l1.3-1.5-1.9-1-0.9 0.8c-1-.4-1.8-1.2-2.2-2.2l0.8-0.9-1-1.9z" />
-    </svg>
-  );
-}
 
 const HEADING = "text-[13px] font-medium uppercase tracking-[0.08em] text-paper/55";
 const LINK = "transition-colors duration-200 hover:text-paper";
