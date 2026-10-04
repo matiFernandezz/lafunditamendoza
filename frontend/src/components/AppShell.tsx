@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { CategoryGroup } from "@/lib/catalog";
 import { PAGE_PADDING } from "@/lib/layout";
 import Logo from "./Logo";
+import SiteFooter from "./SiteFooter";
 import CartBar from "./store/CartBar";
 import HeaderCartLink from "./store/HeaderCartLink";
 
@@ -131,6 +132,7 @@ export default function AppShell({
         )}
       </header>
       <main className={`mx-auto w-full flex-1 ${width} pb-24 pt-8 md:pt-14`}>{children}</main>
+      <SiteFooter links={navLinks} />
       <CartBar />
     </>
   );
