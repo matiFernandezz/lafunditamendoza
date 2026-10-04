@@ -11,6 +11,9 @@ const parsedSupabaseUrl = supabaseUrl ? new URL(supabaseUrl) : undefined;
 
 const nextConfig: NextConfig = {
   images: {
+    // Next 16 solo permite calidad 75 por default y baja a 75 cualquier otra.
+    // 90 es para la foto grande de la ficha de producto (ProductGallery).
+    qualities: [75, 90],
     remotePatterns: parsedSupabaseUrl
       ? [
           {

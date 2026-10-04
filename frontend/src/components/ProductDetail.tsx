@@ -78,10 +78,10 @@ export default function ProductDetail({
   }
 
   return (
-    // Bloque centrado de 960px (lo pone la página): foto de hasta 440px y la
+    // Bloque centrado de 960px (lo pone la página): galería de hasta 520px (miniaturas + foto) y la
     // columna de compra al lado, así el selector y el botón no se estiran a
     // todo el ancho de la pantalla.
-    <div className="grid gap-8 md:grid-cols-[minmax(0,440px)_minmax(0,1fr)] md:gap-12">
+    <div className="grid gap-8 md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:gap-10">
       <ProductGallery images={product.product_images} alt={product.name} />
 
       <div className="space-y-6">
@@ -114,7 +114,7 @@ export default function ProductDetail({
 
         {colorOptions.length > 0 && (
           <div>
-            <span className="mb-2 block font-medium">Color</span>
+            <span className="mb-2 block font-medium">Elegí una opción</span>
             <div className="flex flex-wrap gap-2">
               {colorOptions.map((c) => (
                 <button
@@ -122,7 +122,7 @@ export default function ProductDetail({
                   type="button"
                   onClick={() => setColor(c)}
                   aria-pressed={color === c}
-                  className={`h-11 rounded-full border px-4 text-sm font-medium capitalize transition-colors duration-200 ${
+                  className={`h-11 rounded-full border px-4 text-sm font-medium first-letter:uppercase transition-colors duration-200 ${
                     color === c
                       ? "border-ink bg-ink text-paper"
                       : "border-graphite hover:border-ink"
