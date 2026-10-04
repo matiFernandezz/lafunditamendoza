@@ -757,6 +757,12 @@ async function main() {
   }
 
   console.log(`Variantes upserteadas: ${upserted}`);
+
+  // Crea en `colors` los colores nuevos que trajo el import y enlaza las
+  // variantes (las que ya tenían color no se tocan). Idempotente.
+  const { data: colorsCreated, error: colorsError } = await supabase.rpc('sync_colors_from_variants');
+  if (colorsError) throw new Error(`Error al sincronizar colores: ${colorsError.message}`);
+  console.log(`Colores nuevos: ${colorsCreated}`);
   console.log('\nEjemplos:');
   for (const ex of examples) console.log(' - ' + ex);
 }

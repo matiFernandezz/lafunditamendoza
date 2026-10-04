@@ -65,3 +65,8 @@ insert into iphone_models (name, sort_order) values
   ('iPhone 18 Pro', 25),
   ('iPhone 18 Pro Max', 26)
 on conflict (name) do update set sort_order = excluded.sort_order;
+
+-- Colores: se crean a partir de los textos de las variantes que todavía no
+-- tengan color (idempotente; sin variantes no hace nada). El script de
+-- importación la vuelve a llamar después de cargar el catálogo.
+select sync_colors_from_variants();
