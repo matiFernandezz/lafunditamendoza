@@ -79,8 +79,8 @@ export default function CatalogoPage() {
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
-  // undefined = todavía no se tocó ninguna tarjeta (arranca abierta la primera).
-  const [openId, setOpenId] = useState<string | null | undefined>(undefined);
+  // Tarjeta desplegada; null = todas cerradas (así arranca cada página).
+  const [openId, setOpenId] = useState<string | null>(null);
 
   // Formulario de "agregar variante nueva"
   const [productId, setProductId] = useState("");
@@ -232,10 +232,10 @@ export default function CatalogoPage() {
   const currentPage = Math.min(page, totalPages);
   const groups = filteredGroups.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  // Cambiar de página vuelve arriba y deja abierta la primera tarjeta de la página.
+  // Cambiar de página vuelve arriba con todas las tarjetas cerradas.
   function goToPage(next: number) {
     setPage(Math.min(totalPages, Math.max(1, next)));
-    setOpenId(undefined);
+    setOpenId(null);
     window.scrollTo({ top: 0 });
   }
 
@@ -313,9 +313,6 @@ export default function CatalogoPage() {
       </div>
     );
   }
-
-  // Sin "abierto" elegido todavía, la primera tarjeta de la página arranca abierta.
-  const expandedId = openId === undefined ? groups[0]?.product.id ?? null : openId;
 
   return (
     <div className="mx-auto flex max-w-[1100px] flex-col gap-4">
@@ -571,7 +568,7 @@ export default function CatalogoPage() {
       ) : (
         <ul className="flex flex-col gap-4">
           {groups.map(({ product, variants }) => {
-            const open = expandedId === product.id;
+            const open = openId === product.id;
             const all = product.product_variants;
             const units = all.reduce((sum, v) => sum + v.stock_quantity, 0);
             const outs = all.filter((v) => v.stock_quantity === 0).length;
