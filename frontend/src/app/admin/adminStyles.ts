@@ -27,14 +27,21 @@ type InputOptions = {
   align?: "left" | "right" | "center";
   mono?: boolean;
   // dirty: cambió y falta guardar (borde negro). ok: recién guardado (borde verde).
-  state?: "dirty" | "ok" | null;
+  // error: falta o está mal (borde rojo).
+  state?: "dirty" | "ok" | "error" | null;
 };
 export function adminInput({ prefix, suffix, align = "left", mono, state }: InputOptions = {}) {
   const padLeft = prefix === "icon" ? "pl-11" : prefix === "text" ? "pl-7" : "pl-3.5";
   const padRight = suffix ? "pr-10" : "pr-3.5";
   const textAlign = align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
   const border =
-    state === "dirty" ? "border-admin-ink" : state === "ok" ? "border-admin-ok" : "border-admin-border-strong";
+    state === "dirty"
+      ? "border-admin-ink"
+      : state === "ok"
+        ? "border-admin-ok"
+        : state === "error"
+          ? "border-admin-danger"
+          : "border-admin-border-strong";
   return `h-12 w-full min-w-0 rounded-md border ${border} bg-white ${padLeft} ${padRight} ${textAlign} ${
     mono ? "font-mono tabular-nums" : ""
   } text-base text-admin-text outline-none transition-colors duration-200 placeholder:text-admin-muted focus:border-admin-ink disabled:opacity-60`;
