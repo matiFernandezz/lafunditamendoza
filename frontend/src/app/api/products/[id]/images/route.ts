@@ -24,7 +24,7 @@ export async function POST(
   if (denied) return denied;
 
   const { id } = await ctx.params;
-  const { path } = await readJsonBody(request);
+  const { path, color_id } = await readJsonBody(request);
 
   if (!isUuid(id)) {
     return jsonError(400, "id debe ser un uuid valido");
@@ -32,6 +32,11 @@ export async function POST(
 
   if (typeof path !== "string" || !PATH_REGEX.test(path)) {
     return jsonError(400, "path debe ser el que devolvió upload-url");
+  }
+
+  // color_id: de qué color es la foto. Sin color (o null) es una foto general.
+  if (color_id !== undefined && color_id !== null && !isUuid(color_id)) {
+    return jsonError(400, "color_id debe ser un uuid valido (o null para una foto general)");
   }
 
   const supabase = supabaseAdmin();
@@ -78,14 +83,14 @@ export async function POST(
 
   const { data, error } = await supabase
     .from("product_images")
-    .insert({ product_id: id, url, sort_order: nextSortOrder })
+    .insert({ product_id: id, url, sort_order: nextSortOrder, color_id: color_id ?? null })
     .select(PRODUCT_IMAGE_SELECT)
     .single();
 
   if (error || !data) {
     // Sin fila, el archivo quedaría huérfano en Storage.
     await bucket.remove([path]);
-    if (error?.code === "23503") return jsonError(404, "No existe un producto con ese id");
+    if (error?.code === "23503") return jsonError(404, "No existe un producto (o un color) con ese id");
     return jsonError(500, error?.message ?? "No se pudo guardar la imagen");
   }
 

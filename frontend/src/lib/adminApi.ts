@@ -45,12 +45,16 @@ export type AdminVariant = {
   stock_quantity: number;
   active: boolean;
   iphone_model_id: string | null;
+  /** El color de la variante; null si no tiene o si `color` es una descripción. */
+  color_id: string | null;
 };
 
 export type AdminProductImage = {
   id: string;
   url: string;
   sort_order: number;
+  /** null = foto general del producto. */
+  color_id: string | null;
 };
 
 export type AdminProduct = {
@@ -351,6 +355,7 @@ export function updateProduct(
 export async function addProductImage(
   productId: string,
   file: File,
+  colorId: string | null = null,
 ): Promise<{ data: AdminProductImage }> {
   const signed = await adminFetch<{ data: { path: string; token: string } }>(
     `/api/products/${productId}/images/upload-url`,
@@ -370,7 +375,7 @@ export async function addProductImage(
 
   return adminFetch(`/api/products/${productId}/images`, {
     method: "POST",
-    body: JSON.stringify({ path: signed.data.path }),
+    body: JSON.stringify({ path: signed.data.path, color_id: colorId }),
   });
 }
 
@@ -386,6 +391,37 @@ export function reorderProductImages(
     method: "PATCH",
     body: JSON.stringify({ order }),
   });
+}
+
+export type AdminColor = {
+  id: string;
+  name: string;
+  slug: string;
+  hex: string;
+  /** false = "sin color asignado": todavía tiene el gris por defecto. */
+  assigned: boolean;
+  sort_order: number;
+  variant_count: number;
+};
+
+export function getColors(): Promise<{ data: AdminColor[] }> {
+  return adminFetch("/api/colors");
+}
+
+export function createColor(payload: { name: string; hex: string }): Promise<{ data: AdminColor }> {
+  return adminFetch("/api/colors", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function updateColor(
+  id: string,
+  patch: { name?: string; hex?: string },
+): Promise<{ data: Omit<AdminColor, "variant_count"> }> {
+  return adminFetch(`/api/colors/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+/** "No es un color": sus variantes conservan el texto como descripción. */
+export async function deleteColor(id: string): Promise<void> {
+  await adminFetch(`/api/colors/${id}`, { method: "DELETE" });
 }
 
 export type WebOrderStatus = "pendiente" | "pagada" | "cancelada";

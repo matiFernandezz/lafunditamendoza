@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     .from("products")
     .select(
       `${PRODUCT_SELECT},
-       product_variants ( id, sku, color, price, cost_price, stock_quantity, active, iphone_model_id ),
-       product_images ( id, url, sort_order )`,
+       product_variants ( id, sku, color, color_id, price, cost_price, stock_quantity, active, iphone_model_id ),
+       product_images ( id, url, sort_order, color_id )`,
     )
     .order("name", { ascending: true })
     .order("sort_order", { referencedTable: "product_images", ascending: true });

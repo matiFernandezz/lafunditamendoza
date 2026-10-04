@@ -15,10 +15,14 @@ export type IphoneModel = {
   slug: string;
 };
 
+export type ColorRef = { id: string; name: string; slug: string; hex: string; sort_order: number };
+
 export type Variant = {
   id: string;
   sku: string;
+  /** Nombre del color, o una descripción libre si la variante no tiene color_ref. */
   color: string | null;
+  color_ref: ColorRef | null;
   price: number;
   stock_quantity: number;
   iphone_model_id: string | null;
@@ -29,6 +33,8 @@ export type ProductImage = {
   id: string;
   url: string;
   sort_order: number;
+  /** null = foto general del producto. */
+  color_id: string | null;
 };
 
 export type Product = {
@@ -41,13 +47,17 @@ export type Product = {
   product_variants: Variant[];
 };
 
-/** La portada de un producto: su primera imagen (sort_order más bajo), o null si no tiene ninguna. */
+/**
+ * La portada de un producto: su primera foto general (sort_order más bajo); si
+ * todas son de algún color, la primera que haya. null si no tiene ninguna.
+ */
 export function coverImage(product: Pick<Product, "product_images">): string | null {
-  return product.product_images[0]?.url ?? null;
+  const images = product.product_images;
+  return (images.find((img) => img.color_id === null) ?? images[0])?.url ?? null;
 }
 
 const PRODUCT_SELECT =
-  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
+  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order, color_id), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name), color_ref:colors(id, name, slug, hex, sort_order))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
