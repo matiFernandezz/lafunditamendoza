@@ -176,7 +176,11 @@ export default function ProductDetail({
         {/* Después del precio y no debajo del nombre (como en el diseño): una
             descripción larga empujaría el precio fuera de la pantalla. */}
         {product.description && (
-          <p className="font-light text-graphite text-pretty">{product.description}</p>
+          <div className="space-y-2 border-t border-rule pt-6">
+            <h2 className="text-[13px] font-medium uppercase tracking-[0.08em] text-graphite">Descripción</h2>
+            {/* pre-line: respeta los saltos de línea que se escriben en el panel. */}
+            <p className="whitespace-pre-line text-pretty text-ink">{product.description}</p>
+          </div>
         )}
       </div>
     </div>
