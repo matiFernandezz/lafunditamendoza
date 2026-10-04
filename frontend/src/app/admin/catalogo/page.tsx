@@ -17,6 +17,7 @@ import {
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import AdminNotice from "../AdminNotice";
+import { categoryPathById } from "../categoryPath";
 import {
   ADMIN_CAP,
   ADMIN_EMPTY,
@@ -173,15 +174,7 @@ export default function CatalogoPage() {
     );
   }
 
-  const categoryPath = useMemo(() => {
-    const byId = new Map(categories.map((c) => [c.id, c]));
-    return (id: string) => {
-      const cat = byId.get(id);
-      if (!cat) return "";
-      const parent = cat.parent_id ? byId.get(cat.parent_id) : undefined;
-      return parent ? `${parent.name} > ${cat.name}` : cat.name;
-    };
-  }, [categories]);
+  const categoryPath = useMemo(() => categoryPathById(categories), [categories]);
 
   const sortedProducts = useMemo(
     () => [...products].sort((a, b) => a.name.localeCompare(b.name, "es")),

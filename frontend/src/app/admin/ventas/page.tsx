@@ -13,6 +13,7 @@ import {
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import AdminNotice from "../AdminNotice";
+import { CATEGORY_SEPARATOR } from "../categoryPath";
 import {
   ADMIN_CAP,
   ADMIN_PAGE_SUBTITLE,
@@ -62,10 +63,13 @@ export default function VentasPage() {
       getIphoneModels(),
       getAdminProducts(),
     ]);
-    const flatCategories: CategoryChip[] = [
-      ...groups.map((g) => ({ id: g.id, name: g.name })),
-      ...groups.flatMap((g) => g.children.map((c) => ({ id: c.id, name: c.name }))),
-    ];
+    // Un chip por tipo, con la ruta completa ("Fundas › Diseño"). La categoría
+    // de tope solo lleva chip si tiene productos propios (sin tipo asignado).
+    const withOwnProducts = new Set(productsRes.data.map((p) => p.category_id));
+    const flatCategories: CategoryChip[] = groups.flatMap((g) => [
+      ...(g.children.length === 0 || withOwnProducts.has(g.id) ? [{ id: g.id, name: g.name }] : []),
+      ...g.children.map((c) => ({ id: c.id, name: `${g.name}${CATEGORY_SEPARATOR}${c.name}` })),
+    ]);
     return { categories: flatCategories, models: modelsList, products: productsRes.data };
   }
 
