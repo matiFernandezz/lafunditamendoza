@@ -300,6 +300,44 @@ async function main() {
   await api("DELETE", `/api/products/${uni.id}/colors/${azul.id}`);
 
   // ------------------------------------------------------------------------
+  group("3c. Primer color de un producto que no tenía ninguno");
+  const plain = await newProduct("Sin color", child.id, [
+    { iphone_model_id: m1.id, price: 8000, stock_quantity: 3 },
+    { iphone_model_id: m2.id, price: 8500, stock_quantity: 2 },
+  ]);
+  const plainBefore = await variantsOf(plain.id);
+  eq("arranca con 2 variantes sin color", plainBefore.map((v) => [v.color, v.color_id]), [[null, null], [null, null]]);
+  const firstDry = await api("POST", `/api/products/${plain.id}/colors`, { color_id: rojo.id, dry_run: true });
+  eq("vista previa: 2 variantes pasan al color, 5 unidades, nada nuevo", [firstDry.body?.data?.assigned, firstDry.body?.data?.units, firstDry.body?.data?.created], [2, 5, 0]);
+  eq("…y no cambia nada", (await variantsOf(plain.id)).map((v) => v.color_id), [null, null]);
+
+  const first = await api("POST", `/api/products/${plain.id}/colors`, { color_id: rojo.id });
+  eq("primer color -> 200, 2 asignadas y 0 creadas", [first.status, first.body?.data?.assigned, first.body?.data?.created], [200, 2, 0]);
+  const plainAfter = await variantsOf(plain.id);
+  eq("son las mismas 2 variantes (no se crea ninguna)", plainAfter.map((v) => v.id), plainBefore.map((v) => v.id));
+  eq("ahora con el color (id y texto)", plainAfter.map((v) => [v.color, v.color_id]), [[rojo.name, rojo.id], [rojo.name, rojo.id]]);
+  eq("conservan stock, precio y SKU", plainAfter.map((v) => [v.stock_quantity, v.price, v.sku]), plainBefore.map((v) => [v.stock_quantity, v.price, v.sku]));
+
+  const second = await api("POST", `/api/products/${plain.id}/colors`, { color_id: azul.id });
+  eq("segundo color: una variante nueva por modelo, ninguna asignada", [second.body?.data?.created, second.body?.data?.assigned], [2, 0]);
+  const plainAzul = await variantsOf(plain.id, azul.id);
+  eq("…con stock 0 y el precio de su modelo", plainAzul.map((v) => [v.stock_quantity, v.price]), [[0, 8000], [0, 8500]]);
+  eq("…y las del primer color siguen con su stock", (await variantsOf(plain.id, rojo.id)).map((v) => v.stock_quantity), [3, 2]);
+  eq("el producto queda con 4 variantes", (await variantsOf(plain.id)).length, 4);
+
+  // Con una descripción que no es un color, no se ofrece (y el servidor lo rechaza).
+  const described = await newProduct("Con descripcion", child.id, [
+    { iphone_model_id: null, color: "Tipo C a C prueba", price: 3000, stock_quantity: 1 },
+    { iphone_model_id: null, price: 3000, stock_quantity: 1 },
+  ]);
+  const refused = await api("POST", `/api/products/${described.id}/colors`, { color_id: rojo.id });
+  eq("producto con una descripción libre -> 400", refused.status, 400);
+  check("…con un mensaje que lo explica", /descripción que no es un color/.test(refused.body?.error ?? ""), refused.body?.error);
+  eq("…también en vista previa", (await api("POST", `/api/products/${described.id}/colors`, { color_id: rojo.id, dry_run: true })).status, 400);
+  eq("…y sus variantes quedan como estaban", (await variantsOf(described.id)).map((v) => [v.color, v.color_id]).sort(), [["Tipo C a C prueba", null], [null, null]].sort());
+  await admin.from("products").delete().in("id", [plain.id, described.id]);
+
+  // ------------------------------------------------------------------------
   group("4. Por categoría");
   // B: en la categoría de tope, 2 modelos. D: sin colores. E: sin variantes.
   const b = await newProduct("Case B", top.id, [

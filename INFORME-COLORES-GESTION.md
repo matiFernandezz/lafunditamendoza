@@ -41,7 +41,7 @@ Todas con `requireAdmin` y el formato de error de siempre. Aceptan `dry_run` par
 
 | Comando | Resultado |
 |---|---|
-| `npm run test:colores-gestion` (nuevo) | 98/98 OK |
+| `npm run test:colores-gestion` (nuevo) | 113/113 OK |
 | `npm run test:colores` | 115/115 OK |
 | `npm run test:compras` | 162/162 OK |
 | `npm run test:unificar` | 180/180 OK |
@@ -66,7 +66,8 @@ La interfaz en el navegador, tampoco a 390px: no corro Playwright ni saco captur
 ## Decisiones
 
 - **La interfaz está en `/admin/catalogo`, no en `/admin/productos`.** `/admin/productos` es el formulario de "Nuevo producto" y no tiene lista; la lista y el buscador por nombre ya estaban en Catálogo. Si la querés en otra pantalla, los componentes (`ProductColors`, `CategoryColors`) se mueven tal cual.
-- **Solo los productos que ya manejan colores muestran "Colores".** Un producto sin ninguna variante con color (una funda de diseño) no muestra los controles, y la acción por categoría lo omite con el motivo "no maneja colores". Agregarle un color crearía una segunda variante por modelo al lado de la que no tiene color, que no es lo que se busca. La función SQL por producto sí lo permite, por si más adelante se quiere empezar a cargar colores en uno.
+- **Cualquier producto que no sea de Accesorios puede recibir colores.** Si todavía no tiene ninguno, el primer color se le pone a sus variantes actuales, que conservan stock, precio y SKU; no se crea nada. Del segundo en adelante, una variante nueva por modelo con stock 0. Si sus variantes se distinguen por una descripción que no es un color ("tipo C a C", BATMAN), el panel avisa y no ofrece agregar color, y el servidor lo rechaza.
+- **En bloque, por categoría, los productos sin color se siguen omitiendo** (motivo "no maneja colores"). Convertir de una vez todas las variantes de todas las fundas de diseño a un color es demasiado para un solo click: el primer color se pone producto por producto.
 - **Accesorios se reconoce por el slug `accesorios`** de la categoría de tope. Si esa categoría se renombra conservando el slug, sigue funcionando; si se le cambia el slug, hay que actualizar la función y la constante del panel.
 - **Los productos de Accesorios tampoco aceptan estas acciones por producto**, no solo por categoría.
 - **Vista previa con `p_dry_run`.** Las funciones tienen un parámetro más que el pedido. La vista previa corre el mismo código que la acción real y lo deshace, así los números que se muestran antes de confirmar son los que después se aplican.

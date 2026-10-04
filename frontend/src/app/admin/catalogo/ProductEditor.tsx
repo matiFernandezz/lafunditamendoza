@@ -54,10 +54,7 @@ export default function ProductEditor({
   onDraftChange: (update: (draft: CatalogDraft) => CatalogDraft) => void;
   modelNameById: Map<string, string>;
   colors: AdminColor[];
-  /**
-   * Mostrar "Colores" (agregar / quitar un color en todos los modelos). No va
-   * en Accesorios ni en productos que no manejan colores.
-   */
+  /** Mostrar "Colores" (agregar / quitar un color en todos los modelos). No va en Accesorios. */
   colorControls: boolean;
   onColorCreated: (color: AdminColor) => void;
   onColorsChanged: (message: string) => void;

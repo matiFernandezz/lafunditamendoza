@@ -87,6 +87,12 @@ $$;
 --   * no hay -> la crea con stock 0, activa, el precio de otra variante del
 --     mismo modelo y un SKU único (created)
 -- Los modelos son los de todas las variantes del producto, activas o no.
+--
+-- Si el producto todavía no tiene ningún color, este es su PRIMER color y no
+-- se crea nada: se les asigna a las variantes que ya tiene, que conservan su
+-- stock, precio y SKU (assigned, units). Salvo que alguna tenga una
+-- descripción que no es un color ("tipo C a C", "BATMAN"): ahí se rechaza
+-- (CC400), porque el color pisaría ese texto.
 -- ---------------------------------------------------------------------------
 create or replace function _add_color_to_product(p_product_id uuid, p_color_id uuid)
 returns jsonb
@@ -107,11 +113,42 @@ declare
   v_reactivated int := 0;
   v_already int := 0;
   v_skus text[] := '{}';
+  v_assigned int := 0;
+  v_units int := 0;
 begin
   select name into v_product_name from products where id = p_product_id;
   select name into v_color_name from colors where id = p_color_id;
 
   perform 1 from product_variants where product_id = p_product_id order by id for update;
+
+  if not exists (select 1 from product_variants where product_id = p_product_id and color_id is not null) then
+    if exists (
+      select 1 from product_variants
+      where product_id = p_product_id
+        and nullif(btrim(color), '') is not null
+        and lower(unaccent(btrim(color))) <> 'unico'
+    ) then
+      raise exception 'Las variantes de "%" tienen una descripción que no es un color: no se le puede agregar un color', v_product_name
+        using errcode = 'CC400';
+    end if;
+
+    select count(*), coalesce(sum(stock_quantity), 0) into v_assigned, v_units
+    from product_variants where product_id = p_product_id;
+
+    -- El trigger de colores completa el texto `color` con el nombre.
+    update product_variants set color_id = p_color_id where product_id = p_product_id;
+
+    return jsonb_build_object(
+      'product_id', p_product_id,
+      'product_name', v_product_name,
+      'created', 0,
+      'reactivated', 0,
+      'existing', 0,
+      'assigned', v_assigned,
+      'units', v_units,
+      'skus', '[]'::jsonb
+    );
+  end if;
 
   for v_model in
     select distinct pv.iphone_model_id, m.name as model_name, m.sort_order
@@ -168,6 +205,8 @@ begin
     'created', v_created,
     'reactivated', v_reactivated,
     'existing', v_already,
+    'assigned', 0,
+    'units', 0,
     'skus', to_jsonb(v_skus)
   );
 end;
@@ -291,7 +330,8 @@ $$;
 -- add_color_to_category: agrega el color a los productos de la categoría y de
 -- sus subcategorías. Solo a los que ya manejan colores; los que no tienen
 -- ninguna variante con color (fundas de diseño) o no tienen variantes se
--- omiten y se informan.
+-- omiten y se informan: el primer color de un producto se le pone a sus
+-- variantes actuales, y eso se hace producto por producto, no en bloque.
 -- ---------------------------------------------------------------------------
 create or replace function add_color_to_category(p_category_id uuid, p_color_id uuid, p_dry_run boolean default false)
 returns jsonb

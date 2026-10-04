@@ -14,6 +14,7 @@ import {
 import AdminNotice from "../AdminNotice";
 import ColorField, { ColorDot } from "../ColorField";
 import { ADMIN_BODY, ADMIN_INSET, ADMIN_TEXT_MUTED, adminButton } from "../adminStyles";
+import { displayColor } from "../ventas/utils";
 
 type Pending =
   | { kind: "add"; color: AdminColor; preview: AddColorResult }
@@ -30,6 +31,11 @@ function errorMessage(err: unknown) {
  * "x" para quitarlo, y "Agregar color". Agregar crea una variante por modelo
  * con stock 0; quitar da de baja las variantes de ese color, sin borrarlas.
  * Antes de cada cosa se pregunta al servidor qué pasaría y se pide confirmar.
+ *
+ * Un producto que todavía no tiene colores también puede recibir uno: el
+ * primero se les pone a sus variantes actuales (sin crear nada). Salvo que
+ * esas variantes tengan una descripción que no es un color ("tipo C a C"):
+ * ahí solo se avisa.
  */
 export default function ProductColors({
   product,
@@ -54,6 +60,14 @@ export default function ProductColors({
   for (const v of active) countByColor.set(v.color_id as string, (countByColor.get(v.color_id as string) ?? 0) + 1);
   const productColors = colors.filter((c) => countByColor.has(c.id));
   const takenIds = new Set(productColors.map((c) => c.id));
+
+  const hasVariants = product.product_variants.length > 0;
+  const hasAnyColor = product.product_variants.some((v) => v.color_id !== null);
+  // Descripciones que no son colores, en un producto sin ningún color.
+  const descriptions = hasAnyColor
+    ? []
+    : [...new Set(product.product_variants.map((v) => displayColor(v.color)).filter((d): d is string => d !== null))];
+  const canAdd = hasVariants && descriptions.length === 0;
 
   async function previewAdd(name: string) {
     const color =
@@ -92,6 +106,8 @@ export default function ProductColors({
       if (pending.kind === "add") {
         const { data } = await addColorToProduct(product.id, pending.color.id);
         const parts = [
+          data.assigned > 0 &&
+            (data.assigned === 1 ? "su variante pasó a ese color" : `sus ${data.assigned} variantes pasaron a ese color`),
           data.created > 0 && plural(data.created, "variante nueva", "variantes nuevas"),
           data.reactivated > 0 && plural(data.reactivated, "reactivada", "reactivadas"),
         ].filter(Boolean);
@@ -111,7 +127,9 @@ export default function ProductColors({
     }
   }
 
-  const nothingToAdd = pending?.kind === "add" && pending.preview.created + pending.preview.reactivated === 0;
+  const nothingToAdd =
+    pending?.kind === "add" &&
+    pending.preview.created + pending.preview.reactivated + pending.preview.assigned === 0;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -138,7 +156,18 @@ export default function ProductColors({
         ))}
       </ul>
 
-      {!pending && (
+      {!pending && !hasVariants && (
+        <p className={ADMIN_TEXT_MUTED}>Primero agregale variantes al producto; después se le pueden poner colores.</p>
+      )}
+      {!pending && descriptions.length > 0 && (
+        <AdminNotice kind="ink">
+          Las variantes de este producto se distinguen por una descripción que no es un color (
+          {descriptions.slice(0, 4).join(", ")}
+          {descriptions.length > 4 && "…"}). No se le pueden agregar colores.
+        </AdminNotice>
+      )}
+
+      {!pending && canAdd && (
         <ColorField
           key={productColors.length}
           label={`Agregar color a ${product.name}`}
@@ -166,6 +195,13 @@ export default function ProductColors({
                 <>
                   <strong className="font-semibold">{pending.color.name}</strong> ya está en todos los modelos de este
                   producto.
+                </>
+              ) : pending.preview.assigned > 0 ? (
+                <>
+                  {pending.preview.assigned === 1 ? "La variante actual pasa" : `Las ${pending.preview.assigned} variantes actuales pasan`}{" "}
+                  a ser <strong className="font-semibold">{pending.color.name}</strong>. Stock actual:{" "}
+                  {plural(pending.preview.units, "unidad", "unidades")}. Conservan su stock, precio y SKU; no se crea
+                  ninguna variante nueva.
                 </>
               ) : (
                 <>
@@ -230,9 +266,11 @@ export default function ProductColors({
       )}
 
       {error && <AdminNotice kind="danger">{error}</AdminNotice>}
-      {!pending && (
+      {!pending && canAdd && (
         <p className={ADMIN_TEXT_MUTED}>
-          Agregar un color crea una variante por modelo con stock 0. Quitarlo las da de baja, sin borrarlas.
+          {hasAnyColor
+            ? "Agregar un color crea una variante por modelo con stock 0. Quitarlo las da de baja, sin borrarlas."
+            : "Este producto todavía no tiene colores. El primero que agregues se les pone a sus variantes actuales; los siguientes crean una variante por modelo con stock 0."}
         </p>
       )}
     </div>

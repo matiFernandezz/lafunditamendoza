@@ -436,6 +436,13 @@ export type AddColorResult = {
   reactivated: number;
   /** Variantes de ese color que ya estaban activas. */
   existing: number;
+  /**
+   * Primer color de un producto que no tenía ninguno: no se crea nada, se le
+   * asigna a las variantes que ya tiene (que conservan stock, precio y SKU).
+   */
+  assigned: number;
+  /** Stock de esas variantes asignadas. */
+  units: number;
   skus: string[];
   dry_run: boolean;
 };

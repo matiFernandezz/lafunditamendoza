@@ -781,7 +781,7 @@ export default function CatalogoPage() {
                       onDraftChange={(update) => updateDraft(product.id, update)}
                       modelNameById={modelNameById}
                       colors={colors}
-                      colorControls={!isAccessory(product.category_id) && all.some((v) => v.color_id !== null)}
+                      colorControls={!isAccessory(product.category_id)}
                       onColorCreated={addColor}
                       onColorsChanged={handleColorsChanged}
                       saving={savingId === product.id}
