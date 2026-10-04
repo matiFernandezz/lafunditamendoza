@@ -7,11 +7,13 @@ import {
   addProductImage,
   createPurchaseGrid,
   getAdminCategories,
+  getColors,
   getAdminIphoneModels,
   getAdminProducts,
   getLastPurchaseCosts,
   getSuppliers,
   type AdminCategory,
+  type AdminColor,
   type AdminIphoneModel,
   type AdminProduct,
   type LastPurchaseCost,
@@ -56,12 +58,13 @@ import {
 const MAX_RESULTS = 8;
 
 async function loadData() {
-  const [suppliers, products, models, categories, lastCosts] = await Promise.all([
+  const [suppliers, products, models, categories, lastCosts, colors] = await Promise.all([
     getSuppliers(),
     getAdminProducts(),
     getAdminIphoneModels(),
     getAdminCategories(),
     getLastPurchaseCosts(),
+    getColors(),
   ]);
   return {
     suppliers: suppliers.data,
@@ -69,6 +72,7 @@ async function loadData() {
     models: [...models.data].sort((a, b) => a.sort_order - b.sort_order),
     categories: categories.data,
     lastCosts: lastCosts.data,
+    colors: colors.data,
   };
 }
 
@@ -80,6 +84,7 @@ export default function ComprasPage() {
   const [models, setModels] = useState<AdminIphoneModel[]>([]);
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [lastCosts, setLastCosts] = useState<LastPurchaseCost[]>([]);
+  const [colors, setColors] = useState<AdminColor[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -98,6 +103,7 @@ export default function ComprasPage() {
     setModels(data.models);
     setCategories(data.categories);
     setLastCosts(data.lastCosts);
+    setColors(data.colors);
   }
 
   useEffect(() => {
@@ -167,6 +173,10 @@ export default function ComprasPage() {
     [supplierId, date, blocks, products],
   );
   const summary = summarize(blocks);
+
+  function addColor(created: AdminColor) {
+    setColors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, "es")));
+  }
   const canSubmit = !submitting && validation.message === null;
 
   // El proveedor y la fecha recién se marcan en rojo cuando ya hay algo
@@ -510,6 +520,8 @@ export default function ComprasPage() {
                   onChange={(update) => updateBlock(block.key, (b) => (b.kind === "existing" ? update(b) : b))}
                   onRemove={() => removeBlock(block)}
                   models={models}
+                  colors={colors}
+                  onColorCreated={addColor}
                   skuByKey={skuByKey}
                   invalid={validation.invalid}
                   disabled={submitting}
@@ -551,6 +563,8 @@ export default function ComprasPage() {
                     }
                     categories={categories}
                     models={models}
+                    colors={colors}
+                    onColorCreated={addColor}
                     skuByKey={skuByKey}
                     invalid={validation.invalid}
                     disabled={submitting}

@@ -2,7 +2,9 @@
 
 import { Check, Plus } from "lucide-react";
 import { useState } from "react";
-import type { AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
+import type { AdminColor, AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
+import { colorsWithoutPhotos } from "@/lib/productColors";
+import { ColorDot } from "../ColorField";
 import AdminNotice from "../AdminNotice";
 import { MoneyInput, UnitsInput } from "../GridInputs";
 import {
@@ -12,6 +14,7 @@ import {
   ADMIN_TEXT_MUTED,
   adminBadge,
   adminButton,
+  adminChip,
   adminInput,
 } from "../adminStyles";
 import { displayColor } from "../ventas/utils";
@@ -31,6 +34,7 @@ export default function ProductEditor({
   draft,
   onDraftChange,
   modelNameById,
+  colors,
   saving,
   error,
   justSaved,
@@ -45,6 +49,7 @@ export default function ProductEditor({
   draft: CatalogDraft;
   onDraftChange: (update: (draft: CatalogDraft) => CatalogDraft) => void;
   modelNameById: Map<string, string>;
+  colors: AdminColor[];
   saving: boolean;
   error: string | null;
   justSaved: boolean;
@@ -54,9 +59,19 @@ export default function ProductEditor({
   onAddVariant: () => void;
 }) {
   const [bulkPrice, setBulkPrice] = useState("");
+  // Qué fotos se están viendo: null = las generales, o las de un color.
+  const [photoColorId, setPhotoColorId] = useState<string | null>(null);
   const all = product.product_variants;
   const changes = draftChanges(product, draft);
   const hidden = all.length - variants.length;
+
+  // Colores que tiene el producto (por sus variantes), en el orden de la lista.
+  const usedColorIds = new Set(all.map((v) => v.color_id));
+  const productColors = colors.filter((c) => usedColorIds.has(c.id));
+  const missingPhotos = new Set(colorsWithoutPhotos(all, product.product_images));
+  // Si el color elegido dejó de ser del producto, se vuelve a las generales.
+  const activePhotoColorId = productColors.some((c) => c.id === photoColorId) ? photoColorId : null;
+  const photoCount = (colorId: string | null) => product.product_images.filter((img) => img.color_id === colorId).length;
 
   const name = draft.name ?? product.name;
   const description = draft.description ?? product.description ?? "";
@@ -106,7 +121,43 @@ export default function ProductEditor({
           </EditorSection>
 
           <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
-            <ProductImageGallery productId={product.id} images={product.product_images} onChange={onImagesChange} />
+            {productColors.length > 0 && (
+              <div role="radiogroup" aria-label="Fotos de" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {[null, ...productColors].map((color) => {
+                  const id = color?.id ?? null;
+                  return (
+                    <button
+                      key={id ?? "general"}
+                      type="button"
+                      role="radio"
+                      aria-checked={activePhotoColorId === id}
+                      onClick={() => setPhotoColorId(id)}
+                      className={`${adminChip(activePhotoColorId === id)} flex items-center gap-2`}
+                    >
+                      {color && <ColorDot hex={color.hex} size={16} />}
+                      {color?.name ?? "General"}
+                      <span className="font-mono text-xs opacity-70">{photoCount(id)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <ProductImageGallery
+              productId={product.id}
+              images={product.product_images}
+              colorId={activePhotoColorId}
+              onChange={onImagesChange}
+            />
+            {missingPhotos.size > 0 && (
+              <p className={ADMIN_TEXT_MUTED}>
+                Sin fotos propias:{" "}
+                {productColors
+                  .filter((c) => missingPhotos.has(c.id))
+                  .map((c) => c.name)
+                  .join(", ")}
+                . Al elegir esos colores, la tienda muestra las fotos generales.
+              </p>
+            )}
           </EditorSection>
 
           {all.length > 0 && (
@@ -131,7 +182,7 @@ export default function ProductEditor({
             <p className={ADMIN_EMPTY}>Todavía no tiene variantes. Agregale la primera.</p>
           ) : (
             <div className="hidden grid-cols-[minmax(0,1fr)_108px_140px] gap-2 text-xs text-admin-muted lg:grid">
-              <span>Modelo · descripción · SKU</span>
+              <span>Modelo · color · SKU</span>
               <span className="text-right">Stock</span>
               <span className="text-right">Precio</span>
             </div>

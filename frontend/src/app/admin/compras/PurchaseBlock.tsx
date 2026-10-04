@@ -1,8 +1,9 @@
 "use client";
 
 import { ListPlus, Plus, Trash2, X } from "lucide-react";
-import type { AdminIphoneModel } from "@/lib/adminApi";
+import type { AdminColor, AdminIphoneModel } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import ColorField from "../ColorField";
 import { MoneyInput, UnitsInput } from "../GridInputs";
 import {
   ADMIN_CARD,
@@ -66,6 +67,8 @@ export default function PurchaseBlock({
   onChange,
   onRemove,
   models,
+  colors,
+  onColorCreated,
   skuByKey,
   invalid,
   disabled,
@@ -74,6 +77,8 @@ export default function PurchaseBlock({
   onChange: (update: (block: ExistingBlock) => ExistingBlock) => void;
   onRemove: () => void;
   models: AdminIphoneModel[];
+  colors: AdminColor[];
+  onColorCreated: (color: AdminColor) => void;
   skuByKey: Map<string, string>;
   invalid: Set<string>;
   disabled: boolean;
@@ -129,7 +134,7 @@ export default function PurchaseBlock({
 
       <div>
         <div className={`hidden pb-2 text-xs text-admin-muted md:grid ${ROW_GRID}`}>
-          <span>Modelo · descripción</span>
+          <span>Modelo · color</span>
           <span className="text-right">Stock</span>
           <span className="text-right">Cantidad</span>
           <span className="text-right">Costo unitario</span>
@@ -166,14 +171,14 @@ export default function PurchaseBlock({
                       ))}
                       <option value={UNIVERSAL}>Sin modelo (sirve para todos)</option>
                     </select>
-                    <input
-                      type="text"
+                    <ColorField
+                      label="Color de la variante nueva"
                       value={row.color}
+                      colors={colors}
+                      onColorCreated={onColorCreated}
                       disabled={disabled}
-                      aria-label="Descripción de la variante nueva"
-                      onChange={(e) => updateRow(row.key, { color: e.target.value })}
-                      placeholder="Color, tipo…"
-                      className={`flex-1 ${adminInput()}`}
+                      onChange={(value) => updateRow(row.key, { color: value })}
+                      className="flex-1"
                     />
                     <button
                       type="button"

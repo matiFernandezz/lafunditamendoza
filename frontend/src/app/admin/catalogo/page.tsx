@@ -6,17 +6,21 @@ import {
   AdminApiError,
   createProductVariant,
   getAdminCategories,
+  getColors,
   getAdminIphoneModels,
   getAdminProducts,
   updateProduct,
   updateVariant,
   type AdminCategory,
+  type AdminColor,
   type AdminIphoneModel,
   type AdminProduct,
   type AdminVariant,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import { colorsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
+import ColorField from "../ColorField";
 import { categoryPathById } from "../categoryPath";
 import {
   ADMIN_EMPTY,
@@ -50,12 +54,13 @@ const STOCK_FILTERS: { value: StockFilter; label: string }[] = [
 ];
 
 async function loadData() {
-  const [categories, models, products] = await Promise.all([
+  const [categories, models, products, colors] = await Promise.all([
     getAdminCategories(),
     getAdminIphoneModels(),
     getAdminProducts(),
+    getColors(),
   ]);
-  return { categories: categories.data, models: models.data, products: products.data };
+  return { categories: categories.data, models: models.data, products: products.data, colors: colors.data };
 }
 
 function errorMessage(err: unknown) {
@@ -65,6 +70,7 @@ function errorMessage(err: unknown) {
 export default function CatalogoPage() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [models, setModels] = useState<AdminIphoneModel[]>([]);
+  const [colors, setColors] = useState<AdminColor[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -109,6 +115,7 @@ export default function CatalogoPage() {
         if (ignore) return;
         setCategories(result.categories);
         setModels(result.models);
+        setColors(result.colors);
         setProducts(result.products);
         setLoading(false);
       })
@@ -140,6 +147,7 @@ export default function CatalogoPage() {
       .then((result) => {
         setCategories(result.categories);
         setModels(result.models);
+        setColors(result.colors);
         setProducts(result.products);
       })
       .catch((err) => {
@@ -518,21 +526,23 @@ export default function CatalogoPage() {
           </div>
 
           <div>
-            <label htmlFor="catalogo-color" className={ADMIN_LABEL}>
-              Descripción
-            </label>
-            <input
-              id="catalogo-color"
-              type="text"
+            <span className={ADMIN_LABEL}>Color</span>
+            <ColorField
+              label="Color de la variante"
               value={color}
-              onChange={(e) => {
-                setColor(e.target.value);
+              colors={colors}
+              onChange={(value) => {
+                setColor(value);
                 setVariantError(null);
               }}
-              placeholder="Ej.: rosa, tipo C a C, 20W"
-              className={ADMIN_INPUT}
+              onColorCreated={(created) =>
+                setColors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, "es")))
+              }
             />
-            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>Opcional: color, tipo o lo que distinga a esta variante. Vacío = variante única.</p>
+            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
+              Opcional. Si lo que distingue a la variante no es un color (un cable “tipo C a C”), elegí “Otra
+              descripción”.
+            </p>
           </div>
 
           <div>
@@ -552,7 +562,7 @@ export default function CatalogoPage() {
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
-                "Sugerido según producto, modelo y descripción. Podés editarlo."
+                "Sugerido según producto, modelo y color. Podés editarlo."
               ) : (
                 <>
                   Editado a mano.{" "}
@@ -671,6 +681,9 @@ export default function CatalogoPage() {
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-base font-semibold text-admin-text">
                       {product.name}
                       {product.product_images.length === 0 && <span className={adminBadge("warn")}>Sin foto</span>}
+                      {colorsWithoutPhotos(all, product.product_images).length > 0 && (
+                        <span className={adminBadge("warn")}>Color sin foto</span>
+                      )}
                       {unsaved && <span className={adminBadge("ink")}>Sin guardar</span>}
                     </span>
                     <span className={`mt-0.5 flex flex-wrap gap-x-1.5 ${ADMIN_TEXT_MUTED}`}>
@@ -702,6 +715,7 @@ export default function CatalogoPage() {
                       draft={draft}
                       onDraftChange={(update) => updateDraft(product.id, update)}
                       modelNameById={modelNameById}
+                      colors={colors}
                       saving={savingId === product.id}
                       error={saveError?.productId === product.id ? saveError.message : null}
                       justSaved={savedId === product.id}

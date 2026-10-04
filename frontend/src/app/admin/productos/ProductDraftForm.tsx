@@ -2,7 +2,7 @@
 
 import { Check, ImagePlus, ListPlus, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import type { AdminCategory, AdminIphoneModel } from "@/lib/adminApi";
+import type { AdminCategory, AdminColor, AdminIphoneModel } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import {
   MAX_PRODUCT_IMAGE_SIZE,
@@ -10,6 +10,7 @@ import {
   PRODUCT_IMAGE_TYPES,
 } from "@/lib/productImages";
 import AdminNotice from "../AdminNotice";
+import ColorField from "../ColorField";
 import { MoneyInput, UnitsInput } from "../GridInputs";
 import { categoryPathById } from "../categoryPath";
 import {
@@ -53,6 +54,8 @@ export default function ProductDraftForm({
   onChange,
   categories,
   models,
+  colors,
+  onColorCreated,
   skuByKey,
   idPrefix,
   disabled = false,
@@ -65,6 +68,9 @@ export default function ProductDraftForm({
   onChange: (update: (draft: ProductDraft) => ProductDraft) => void;
   categories: AdminCategory[];
   models: AdminIphoneModel[];
+  /** Lista de colores para elegir el de cada fila. */
+  colors: AdminColor[];
+  onColorCreated: (color: AdminColor) => void;
   skuByKey: Map<string, string>;
   idPrefix: string;
   /** Guardando: nada se puede editar. */
@@ -339,7 +345,7 @@ export default function ProductDraftForm({
           {!purchase && (
             <div className={`hidden pb-2 text-xs text-admin-muted lg:grid ${ROW_GRID}`}>
               <span>Modelo</span>
-              <span>Descripción (opcional)</span>
+              <span>Color (opcional)</span>
               <span className="text-right">Stock</span>
               <span className="text-right">Precio</span>
               <span />
@@ -389,14 +395,14 @@ export default function ProductDraftForm({
                     <Trash2 aria-hidden="true" className="size-[18px]" />
                   </button>
 
-                  <input
-                    type="text"
+                  <ColorField
+                    label={`Color, fila ${n}`}
                     value={row.color}
+                    colors={colors}
+                    onColorCreated={onColorCreated}
                     disabled={off}
-                    aria-label={`Descripción, fila ${n}`}
-                    onChange={(e) => updateRow(row.key, { color: e.target.value })}
-                    placeholder="Color, tipo… (opcional)"
-                    className={`${purchase ? "col-span-6 md:col-span-2" : "col-span-3 lg:col-span-1"} ${adminInput()}`}
+                    onChange={(value) => updateRow(row.key, { color: value })}
+                    className={purchase ? "col-span-6 md:col-span-2" : "col-span-3 lg:col-span-1"}
                   />
 
                   <UnitsInput

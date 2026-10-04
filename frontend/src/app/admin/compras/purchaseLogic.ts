@@ -347,7 +347,7 @@ export function validatePurchase(
       if (row.modelId === "") {
         fail(`${row.key}:model`, `${label}: elegí el modelo de la fila nueva.`);
       } else if (combos.has(combo(row))) {
-        fail(`${row.key}:model`, `${label}: ese modelo con esa descripción ya está en la lista.`);
+        fail(`${row.key}:model`, `${label}: ese modelo y color ya está en la lista.`);
       }
       combos.add(combo(row));
 

@@ -8,9 +8,11 @@ import {
   createProduct,
   createProductVariant,
   getAdminCategories,
+  getColors,
   getAdminIphoneModels,
   getAdminProducts,
   type AdminCategory,
+  type AdminColor,
   type AdminIphoneModel,
 } from "@/lib/adminApi";
 import AdminNotice from "../AdminNotice";
@@ -23,14 +25,16 @@ function parseStock(text: string) {
 }
 
 async function loadData() {
-  const [categories, models, products] = await Promise.all([
+  const [categories, models, products, colors] = await Promise.all([
     getAdminCategories(),
     getAdminIphoneModels(),
     getAdminProducts(),
+    getColors(),
   ]);
   return {
     categories: categories.data,
     models: models.data,
+    colors: colors.data,
     skus: products.data.flatMap((p) => p.product_variants.map((v) => v.sku)),
   };
 }
@@ -42,6 +46,7 @@ function errorMessage(err: unknown) {
 export default function ProductosPage() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [models, setModels] = useState<AdminIphoneModel[]>([]);
+  const [colors, setColors] = useState<AdminColor[]>([]);
   // SKUs que ya existen: los nuevos se generan sin repetir ninguno.
   const [existingSkus, setExistingSkus] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +69,7 @@ export default function ProductosPage() {
         if (ignore) return;
         setCategories(result.categories);
         setModels(result.models);
+        setColors(result.colors);
         setExistingSkus(result.skus);
         setLoading(false);
       })
@@ -85,6 +91,7 @@ export default function ProductosPage() {
       .then((result) => {
         setCategories(result.categories);
         setModels(result.models);
+        setColors(result.colors);
         setExistingSkus(result.skus);
       })
       .catch((err) => {
@@ -128,7 +135,7 @@ export default function ProductosPage() {
         return `${where} (${label}): el stock tiene que ser un entero mayor o igual a 0.`;
       }
       const id = `${row.modelId}|${row.color.trim().toLowerCase()}`;
-      if (seen.has(id)) return `${where} (${label}): ese modelo con esa descripción ya está en la lista.`;
+      if (seen.has(id)) return `${where} (${label}): ese modelo y color ya está en la lista.`;
       seen.add(id);
     }
     return null;
@@ -249,6 +256,10 @@ export default function ProductosPage() {
         }}
         categories={categories}
         models={models}
+        colors={colors}
+        onColorCreated={(created) =>
+          setColors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, "es")))
+        }
         skuByKey={skuByKey}
         disabled={saving}
         locked={locked}
