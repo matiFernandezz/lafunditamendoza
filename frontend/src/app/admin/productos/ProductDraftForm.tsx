@@ -339,7 +339,7 @@ export default function ProductDraftForm({
           {!purchase && (
             <div className={`hidden pb-2 text-xs text-admin-muted lg:grid ${ROW_GRID}`}>
               <span>Modelo</span>
-              <span>Color (opcional)</span>
+              <span>Descripción (opcional)</span>
               <span className="text-right">Stock</span>
               <span className="text-right">Precio</span>
               <span />
@@ -393,9 +393,9 @@ export default function ProductDraftForm({
                     type="text"
                     value={row.color}
                     disabled={off}
-                    aria-label={`Color, fila ${n}`}
+                    aria-label={`Descripción, fila ${n}`}
                     onChange={(e) => updateRow(row.key, { color: e.target.value })}
-                    placeholder="Color (opcional)"
+                    placeholder="Color, tipo… (opcional)"
                     className={`${purchase ? "col-span-6 md:col-span-2" : "col-span-3 lg:col-span-1"} ${adminInput()}`}
                   />
 

@@ -129,7 +129,7 @@ export default function PurchaseBlock({
 
       <div>
         <div className={`hidden pb-2 text-xs text-admin-muted md:grid ${ROW_GRID}`}>
-          <span>Modelo · color</span>
+          <span>Modelo · descripción</span>
           <span className="text-right">Stock</span>
           <span className="text-right">Cantidad</span>
           <span className="text-right">Costo unitario</span>
@@ -170,9 +170,9 @@ export default function PurchaseBlock({
                       type="text"
                       value={row.color}
                       disabled={disabled}
-                      aria-label="Color de la variante nueva"
+                      aria-label="Descripción de la variante nueva"
                       onChange={(e) => updateRow(row.key, { color: e.target.value })}
-                      placeholder="Color"
+                      placeholder="Color, tipo…"
                       className={`flex-1 ${adminInput()}`}
                     />
                     <button
@@ -237,7 +237,7 @@ export default function PurchaseBlock({
       </div>
 
       {isUniversal ? (
-        // Universal (sin modelo): no hay modelos que sumar, solo otro color.
+        // Universal (sin modelo): no hay modelos que sumar, solo otra variante.
         <button
           type="button"
           onClick={() => onChange((b) => ({ ...b, rows: [...b.rows, newRow(UNIVERSAL)] }))}
@@ -245,7 +245,7 @@ export default function PurchaseBlock({
           className={`${adminButton("secondary")} sm:w-fit`}
         >
           <Plus aria-hidden="true" className="size-[18px]" />
-          Agregar color
+          Agregar variante
         </button>
       ) : (
         <div className="grid gap-2 sm:grid-cols-2">

@@ -128,7 +128,7 @@ export default function ProductosPage() {
         return `${where} (${label}): el stock tiene que ser un entero mayor o igual a 0.`;
       }
       const id = `${row.modelId}|${row.color.trim().toLowerCase()}`;
-      if (seen.has(id)) return `${where} (${label}): ese modelo y color ya está en la lista.`;
+      if (seen.has(id)) return `${where} (${label}): ese modelo con esa descripción ya está en la lista.`;
       seen.add(id);
     }
     return null;
