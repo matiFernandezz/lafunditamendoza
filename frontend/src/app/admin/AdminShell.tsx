@@ -128,6 +128,32 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [drawerOpen]);
 
+  // Campos numéricos de todo el panel: al entrar se selecciona el contenido
+  // (escribir "1" sobre un "0" da 1, no 01) y la rueda del mouse no cambia el
+  // valor: suelta el campo y la página se desplaza normal.
+  useEffect(() => {
+    const isNumberInput = (el: EventTarget | null): el is HTMLInputElement =>
+      el instanceof HTMLInputElement && el.type === "number";
+
+    function onFocusIn(e: FocusEvent) {
+      const target = e.target;
+      // En el próximo frame: el click que da el foco todavía no terminó y
+      // ubicaría el cursor, deshaciendo la selección.
+      if (isNumberInput(target)) requestAnimationFrame(() => target.select());
+    }
+    function onWheel() {
+      const active = document.activeElement;
+      if (isNumberInput(active)) active.blur();
+    }
+
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("wheel", onWheel, { passive: true });
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("wheel", onWheel);
+    };
+  }, []);
+
   if (isLogin) return <>{children}</>;
 
   async function handleLogout() {
