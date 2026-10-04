@@ -35,7 +35,8 @@ export type Product = {
   id: string;
   name: string;
   description: string | null;
-  category: { id: string; name: string; slug: string } | null;
+  category: { id: string; name: string; slug: string; parent_id: string | null } | null;
+  created_at: string;
   product_images: ProductImage[];
   product_variants: Variant[];
 };
@@ -46,7 +47,7 @@ export function coverImage(product: Pick<Product, "product_images">): string | n
 }
 
 const PRODUCT_SELECT =
-  "id, name, description, category:categories(id, name, slug), product_images(id, url, sort_order), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
+  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,11 +55,15 @@ const UUID_RE =
 export const isUuid = (value: unknown): value is string =>
   typeof value === "string" && UUID_RE.test(value);
 
-/** Categorías padre con sus subcategorías, ordenadas por nombre. */
+/**
+ * Categorías de tope (las del menú: Fundas, Accesorios) con sus tipos, en el
+ * orden de sort_order.
+ */
 export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   const { data, error } = await supabase
     .from("categories")
     .select("id, name, slug, parent_id")
+    .order("sort_order")
     .order("name")
     .overrideTypes<Category[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar las categorías: ${error.message}`);
@@ -146,40 +151,20 @@ export function groupModelsByLine(models: IphoneModel[]): ModelLine[] {
 }
 
 /**
- * Productos activos de una categoría, con solo sus variantes activas y con stock.
- * Con `modelId`, deja las variantes de ese modelo o sin restricción de modelo;
- * los productos que se quedan sin variantes no aparecen (`!inner`).
+ * Productos activos de una categoría de tope: los suyos y los de todos sus
+ * tipos, con solo sus variantes activas y con stock. Los filtros de la página
+ * (modelo, tipo, orden) se aplican después en memoria con las funciones de
+ * lib/catalogFilters: el catálogo es chico y así los contadores de los chips
+ * salen de la misma consulta.
  */
-export async function getProductsByCategory(
-  categoryId: string,
-  modelId?: string,
-): Promise<Product[]> {
-  // Una categoría con subcategorías (ej. "Fundas") no tiene productos propios:
-  // agrega los de sus hijas. Una hoja (ej. "Accesorios") solo trae los suyos.
-  const { data: children, error: childrenError } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("parent_id", categoryId)
-    .overrideTypes<{ id: string }[], { merge: false }>();
-  if (childrenError) throw new Error(`No se pudieron cargar las categorías: ${childrenError.message}`);
-  const categoryIds = children.length > 0 ? children.map((c) => c.id) : [categoryId];
-
-  let query = supabase
+export async function getProductsInCategory(categoryIds: string[]): Promise<Product[]> {
+  const { data, error } = await supabase
     .from("products")
     .select(PRODUCT_SELECT)
     .in("category_id", categoryIds)
     .eq("active", true)
     .eq("product_variants.active", true)
-    .gt("product_variants.stock_quantity", 0);
-
-  if (modelId) {
-    // modelId ya viene validado como UUID: es seguro interpolarlo en el filtro.
-    query = query.or(`iphone_model_id.eq.${modelId},iphone_model_id.is.null`, {
-      referencedTable: "product_variants",
-    });
-  }
-
-  const { data, error } = await query
+    .gt("product_variants.stock_quantity", 0)
     .order("name")
     .order("price", { referencedTable: "product_variants" })
     .order("sort_order", { referencedTable: "product_images", ascending: true })
@@ -215,28 +200,45 @@ export async function getProductsByModel(modelId: string): Promise<Product[]> {
 export async function getFeaturedProducts(limit: number): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
-    .select(`${PRODUCT_SELECT}, created_at`)
+    .select(PRODUCT_SELECT)
     .eq("active", true)
     .eq("product_variants.active", true)
     .gt("product_variants.stock_quantity", 0)
     .order("created_at", { ascending: false })
     .order("sort_order", { referencedTable: "product_images", ascending: true })
     .limit(limit)
-    .overrideTypes<(Product & { created_at: string })[], { merge: false }>();
+    .overrideTypes<Product[], { merge: false }>();
   if (error) throw new Error(`No se pudieron cargar los destacados: ${error.message}`);
   return data;
 }
 
-export type CategoryTile = Category & { count: number };
+export type CategoryTile = { id: string; name: string; slug: string; href: string; count: number };
+
+/** Link de una categoría: las de tope tienen página; un tipo es un filtro de su categoría. */
+export function categoryHref(category: { slug: string }, parent?: { slug: string } | null): string {
+  return parent ? `/categoria/${parent.slug}?tipo=${category.slug}` : `/categoria/${category.slug}`;
+}
 
 /**
- * Las categorías hoja (con productos propios) para el grid de la home, con la
- * cantidad de productos con stock. La foto de cada mosaico la elige la home.
+ * Mosaicos de la home, con la cantidad de productos con stock: la primera
+ * categoría (Fundas, lo principal) se abre en sus tipos y las demás van como
+ * un solo mosaico con todo lo suyo. La foto de cada uno la elige la home.
  */
 export async function getCategoryTiles(): Promise<CategoryTile[]> {
   const [groups, counts] = await Promise.all([getCategoryGroups(), getProductCountsByCategory()]);
-  const leaves = groups.flatMap((g) => (g.children.length > 0 ? g.children : [g]));
-  return leaves.map((c) => ({ ...c, count: counts[c.id] ?? 0 }));
+  return groups.flatMap((group, index) => {
+    if (index === 0 && group.children.length > 0) {
+      return group.children.map((child) => ({
+        id: child.id,
+        name: child.name,
+        slug: child.slug,
+        href: categoryHref(child, group),
+        count: counts[child.id] ?? 0,
+      }));
+    }
+    const count = [group, ...group.children].reduce((sum, c) => sum + (counts[c.id] ?? 0), 0);
+    return [{ id: group.id, name: group.name, slug: group.slug, href: categoryHref(group), count }];
+  });
 }
 
 /** Un producto puntual con sus variantes activas y con stock, para el detalle. */
