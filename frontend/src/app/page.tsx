@@ -20,13 +20,13 @@ import { FULL_BLEED, PAGE_PADDING } from "@/lib/layout";
 // la home en el build y queda congelada.
 export const dynamic = "force-dynamic";
 
-// Fotos de marca (design/assets/photos) para las subcategorías de fundas.
-// Las categorías sin foto de marca van en grafito liso, como en el diseño:
+// Fotos de marca (design/assets/photos) para los tipos de funda.
+// Los mosaicos sin foto de marca van en grafito liso, como en el diseño:
 // las fotos de producto de la base son chicas y quedan pixeladas a ese tamaño.
 const CATEGORY_PHOTOS: Record<string, string> = {
-  "de-diseno": "/photos/star-cases.jpg",
+  diseno: "/photos/star-cases.jpg",
   transparentes: "/photos/cherry-cases.jpg",
-  "de-silicona": "/photos/magsafe-colores-mesa.jpg",
+  silicona: "/photos/magsafe-colores-mesa.jpg",
 };
 
 // Velo de tinta arriba, para los titulares de los slides 2 y 3.
@@ -58,12 +58,7 @@ export default async function Home() {
   const modelLines = groupModelsByLine(models);
   const fundas = categoryGroups.find((g) => g.children.length > 0);
   const fundasHref = fundas ? `/categoria/${fundas.slug}` : "/";
-  const designHref = tiles.some((t) => t.slug === "de-diseno") ? "/categoria/de-diseno" : fundasHref;
-
-  // Primero las subcategorías de fundas (lo principal), después el resto.
-  const orderedTiles = [...tiles].sort(
-    (a, b) => Number(b.parent_id !== null) - Number(a.parent_id !== null),
-  );
+  const designHref = tiles.find((t) => t.slug === "diseno")?.href ?? fundasHref;
 
   const slides: HeroSlide[] = [
     {
@@ -158,16 +153,16 @@ export default async function Home() {
         </div>
       )}
 
-      {orderedTiles.length > 0 && (
+      {tiles.length > 0 && (
         <section aria-label="Categorías" className="space-y-5">
           <SectionHeading size="headline" title="Elegí por categoría" />
-          {/* Siempre con el margen de la página (no a sangre). Las 5 en una fila
-              desde lg; antes no entran sin que el índice y "Ver más" se pisen. */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 lg:gap-4">
-            {orderedTiles.map((tile, index) => (
+          {/* Siempre con el margen de la página (no a sangre). Los tipos de funda
+              y Accesorios: 2 por fila en mobile y los 4 en una fila desde md. */}
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:gap-4">
+            {tiles.map((tile, index) => (
               <CategoryTile
                 key={tile.id}
-                href={`/categoria/${tile.slug}`}
+                href={tile.href}
                 name={tile.name}
                 index={index + 1}
                 count={tile.count}

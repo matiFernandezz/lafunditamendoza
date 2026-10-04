@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductDetail from "@/components/ProductDetail";
-import { getProduct, isUuid } from "@/lib/catalog";
+import { categoryHref, getCategoryGroups, getProduct, isUuid } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +12,16 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   const { modelo } = await props.searchParams;
   const initialModelId = isUuid(modelo) ? modelo : undefined;
 
-  const product = await getProduct(id);
+  const [product, groups] = await Promise.all([getProduct(id), getCategoryGroups()]);
   if (!product) notFound();
+
+  // Migas: Inicio / Fundas / Diseño / Producto. El tipo lleva al listado de su
+  // categoría ya filtrado.
+  const group = groups.find((g) => g.id === product.category?.parent_id);
+  const crumbs = [
+    ...(group ? [{ label: group.name, href: categoryHref(group) }] : []),
+    ...(product.category ? [{ label: product.category.name, href: categoryHref(product.category, group) }] : []),
+  ];
 
   return (
     <div className="mx-auto w-full max-w-[960px] space-y-8 md:space-y-10">
@@ -21,17 +29,14 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
         <Link href="/" className="transition-colors duration-200 hover:text-ink">
           Inicio
         </Link>
-        {product.category && (
-          <>
+        {crumbs.map((crumb) => (
+          <span key={crumb.href} className="contents">
             <span aria-hidden="true">/</span>
-            <Link
-              href={`/categoria/${product.category.slug}`}
-              className="transition-colors duration-200 hover:text-ink"
-            >
-              {product.category.name}
+            <Link href={crumb.href} className="transition-colors duration-200 hover:text-ink">
+              {crumb.label}
             </Link>
-          </>
-        )}
+          </span>
+        ))}
         <span aria-hidden="true">/</span>
         <span className="text-ink">{product.name}</span>
       </nav>
