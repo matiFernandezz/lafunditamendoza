@@ -7,6 +7,7 @@ import type { ProductImage } from "@/lib/catalog";
 // Marco de la foto: cuadrado con esquinas apenas redondeadas (12px) y
 // object-cover adentro. El ancho lo da la columna (ver ProductDetail).
 const FRAME = "relative aspect-square w-full overflow-hidden rounded-xl bg-rule/40";
+const WITH_THUMBS = "grid grid-cols-[56px_minmax(0,1fr)] items-start gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:gap-3";
 
 const ARROW =
   "absolute top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-paper/90 text-xl leading-none text-ink transition-opacity duration-200 disabled:opacity-40";
@@ -17,14 +18,24 @@ const SWIPE_MIN = 40;
 // cambia con las flechas, tocando una miniatura o deslizando el dedo. No hay
 // scroll horizontal: se muestra una foto por vez.
 //
+// `images` son las fotos a mostrar ahora (las del color elegido). Cuando
+// cambian, la galería vuelve a la primera con un fundido.
+//
 // La foto grande va `unoptimized`: se sirve el archivo tal cual se subió, sin
 // que Next lo achique ni lo recomprima. Las miniaturas sí se optimizan.
 export default function ProductGallery({
   images,
   alt,
+  reserveThumbs = false,
 }: {
   images: ProductImage[];
   alt: string;
+  /**
+   * Dejar siempre el lugar de la columna de miniaturas, aunque ahora haya una
+   * sola foto: así la foto no cambia de tamaño al pasar de un color con
+   * varias fotos a uno con una.
+   */
+  reserveThumbs?: boolean;
 }) {
   const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order);
   const [index, setIndex] = useState(0);
@@ -33,20 +44,39 @@ export default function ProductGallery({
   const [visited, setVisited] = useState<Set<string>>(() => new Set());
   const touchStartX = useRef<number | null>(null);
 
+  // Otro juego de fotos (se eligió otro color): arranca de la primera. Se
+  // ajusta durante el render, no en un efecto.
+  const setKey = sorted.map((img) => img.id).join(",");
+  const [prevSetKey, setPrevSetKey] = useState(setKey);
+  if (prevSetKey !== setKey) {
+    setPrevSetKey(setKey);
+    setIndex(0);
+    setVisited(new Set());
+  }
+
   if (sorted.length === 0) {
     return <div className={`${FRAME} flex items-center justify-center text-graphite`}>Sin foto</div>;
   }
 
-  if (sorted.length === 1) {
+  if (sorted.length === 1 && !reserveThumbs) {
     return (
       <div className={FRAME}>
-        <Image src={sorted[0].url} alt={alt} fill unoptimized className="object-cover" priority />
+        <Image
+          key={sorted[0].id}
+          src={sorted[0].url}
+          alt={alt}
+          fill
+          unoptimized
+          className="object-cover motion-safe:animate-[lf-fade-in_200ms_ease-out]"
+          priority
+        />
       </div>
     );
   }
 
   // Si se borra una foto desde el panel, el índice puede quedar fuera de rango.
   const active = Math.min(index, sorted.length - 1);
+  const many = sorted.length > 1;
 
   function go(next: number) {
     const target = Math.max(0, Math.min(sorted.length - 1, next));
@@ -55,7 +85,7 @@ export default function ProductGallery({
   }
 
   return (
-    <div className="grid grid-cols-[56px_minmax(0,1fr)] items-start gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:gap-3">
+    <div className={WITH_THUMBS}>
       {/* La columna de miniaturas no supera el alto de la foto: si hay muchas,
           se desplaza en vertical sin barra. */}
       <div className="relative self-stretch">
@@ -101,30 +131,34 @@ export default function ProductGallery({
               unoptimized
               priority={i === 0}
               className={`object-cover transition-opacity duration-200 motion-reduce:transition-none ${
-                i === active ? "opacity-100" : "opacity-0"
-              }`}
+                i === 0 ? "motion-safe:animate-[lf-fade-in_200ms_ease-out]" : ""
+              } ${i === active ? "opacity-100" : "opacity-0"}`}
             />
           ) : null,
         )}
 
-        <button
-          type="button"
-          onClick={() => go(active - 1)}
-          aria-label="Foto anterior"
-          disabled={active === 0}
-          className={`${ARROW} left-2 md:left-3`}
-        >
-          ‹
-        </button>
-        <button
-          type="button"
-          onClick={() => go(active + 1)}
-          aria-label="Foto siguiente"
-          disabled={active === sorted.length - 1}
-          className={`${ARROW} right-2 md:right-3`}
-        >
-          ›
-        </button>
+        {many && (
+          <>
+            <button
+              type="button"
+              onClick={() => go(active - 1)}
+              aria-label="Foto anterior"
+              disabled={active === 0}
+              className={`${ARROW} left-2 md:left-3`}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => go(active + 1)}
+              aria-label="Foto siguiente"
+              disabled={active === sorted.length - 1}
+              className={`${ARROW} right-2 md:right-3`}
+            >
+              ›
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

@@ -9,8 +9,10 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   const { id } = await props.params;
   if (!isUuid(id)) notFound();
 
-  const { modelo } = await props.searchParams;
+  const { modelo, color } = await props.searchParams;
   const initialModelId = isUuid(modelo) ? modelo : undefined;
+  // ?color=<slug>: link compartible a un color puntual.
+  const initialColorSlug = typeof color === "string" ? color : undefined;
 
   const [product, groups] = await Promise.all([getProduct(id), getCategoryGroups()]);
   if (!product) notFound();
@@ -41,7 +43,7 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
         <span className="text-ink">{product.name}</span>
       </nav>
 
-      <ProductDetail product={product} initialModelId={initialModelId} />
+      <ProductDetail product={product} initialModelId={initialModelId} initialColorSlug={initialColorSlug} />
     </div>
   );
 }

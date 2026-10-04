@@ -111,3 +111,13 @@ p {
   outline: 2px solid var(--ink);
   outline-offset: 3px;
 }
+
+/* Fundido de la foto de producto al cambiar de color (ProductGallery). */
+@keyframes lf-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

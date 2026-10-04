@@ -6,16 +6,34 @@ import ProductGallery from "@/components/ProductGallery";
 import { useCart } from "@/lib/cart";
 import { coverImage, type Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
+import {
+  availableColorIds,
+  hasColorSelector,
+  imagesForColor,
+  initialColor,
+  productColors,
+  resolveColor,
+} from "@/lib/productColors";
 import { STORE_BUTTON, STORE_TEXT_LINK } from "@/lib/storeStyles";
 
 const LOW_STOCK = 3;
 
+/** Deja `?color=<slug>` en la URL sin recargar: el link queda compartible. */
+function writeColorToUrl(slug: string | undefined) {
+  const url = new URL(window.location.href);
+  if (slug) url.searchParams.set("color", slug);
+  else url.searchParams.delete("color");
+  window.history.replaceState(null, "", url);
+}
+
 export default function ProductDetail({
   product,
   initialModelId,
+  initialColorSlug,
 }: {
   product: Product;
   initialModelId?: string;
+  initialColorSlug?: string;
 }) {
   // Modelos puntuales que este producto realmente tiene (no los 22, solo los
   // que tienen variante propia). Si no hay ninguno, el producto es universal.
@@ -42,17 +60,50 @@ export default function ProductDetail({
     [product.product_variants, modelId],
   );
 
-  const colorOptions = useMemo(
+  // Con 2 colores o más: círculos de color. Con uno o ninguno queda como
+  // siempre: un chip por opción (que puede ser una descripción, no un color).
+  const colors = useMemo(() => productColors(product.product_variants), [product.product_variants]);
+  const swatches = hasColorSelector(colors);
+  // Las variantes que llegan a la tienda ya son solo las que tienen stock.
+  const available = useMemo(
+    () => availableColorIds(product.product_variants, modelId || null),
+    [product.product_variants, modelId],
+  );
+
+  const [wantedColorId, setWantedColorId] = useState<string | null>(() =>
+    initialColor(colors, availableColorIds(product.product_variants, modelId || null), initialColorSlug),
+  );
+  // Si el color elegido no hay para este modelo, salta al primero que sí.
+  const colorId = swatches ? resolveColor(colors, available, wantedColorId) : null;
+  const selectedColor = colors.find((c) => c.id === colorId);
+
+  const optionLabels = useMemo(
     () => [...new Set(availableVariants.map((v) => v.color).filter((c): c is string => !!c))],
     [availableVariants],
   );
+  const [option, setOption] = useState<string>(optionLabels[0] ?? "");
 
-  const [color, setColor] = useState<string>(colorOptions[0] ?? "");
-
-  const selectedVariant =
-    availableVariants.find((v) => (color ? v.color === color : true)) ?? availableVariants[0];
+  const selectedVariant = swatches
+    ? (availableVariants.find((v) => v.color_ref?.id === colorId) ?? availableVariants[0])
+    : (availableVariants.find((v) => (option ? v.color === option : true)) ?? availableVariants[0]);
 
   const selectedModelName = modelOptions.find((m) => m.id === modelId)?.name;
+
+  // Fotos del color elegido; sin fotos propias, las generales. Un producto de
+  // un solo color también usa las suyas si las tiene.
+  const photoColorId = swatches ? colorId : (colors[0]?.id ?? null);
+  const galleryImages = useMemo(
+    () => imagesForColor(product.product_images, photoColorId),
+    [product.product_images, photoColorId],
+  );
+  // Si algún color tiene más de una foto, la columna de miniaturas queda
+  // siempre: la foto no cambia de tamaño al cambiar de color.
+  const reserveThumbs = useMemo(
+    () =>
+      swatches &&
+      [null, ...colors.map((c) => c.id)].some((id) => imagesForColor(product.product_images, id).length > 1),
+    [swatches, colors, product.product_images],
+  );
 
   const cart = useCart();
   // "Agregado" se refiere a la variante que estaba elegida al tocar el botón.
@@ -61,28 +112,43 @@ export default function ProductDetail({
   const inCart = selectedVariant ? cart.quantityOf(selectedVariant.id) : 0;
   const atLimit = stock > 0 && inCart >= stock;
 
+  function handleModelChange(nextModelId: string) {
+    setModelId(nextModelId);
+    setOption("");
+    if (swatches) {
+      const next = resolveColor(colors, availableColorIds(product.product_variants, nextModelId || null), wantedColorId);
+      writeColorToUrl(colors.find((c) => c.id === next)?.slug);
+    }
+  }
+
+  function handleColorChange(id: string) {
+    setWantedColorId(id);
+    writeColorToUrl(colors.find((c) => c.id === id)?.slug);
+  }
+
   function handleAdd() {
     if (!selectedVariant || stock <= 0 || atLimit) return;
     cart.add({
       variantId: selectedVariant.id,
       productId: product.id,
       name: product.name,
+      // Modelo y color: es lo que después va en la reserva y en el mensaje de WhatsApp.
       detail: [selectedVariant.iphone_models?.name ?? selectedModelName, selectedVariant.color]
         .filter(Boolean)
         .join(" · "),
       price: selectedVariant.price,
       max: stock,
-      image: coverImage(product),
+      image: galleryImages[0]?.url ?? coverImage(product),
     });
     setAddedVariantId(selectedVariant.id);
   }
 
   return (
-    // Bloque centrado de 960px (lo pone la página): galería de hasta 520px (miniaturas + foto) y la
-    // columna de compra al lado, así el selector y el botón no se estiran a
-    // todo el ancho de la pantalla.
+    // Bloque centrado de 960px (lo pone la página): galería de hasta 520px
+    // (miniaturas + foto) y la columna de compra al lado, así el selector y el
+    // botón no se estiran a todo el ancho de la pantalla.
     <div className="grid gap-8 md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:gap-10">
-      <ProductGallery images={product.product_images} alt={product.name} />
+      <ProductGallery images={galleryImages} alt={product.name} reserveThumbs={reserveThumbs} />
 
       <div className="space-y-6">
         <h1 className="font-display text-section font-semibold leading-heading tracking-tight text-pretty">
@@ -97,10 +163,7 @@ export default function ProductDetail({
             <select
               id="modelo-detalle"
               value={modelId}
-              onChange={(e) => {
-                setModelId(e.target.value);
-                setColor("");
-              }}
+              onChange={(e) => handleModelChange(e.target.value)}
               className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
             >
               {modelOptions.map((m) => (
@@ -112,27 +175,78 @@ export default function ProductDetail({
           </div>
         )}
 
-        {colorOptions.length > 0 && (
-          <div>
-            <span className="mb-2 block font-medium">Elegí una opción</span>
-            <div className="flex flex-wrap gap-2">
-              {colorOptions.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  aria-pressed={color === c}
-                  className={`h-11 rounded-full border px-4 text-sm font-medium first-letter:uppercase transition-colors duration-200 ${
-                    color === c
-                      ? "border-ink bg-ink text-paper"
-                      : "border-graphite hover:border-ink"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+        {swatches ? (
+          <fieldset>
+            <legend className="mb-1 block font-medium">
+              Color{selectedColor && <span className="font-normal text-graphite"> — {selectedColor.name}</span>}
+            </legend>
+            {/* Radios nativos: Tab entra al grupo y las flechas cambian de
+                color, salteando los que no hay. flex-wrap: varias líneas en
+                el celular, sin scroll horizontal. */}
+            <div role="radiogroup" aria-label="Color" className="-ml-1.5 flex flex-wrap">
+              {colors.map((c) => {
+                const enabled = available.has(c.id);
+                const reason = `Sin stock${selectedModelName ? ` para ${selectedModelName}` : ""}`;
+                return (
+                  <label
+                    key={c.id}
+                    title={enabled ? c.name : reason}
+                    className={`relative flex size-11 items-center justify-center ${
+                      enabled ? "cursor-pointer" : "cursor-not-allowed"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name={`color-${product.id}`}
+                      value={c.slug}
+                      checked={c.id === colorId}
+                      disabled={!enabled}
+                      onChange={() => handleColorChange(c.id)}
+                      aria-label={enabled ? c.name : `${c.name}. ${reason}`}
+                      className="peer sr-only"
+                    />
+                    <span
+                      aria-hidden="true"
+                      style={{ backgroundColor: c.hex }}
+                      className={`block size-8 rounded-full border border-ink/25 ring-ink ring-offset-2 ring-offset-paper transition-shadow duration-200 peer-checked:ring-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-4 ${
+                        enabled ? "" : "opacity-35"
+                      }`}
+                    />
+                    {!enabled && (
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-1/2 top-1/2 h-[1.5px] w-9 -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-ink shadow-[0_0_0_1px_var(--color-paper)]"
+                      />
+                    )}
+                  </label>
+                );
+              })}
             </div>
-          </div>
+          </fieldset>
+        ) : (
+          optionLabels.length > 0 && (
+            <div>
+              <span className="mb-2 block font-medium">{colors.length === 1 ? "Color" : "Elegí una opción"}</span>
+              <div className="flex flex-wrap gap-2">
+                {optionLabels.map((label) => {
+                  const pressed = (option || optionLabels[0]) === label;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => setOption(label)}
+                      aria-pressed={pressed}
+                      className={`h-11 rounded-full border px-4 text-sm font-medium first-letter:uppercase transition-colors duration-200 ${
+                        pressed ? "border-ink bg-ink text-paper" : "border-graphite hover:border-ink"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )
         )}
 
         {selectedVariant && (
