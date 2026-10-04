@@ -11,6 +11,8 @@
 -- Idempotente: se puede correr más de una vez.
 
 create extension if not exists unaccent;
+-- unaccent puede vivir en el esquema extensions (Supabase Cloud) o en public
+-- (local): por eso las funciones de acá fijan search_path = public, extensions.
 
 create table if not exists colors (
   id uuid primary key default gen_random_uuid(),
@@ -114,7 +116,7 @@ create index if not exists idx_product_variants_color_id on product_variants (co
 create or replace function product_variants_sync_color()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_color colors;
@@ -147,7 +149,7 @@ create trigger product_variants_sync_color_trigger
 create or replace function colors_rename_variants()
 returns trigger
 language plpgsql
-set search_path = public
+set search_path = public, extensions
 as $$
 begin
   update product_variants set color = new.name where color_id = new.id and color is distinct from new.name;
@@ -180,7 +182,7 @@ create index if not exists idx_product_images_color_id on product_images (color_
 create or replace function sync_colors_from_variants()
 returns int
 language plpgsql
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   v_created int;
