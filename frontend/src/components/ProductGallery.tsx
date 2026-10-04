@@ -7,12 +7,6 @@ import type { ProductImage } from "@/lib/catalog";
 // Marco de la foto: cuadrado con esquinas apenas redondeadas (12px) y
 // object-cover adentro. El ancho lo da la columna (ver ProductDetail).
 const FRAME = "relative aspect-square w-full overflow-hidden rounded-xl bg-rule/40";
-// Lo que ocupa la foto en pantalla: en desktop ~450px, en mobile casi todo el
-// ancho. El navegador pide el doble en pantallas retina.
-const SIZES = "(min-width: 768px) 450px, 100vw";
-// Calidad de la foto grande (la default de Next, 75, lava los detalles).
-// Tiene que estar en images.qualities de next.config.ts.
-const QUALITY = 90;
 
 const ARROW =
   "absolute top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-paper/90 text-xl leading-none text-ink transition-opacity duration-200 disabled:opacity-40";
@@ -22,6 +16,9 @@ const SWIPE_MIN = 40;
 // de una, las miniaturas van en una columna a la izquierda de la foto y se
 // cambia con las flechas, tocando una miniatura o deslizando el dedo. No hay
 // scroll horizontal: se muestra una foto por vez.
+//
+// La foto grande va `unoptimized`: se sirve el archivo tal cual se subió, sin
+// que Next lo achique ni lo recomprima. Las miniaturas sí se optimizan.
 export default function ProductGallery({
   images,
   alt,
@@ -31,6 +28,9 @@ export default function ProductGallery({
 }) {
   const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order);
   const [index, setIndex] = useState(0);
+  // Fotos que ya se mostraron: quedan montadas para volver sin esperar. Las
+  // demás no se piden hasta que se eligen (son los originales, pueden pesar).
+  const [visited, setVisited] = useState<Set<string>>(() => new Set());
   const touchStartX = useRef<number | null>(null);
 
   if (sorted.length === 0) {
@@ -40,14 +40,19 @@ export default function ProductGallery({
   if (sorted.length === 1) {
     return (
       <div className={FRAME}>
-        <Image src={sorted[0].url} alt={alt} fill sizes={SIZES} quality={QUALITY} className="object-cover" priority />
+        <Image src={sorted[0].url} alt={alt} fill unoptimized className="object-cover" priority />
       </div>
     );
   }
 
   // Si se borra una foto desde el panel, el índice puede quedar fuera de rango.
   const active = Math.min(index, sorted.length - 1);
-  const go = (next: number) => setIndex(Math.max(0, Math.min(sorted.length - 1, next)));
+
+  function go(next: number) {
+    const target = Math.max(0, Math.min(sorted.length - 1, next));
+    setIndex(target);
+    setVisited((prev) => (prev.has(sorted[target].id) ? prev : new Set(prev).add(sorted[target].id)));
+  }
 
   return (
     <div className="grid grid-cols-[56px_minmax(0,1fr)] items-start gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:gap-3">
@@ -66,7 +71,7 @@ export default function ProductGallery({
                   i === active ? "border-ink" : "border-rule hover:border-graphite"
                 }`}
               >
-                <Image src={img.url} alt="" fill sizes="64px" className="object-cover" />
+                <Image src={img.url} alt="" fill sizes="64px" quality={90} className="object-cover" />
               </button>
             </li>
           ))}
@@ -85,22 +90,22 @@ export default function ProductGallery({
           if (Math.abs(delta) >= SWIPE_MIN) go(active + (delta < 0 ? 1 : -1));
         }}
       >
-        {/* Todas montadas y apiladas: cambiar de foto no espera una descarga. */}
-        {sorted.map((img, i) => (
-          <Image
-            key={img.id}
-            src={img.url}
-            alt={i === active ? alt : ""}
-            aria-hidden={i === active ? undefined : true}
-            fill
-            sizes={SIZES}
-            quality={QUALITY}
-            priority={i === 0}
-            className={`object-cover transition-opacity duration-200 motion-reduce:transition-none ${
-              i === active ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ))}
+        {sorted.map((img, i) =>
+          i === active || i === 0 || visited.has(img.id) ? (
+            <Image
+              key={img.id}
+              src={img.url}
+              alt={i === active ? alt : ""}
+              aria-hidden={i === active ? undefined : true}
+              fill
+              unoptimized
+              priority={i === 0}
+              className={`object-cover transition-opacity duration-200 motion-reduce:transition-none ${
+                i === active ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          ) : null,
+        )}
 
         <button
           type="button"

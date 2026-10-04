@@ -29,6 +29,7 @@ export default function ProductTile({
             alt={product.name}
             fill
             sizes="(min-width: 768px) 25vw, 50vw"
+            quality={90}
             className="object-cover transition-transform duration-300 group-hover:scale-[1.04]"
           />
         ) : (
