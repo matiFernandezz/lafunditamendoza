@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
 import { useCart } from "@/lib/cart";
-import { coverImage, type MotifRef, type Product } from "@/lib/catalog";
+import { coverImage, type MotifRef, type Product, type ProductImage } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import {
   MIN_COLORS_FOR_SELECTOR,
@@ -127,16 +127,11 @@ export default function ProductDetail({
         : imagesForColor(product.product_images, photoColorId),
     [product.product_images, usesMotifs, photoMotifId, photoColorId],
   );
-  // Si algún color tiene más de una foto, la columna de miniaturas queda
-  // siempre: la foto no cambia de tamaño al cambiar de color.
-  const reserveThumbs = useMemo(
-    () =>
-      (swatches &&
-        [null, ...colors.map((c) => c.id)].some((id) => imagesForColor(product.product_images, id).length > 1)) ||
-      (motifSelect &&
-        [null, ...motifList.map((m) => m.id)].some((id) => imagesForMotif(product.product_images, id).length > 1)),
-    [swatches, colors, motifSelect, motifList, product.product_images],
-  );
+  // Con selector de color o de motivo, la galería muestra TODAS las fotos del
+  // producto en las miniaturas: elegir un color o motivo salta a su foto, y
+  // tocar la foto de otro lo elige.
+  const multi = swatches || motifSelect;
+  const activeGroupId = swatches ? colorId : motifId;
 
   const cart = useCart();
   // "Agregado" se refiere a la variante que estaba elegida al tocar el botón.
@@ -172,6 +167,17 @@ export default function ProductDetail({
     writeToUrl("motivo", motifList.find((m) => m.id === id)?.slug);
   }
 
+  // En la galería se pasó a la foto de otro color o motivo: se elige, si hay
+  // stock para el modelo. Si no hay, la foto se ve igual y la elección no cambia.
+  function handleImageShown(image: ProductImage) {
+    if (swatches && image.color_id && image.color_id !== colorId && available.has(image.color_id)) {
+      handleColorChange(image.color_id);
+    }
+    if (motifSelect && image.motif_id && image.motif_id !== motifId && availableMotifs.has(image.motif_id)) {
+      handleMotifChange(image.motif_id);
+    }
+  }
+
   function handleAdd() {
     if (!selectedVariant || stock <= 0 || atLimit) return;
     cart.add({
@@ -195,7 +201,12 @@ export default function ProductDetail({
     // (miniaturas + foto) y la columna de compra al lado, así el selector y el
     // botón no se estiran a todo el ancho de la pantalla.
     <div className="grid gap-8 md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:gap-10">
-      <ProductGallery images={galleryImages} alt={product.name} reserveThumbs={reserveThumbs} />
+      <ProductGallery
+        images={multi ? product.product_images : galleryImages}
+        alt={product.name}
+        activeGroupId={multi ? activeGroupId : undefined}
+        onImageShown={multi ? handleImageShown : undefined}
+      />
 
       <div className="space-y-6">
         <h1 className="font-display text-section font-semibold leading-heading tracking-tight text-pretty">

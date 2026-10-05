@@ -482,6 +482,10 @@ async function main() {
   eq("sin círculos de color", radios(pPage.html).length, 0);
   check("la foto grande es la del motivo elegido", hasMainPhoto(pPage.html, aPhoto.url) && !hasMainPhoto(pPage.html, bPhoto.url));
 
+  const thumb = (html, url) => html.includes(encodeURIComponent(url));
+  check("las miniaturas muestran las fotos de todos los motivos y la general", thumb(pPage.html, aPhoto.url) && thumb(pPage.html, bPhoto.url) && thumb(pPage.html, gPhoto.url));
+  eq("…una miniatura por foto", (pPage.html.match(/aria-label="Ver la foto \d+"/g) ?? []).length, 3);
+
   const pB = await page(`${pPath}?motivo=${mB.slug}`);
   eq("?motivo=<slug> elige ese motivo", motifOptions(pB.html)?.find((o) => o.selected)?.value, mB.id);
   check("al elegir otro motivo cambia la foto", hasMainPhoto(pB.html, bPhoto.url) && !hasMainPhoto(pB.html, aPhoto.url));
