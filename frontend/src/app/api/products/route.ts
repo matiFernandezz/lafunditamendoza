@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
        product_variants ( id, sku, color, color_id, motif_id, price, cost_price, stock_quantity, active, iphone_model_id ),
        product_images ( id, url, sort_order, color_id, motif_id )`,
     )
+    // Una variante eliminada que tenía historial queda archivada (active =
+    // false): no se muestra en ninguna pantalla del panel.
+    .eq("product_variants.active", true)
     .order("name", { ascending: true })
     .order("sort_order", { referencedTable: "product_images", ascending: true });
 

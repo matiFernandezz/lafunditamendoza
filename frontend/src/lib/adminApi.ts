@@ -480,115 +480,80 @@ export function mergeMotif(id: string, into: string): Promise<{ data: MergeResul
   return adminFetch(`/api/motifs/${id}/merge`, { method: "POST", body: JSON.stringify({ into }) });
 }
 
-// --- matriz modelo × color (o motivo) ---------------------------------------------
-
 export type AttributeKind = "color" | "motif";
 
-export type CellsResult = {
-  product_id: string;
-  product_name: string;
-  created: number;
-  reactivated: number;
-  existing: number;
-  /** Primer color/motivo de un producto sin ninguno: se asignó a sus variantes actuales. */
-  assigned: number;
-  deactivated: number;
-  /** Unidades en stock de lo que se da de baja (o de lo asignado). */
-  units: number;
-  with_stock: { id: string; sku: string; model: string | null; stock: number }[];
-  /** Se quiso dar de baja algo con stock sin forzar: no se hizo nada. */
-  blocked: boolean;
-  skus: string[];
+// --- agregar y eliminar variantes ------------------------------------------------
+
+export type AddVariantsResult = AddColorResult & {
+  /** Modelos en los que la combinación ya existía activa (no se duplicó). */
+  already: string[];
   dry_run: boolean;
 };
 
 /**
- * Tilda (active true) o destilda (false) celdas de la matriz de un producto.
- * `models`: ids de modelo; null es la variante sin modelo.
+ * "Agregar variante": una variante por modelo elegido (null = universal). Si
+ * la combinación estaba archivada, se reactiva; si ya existe, no se duplica.
  */
-export function applyCells(
+export function addVariants(
   productId: string,
   payload: {
-    kind: AttributeKind;
-    attrId: string;
+    kind: AttributeKind | "text";
+    attrId?: string | null;
+    text?: string;
     models: (string | null)[];
-    active: boolean;
-    force?: boolean;
+    stock: number;
+    price?: number | null;
+    sku?: string;
     dryRun?: boolean;
   },
-): Promise<{ data: CellsResult }> {
-  return adminFetch(`/api/products/${productId}/cells`, {
+): Promise<{ data: AddVariantsResult }> {
+  return adminFetch(`/api/products/${productId}/variants`, {
     method: "POST",
     body: JSON.stringify({
       kind: payload.kind,
-      attr_id: payload.attrId,
+      attr_id: payload.attrId ?? null,
+      text: payload.text ?? null,
       models: payload.models,
-      active: payload.active,
-      force: payload.force ?? false,
+      stock: payload.stock,
+      price: payload.price ?? null,
+      sku: payload.sku ?? null,
       dry_run: payload.dryRun ?? false,
     }),
   });
 }
 
-// --- colores de un producto / de una categoría --------------------------------
+export type DeleteVariantResult = {
+  id: string;
+  sku: string;
+  /** Unidades en stock de la variante (se pierden al eliminarla). */
+  units: number;
+  references: number;
+  /** Tenía stock y no se confirmó: no se hizo nada. */
+  blocked: boolean;
+  /** Se borró del todo (no tenía historial). */
+  deleted: boolean;
+  /** Tenía ventas, compras o reservas: quedó solo en el historial. */
+  archived: boolean;
+  dry_run: boolean;
+};
 
+export function deleteVariant(id: string, force = false): Promise<{ data: DeleteVariantResult }> {
+  return adminFetch(`/api/product-variants/${id}${force ? "?force=1" : ""}`, { method: "DELETE" });
+}
+
+// --- colores de una categoría ---------------------------------------------------
+
+/** Resumen de lo que se le hizo a un producto al agregarle variantes. */
 export type AddColorResult = {
   product_id: string;
   product_name: string;
-  /** Variantes nuevas (una por modelo, con stock 0). */
   created: number;
-  /** Variantes de ese color que estaban dadas de baja y se reactivaron. */
   reactivated: number;
-  /** Variantes de ese color que ya estaban activas. */
   existing: number;
-  /**
-   * Primer color de un producto que no tenía ninguno: no se crea nada, se le
-   * asigna a las variantes que ya tiene (que conservan stock, precio y SKU).
-   */
   assigned: number;
-  /** Stock de esas variantes asignadas. */
   units: number;
   skus: string[];
-  dry_run: boolean;
 };
-
-/** Con dryRun devuelve qué pasaría, sin crear nada. */
-export function addColorToProduct(
-  productId: string,
-  colorId: string,
-  dryRun = false,
-): Promise<{ data: AddColorResult }> {
-  return adminFetch(`/api/products/${productId}/colors`, {
-    method: "POST",
-    body: JSON.stringify({ color_id: colorId, dry_run: dryRun }),
-  });
-}
-
-export type RemoveColorResult = {
-  product_id: string;
-  product_name: string;
-  /** Variantes activas de ese color. */
-  variants: number;
-  deactivated: number;
-  /** Unidades en stock de esas variantes. */
-  units: number;
-  with_stock: { id: string; sku: string; model: string | null; stock: number }[];
-  /** Hay stock y no se forzó: no se hizo nada. */
-  blocked: boolean;
-  dry_run: boolean;
-};
-
-/** Da de baja las variantes de ese color (no las borra). */
-export function removeColorFromProduct(
-  productId: string,
-  colorId: string,
-  options: { force?: boolean; dryRun?: boolean } = {},
-): Promise<{ data: RemoveColorResult }> {
-  const query = new URLSearchParams();
-  if (options.force) query.set("force", "1");
-  if (options.dryRun) query.set("dry_run", "1");
-  return adminFetch(`/api/products/${productId}/colors/${colorId}?${query}`, { method: "DELETE" });
-}
 
 export type AddColorToCategoryResult = {
   category_name: string;
