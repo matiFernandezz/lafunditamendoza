@@ -6,6 +6,7 @@ import { AdminApiError, createColor, createMotif, type AttributeKind } from "@/l
 import AttributeManager from "./AttributeManager";
 import { ADMIN_TEXT_MUTED, adminButton, adminInput } from "./adminStyles";
 import { KIND_TEXT, addToLibrary, useAttributeLibrary } from "./attributeLibrary";
+import { findSimilar } from "./similarNames";
 
 const DEFAULT_NEW_HEX = "#9ca3af";
 
@@ -114,15 +115,13 @@ export default function ColorField({
     setOpen(false);
   }
 
+  // Mientras se escribe el nombre del nuevo: ¿ya hay uno igual o muy parecido?
+  const similar = mode === "new" ? findSimilar(newName, options) : null;
+
+  /** Crea el nuevo. Si hay uno parecido solo se llega acá con "Crear igual". */
   async function handleCreate() {
     const name = newName.trim();
     if (name === "" || saving) return;
-    // Si ya existe con ese nombre, se elige ese en vez de fallar.
-    const existing = options.find((o) => o.name.toLowerCase() === name.toLowerCase());
-    if (existing) {
-      pick(existing.name);
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
@@ -282,7 +281,10 @@ export default function ColorField({
                   autoFocus
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") handleCreate();
+                    if (e.key !== "Enter") return;
+                    // Con uno parecido, Enter usa el que ya existe (lo seguro).
+                    if (similar) pick(similar.item.name);
+                    else handleCreate();
                   }}
                   placeholder={kind === "color" ? "Nombre: Verde menta" : "Nombre: Spiderman"}
                   aria-label={`Nombre del ${text.one} nuevo`}
@@ -294,19 +296,50 @@ export default function ColorField({
                   {error}
                 </p>
               )}
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => setMode("list")} className={adminButton("secondary", "sm")}>
-                  Volver
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={saving || newName.trim() === ""}
-                  className={adminButton("primary", "sm")}
-                >
-                  {saving ? "Creando…" : "Crear"}
-                </button>
-              </div>
+              {similar ? (
+                <div role="alert" className="flex flex-col gap-2 rounded-md border border-admin-border bg-admin-bg p-2.5">
+                  <p className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-admin-text">
+                    Ya existe {similar.item.hex && <ColorDot hex={similar.item.hex} size={14} />}
+                    <strong className="font-semibold">{similar.item.name}</strong>, ¿querés usar ese?
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => pick(similar.item.name)}
+                    className={`${adminButton("primary", "sm")} h-auto min-h-10 w-full whitespace-normal py-1.5`}
+                  >
+                    Usar {similar.item.name}
+                  </button>
+                  {similar.kind === "close" ? (
+                    <button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={saving}
+                      className={`${adminButton("secondary", "sm")} h-auto min-h-10 w-full whitespace-normal py-1.5`}
+                    >
+                      {saving ? "Creando…" : `Crear “${newName.trim()}” igual`}
+                    </button>
+                  ) : (
+                    <p className={ADMIN_TEXT_MUTED}>Es el mismo nombre: no puede haber dos iguales.</p>
+                  )}
+                  <button type="button" onClick={() => setMode("list")} className={adminButton("ghost", "sm")}>
+                    Volver
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => setMode("list")} className={adminButton("secondary", "sm")}>
+                    Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreate}
+                    disabled={saving || newName.trim() === ""}
+                    className={adminButton("primary", "sm")}
+                  >
+                    {saving ? "Creando…" : "Crear"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

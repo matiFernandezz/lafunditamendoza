@@ -439,6 +439,25 @@ export function mergeColor(id: string, into: string): Promise<{ data: MergeResul
   return adminFetch(`/api/colors/${id}/merge`, { method: "POST", body: JSON.stringify({ into }) });
 }
 
+export type ColorToMotifResult = {
+  name: string;
+  variants: number;
+  products: number;
+  units: number;
+  images: number;
+  /** Ya había un motivo con ese nombre (se usa ese; si no, se crea). */
+  motif_existed: boolean;
+  dry_run: boolean;
+};
+
+/**
+ * "Pasar a motivo": mueve las variantes y fotos de un color a un motivo con el
+ * mismo nombre. El color queda en la lista, sin uso. Con dryRun solo cuenta.
+ */
+export function colorToMotif(id: string, dryRun = false): Promise<{ data: ColorToMotifResult }> {
+  return adminFetch(`/api/colors/${id}/to-motif`, { method: "POST", body: JSON.stringify({ dry_run: dryRun }) });
+}
+
 export type AdminMotif = { id: string; name: string; slug: string; sort_order: number; variant_count: number };
 
 export function getMotifs(): Promise<{ data: AdminMotif[] }> {

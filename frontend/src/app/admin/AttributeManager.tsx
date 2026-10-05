@@ -4,6 +4,7 @@ import { Search, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
   AdminApiError,
+  colorToMotif,
   deleteColor,
   deleteMotif,
   mergeColor,
@@ -37,8 +38,10 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 /**
  * Modal "Editar colores" / "Editar motivos": cambiar nombre (y tono), unir dos
- * en uno, y eliminar los que no usa ninguna variante. Los cambios de nombre y
- * tono se guardan todos juntos; unir y eliminar se aplican al confirmar.
+ * en uno, y eliminar de a uno los que no usa ninguna variante (marcados "Sin
+ * uso"). Un color que en realidad es un dibujo o personaje se puede "Pasar a
+ * motivo". Los cambios de nombre y tono se guardan todos juntos; unir,
+ * eliminar y pasar a motivo se aplican al confirmar.
  */
 export default function AttributeManager({ kind, onClose }: { kind: AttributeKind; onClose: () => void }) {
   const library = useAttributeLibrary();
@@ -135,6 +138,36 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
     }, keepText);
   }
 
+  /** Pregunta al servidor cuánto movería, pide confirmar y recién ahí lo hace. */
+  async function handleToMotif(item: Item) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const { data: preview } = await colorToMotif(item.id, true);
+      const count = `${preview.variants === 1 ? "1 variante" : `${preview.variants} variantes`} de ${
+        preview.products === 1 ? "1 producto" : `${preview.products} productos`
+      }`;
+      const photos = preview.images > 0 ? ` y ${preview.images === 1 ? "1 foto" : `${preview.images} fotos`}` : "";
+      const ok = window.confirm(
+        `¿Pasar “${item.name}” a motivo?\n\n${count}${photos} dejan de tener ese color y pasan al motivo “${item.name}”${
+          preview.motif_existed ? ", que ya existe" : ", que se crea"
+        }. Conservan stock (${preview.units} u.), precio y SKU.\n\nEl color queda en la lista, sin uso.`,
+      );
+      if (!ok) return;
+      const { data } = await colorToMotif(item.id);
+      setNotice(
+        `“${data.name}” pasó a motivo: ${data.variants === 1 ? "1 variante" : `${data.variants} variantes`}. El color quedó sin uso.`,
+      );
+      await refresh(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const term = fold(search.trim());
   const visible = term === "" ? items : items.filter((i) => fold(i.name).includes(term));
 
@@ -220,13 +253,13 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
                       {kind === "color" && item.assigned === false && draft.hex === undefined && (
                         <span className={adminBadge("warn")}>Sin color asignado</span>
                       )}
-                      <span className={ADMIN_TEXT_MUTED}>
-                        {item.variant_count === 0
-                          ? "Sin uso"
-                          : item.variant_count === 1
-                            ? "1 variante"
-                            : `${item.variant_count} variantes`}
-                      </span>
+                      {item.variant_count === 0 ? (
+                        <span className={adminBadge("neutral")}>Sin uso</span>
+                      ) : (
+                        <span className={ADMIN_TEXT_MUTED}>
+                          {item.variant_count === 1 ? "1 variante" : `${item.variant_count} variantes`}
+                        </span>
+                      )}
                     </span>
                     <span className="flex flex-wrap gap-1">
                       {items.length > 1 && (
@@ -237,6 +270,16 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
                           className={adminButton("ghost", "sm")}
                         >
                           Unir con…
+                        </button>
+                      )}
+                      {kind === "color" && item.variant_count > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleToMotif(item)}
+                          disabled={busy}
+                          className={adminButton("ghost", "sm")}
+                        >
+                          Pasar a motivo
                         </button>
                       )}
                       {item.variant_count === 0 ? (

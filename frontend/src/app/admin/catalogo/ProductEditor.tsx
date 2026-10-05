@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { AdminIphoneModel, AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
 import { colorsWithoutPhotos, motifsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
+import { ColorDot } from "../ColorField";
 import { MoneyInput, UnitsInput } from "../GridInputs";
 import {
   ADMIN_CAP,
@@ -13,11 +14,12 @@ import {
   ADMIN_TEXT_MUTED,
   adminBadge,
   adminButton,
+  adminChip,
   adminInput,
 } from "../adminStyles";
 import { useAttributeLibrary } from "../attributeLibrary";
+import { foldName } from "../similarNames";
 import { displayColor } from "../ventas/utils";
-import PhotoGroupSelect, { type PhotoGroup } from "./PhotoGroupSelect";
 import ProductAttributes from "./ProductAttributes";
 import ProductImageGallery from "./ProductImageGallery";
 import { draftChanges, type CatalogDraft } from "./catalogDraft";
@@ -70,6 +72,7 @@ export default function ProductEditor({
   const library = useAttributeLibrary();
   // Qué fotos se están viendo: null = las generales, o las de un color o motivo.
   const [photoGroupId, setPhotoGroupId] = useState<string | null>(null);
+  const [photoSearch, setPhotoSearch] = useState("");
   const all = product.product_variants;
   const changes = draftChanges(product, draft);
   const hidden = all.length - variants.length;
@@ -86,12 +89,18 @@ export default function ProductEditor({
   );
   const imagesOf = (id: string | null) =>
     product.product_images.filter((img) => (usesMotifs ? img.motif_id : img.color_id) === id && (id !== null || (img.color_id === null && img.motif_id === null))).length;
-  const photoGroups: PhotoGroup[] = [
+  const photoGroups: { id: string | null; name: string; hex?: string; count: number }[] = [
     { id: null, name: "General", count: imagesOf(null) },
     ...attrs.map((a) => ({ id: a.id, name: a.name, hex: a.hex, count: imagesOf(a.id) })),
   ];
   // Si el elegido dejó de ser del producto, se vuelve a las generales.
   const activeGroupId = attrs.some((a) => a.id === photoGroupId) ? photoGroupId : null;
+  // El buscador filtra los chips mientras se escribe (sin tildes ni mayúsculas).
+  // "General" y el elegido se ven siempre.
+  const photoTerm = foldName(photoSearch);
+  const visibleGroups = photoGroups.filter(
+    (g) => g.id === null || g.id === activeGroupId || foldName(g.name).includes(photoTerm),
+  );
 
   const name = draft.name ?? product.name;
   const description = draft.description ?? product.description ?? "";
@@ -142,14 +151,44 @@ export default function ProductEditor({
 
           <ProductAttributes product={product} models={models} accessory={accessory} onChanged={onAttributesChanged} />
 
-          <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
+          <section className="flex min-w-0 flex-col gap-2.5">
+            {/* Título y buscador en la misma fila; en el celular el buscador
+                baja a una línea propia, a todo el ancho. */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className={ADMIN_CAP}>Fotos en la web ({product.product_images.length})</h3>
+              {attrs.length > 0 && (
+                <div className="w-full sm:w-56">
+                  <input
+                    type="search"
+                    value={photoSearch}
+                    onChange={(e) => setPhotoSearch(e.target.value)}
+                    placeholder={`Buscar ${usesMotifs ? "motivo" : "color"}`}
+                    aria-label={`Buscar ${usesMotifs ? "motivo" : "color"} entre las fotos`}
+                    className={adminInput()}
+                  />
+                </div>
+              )}
+            </div>
             {attrs.length > 0 && (
-              <PhotoGroupSelect
-                groups={photoGroups}
-                value={activeGroupId}
-                onChange={setPhotoGroupId}
-                kindLabel={usesMotifs ? "motivo" : "color"}
-              />
+              <div role="radiogroup" aria-label="Fotos de" className="flex flex-wrap gap-2">
+                {visibleGroups.map((g) => (
+                  <button
+                    key={g.id ?? "general"}
+                    type="button"
+                    role="radio"
+                    aria-checked={activeGroupId === g.id}
+                    onClick={() => setPhotoGroupId(g.id)}
+                    className={`${adminChip(activeGroupId === g.id)} flex items-center gap-2`}
+                  >
+                    {g.hex && <ColorDot hex={g.hex} size={16} />}
+                    {g.name}
+                    <span className="font-mono text-xs opacity-70">{g.count}</span>
+                  </button>
+                ))}
+                {visibleGroups.length < photoGroups.length && visibleGroups.every((g) => g.id === null || g.id === activeGroupId) && (
+                  <span className={`self-center ${ADMIN_TEXT_MUTED}`}>Ninguno con ese nombre.</span>
+                )}
+              </div>
             )}
             <ProductImageGallery
               productId={product.id}
@@ -167,7 +206,7 @@ export default function ProductEditor({
                 . Al elegirlos, la tienda muestra las fotos generales.
               </p>
             )}
-          </EditorSection>
+          </section>
 
           {all.length > 0 && (
             <EditorSection title="Precio para todos los modelos">
