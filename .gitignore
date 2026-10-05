@@ -146,3 +146,6 @@ vite.config.ts.timestamp-*
 .branches
 # Referencias del diseño (capturas de otras marcas, fotos de WhatsApp): no van al repo
 design/uploads/
+
+# Permisos y preferencias de Claude Code de cada máquina: no van al repo
+.claude/settings.local.json
