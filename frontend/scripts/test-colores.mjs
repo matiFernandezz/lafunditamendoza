@@ -455,14 +455,20 @@ async function main() {
 
   // ------------------------------------------------------------------------
   group('9. "No es un color"');
-  const del = await api("DELETE", `/api/colors/${rojo.id}`);
-  eq("DELETE /api/colors/:id -> 204", del.status, 204);
+  const inUse = await api("DELETE", `/api/colors/${rojo.id}`);
+  eq("DELETE de un color en uso -> 409 (hay que unirlo)", inUse.status, 409);
+  check("…con un mensaje que lo explica", /unilo con otro color/.test(inUse.body?.error ?? ""), inUse.body?.error);
+  eq("…y el color sigue ahí", (await variantRow(vM2Rojo.id)).color_id, rojo.id);
+  const del = await api("DELETE", `/api/colors/${rojo.id}?keep_text=1`);
+  eq("DELETE ?keep_text=1 (no es un color) -> 204", del.status, 204);
   eq("sus variantes conservan el texto como descripción", await variantRow(vM2Rojo.id), { color: rojo.name, color_id: null });
   await admin.from("product_images").update({ color_id: verde.id }).eq("id", general2.body.data.id);
-  await api("DELETE", `/api/colors/${verde.id}`);
+  await api("DELETE", `/api/colors/${verde.id}?keep_text=1`);
   const { data: orphan } = await admin.from("product_images").select("color_id").eq("id", general2.body.data.id).single();
   eq("las fotos de un color borrado pasan a ser generales", orphan.color_id, null);
   eq("borrar de nuevo -> 404", (await api("DELETE", `/api/colors/${rojo.id}`)).status, 404);
+  const unused = (await api("POST", "/api/colors", { name: `${MARK} Sin uso`, hex: "#123456" })).body.data;
+  eq("un color sin uso se elimina directo -> 204", (await api("DELETE", `/api/colors/${unused.id}`)).status, 204);
   const after = await page(`${base}?modelo=${m1.id}`);
   eq("con un solo color restante la ficha vuelve a no tener selector", radios(after.html).length, 0);
 }
