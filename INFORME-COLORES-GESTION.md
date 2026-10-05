@@ -44,6 +44,58 @@ En Catálogo, cada producto que no es de Accesorios tiene "Colores por modelo":
 ### 7. Compras
 Las filas muestran el color o el motivo de cada variante, y una variante nueva elige color o motivo según lo que use el producto. La grilla no se rehízo.
 
+## Ajuste final (antes de probar)
+
+### Punto 1: qué estaba y qué agregué
+
+| | Punto | Estado |
+|---|---|---|
+| a | Buscador en la fila del título "Fotos en la web (n)" que filtra los chips | **Lo agregué.** Había un desplegable con buscador, no chips. Ahora son chips en varias líneas, sin scroll horizontal, con el buscador a la derecha del título; filtra mientras se escribe, sin tildes ni mayúsculas, y "General" y el elegido se ven siempre. En el celular el buscador baja a una línea propia, a todo el ancho. |
+| b | Aviso al crear un color igual o muy parecido | **Lo agregué.** Antes, si el nombre era idéntico, usaba el existente sin avisar, y los parecidos no se detectaban. Ahora dice "Ya existe <nombre>, ¿querés usar ese?" con "Usar <nombre>" y "Crear igual". Vale también para motivos. |
+| c | "Sin uso" y eliminar de a uno en "Editar colores" | **Ya estaba** eliminar de a uno. "Sin uso" era un texto gris: **lo pasé a etiqueta**. |
+| d | El sistema nunca crea colores por su cuenta | **Lo corregí.** El panel, las compras y los disparadores de la base nunca crearon colores. Pero `sync_colors_from_variants()`, que usan `seed.sql` y el script de importación, sí los creaba a partir de los textos. Ahora solo enlaza con los que ya existen. La paleta base del entorno local se carga explícita en `seed.sql`. |
+
+Detalle del aviso de nombres: es "igual" si solo cambian mayúsculas, tildes o espacios (ahí no se ofrece "Crear igual", porque la base no admite dos con el mismo nombre). Es "parecido" si difiere en una letra, en dos si el nombre es largo, o es el plural. Nombres cortos distintos no se avisan (Rojo / Rosa), ni un nombre que contiene a otro (Azul / Azul marino).
+
+### Punto 2: Accesorios pasa de colores a motivos
+
+Las variantes de productos de Accesorios (y sus tipos) que tenían color pasaron a un motivo con el mismo nombre, con `color_id` en null y el mismo stock, precio y SKU. Está en la misma migración `20261008120000`, que edité porque todavía no está en producción (lo verifiqué con `supabase migration list --linked`).
+
+**Lo que tocó en la base local** (67 variantes de 3 productos; las 67 quedaron idénticas en stock, precio, SKU y estado):
+
+| Tipo | Producto | Color → motivo | Variantes | Stock |
+|---|---|---|---|---|
+| Protectores de cargador | COMBO Funda + Funda Cargador | Cereza | 1 | 0 |
+| Protectores de cargador | COMBO Funda + Funda Cargador | Rosa | 1 | 5 |
+| Protectores de cargador | Funda cargador + comecables | Cereza | 1 | 5 |
+| Protectores de cargador | Funda cargador + comecables | Rosa | 1 | 0 |
+| Lentes de cámara | Lentes de cámara con Glitter | Dorado | 21 | 5 |
+| Lentes de cámara | Lentes de cámara con Glitter | Negro | 21 | 0 |
+| Lentes de cámara | Lentes de cámara con Glitter | Plateado | 21 | 0 |
+
+**Para decidir antes de producción: los lentes con glitter.** El pedido decía "productos de Accesorios y sus tipos", y eso incluye "Lentes de cámara con Glitter", que no es un protector. Seguí la instrucción al pie de la letra, así que sus 63 variantes Dorado / Negro / Plateado ahora son motivos: en la tienda se eligen de una lista con la etiqueta "Motivo" en vez de círculos, y la tarjeta pierde los puntitos de color. Si los lentes tienen que seguir con colores, hay que limitar la migración a Protectores de cargador (es un cambio de una condición) antes de aplicarla; decime y lo hago. Tené en cuenta que con colores quedarían sin forma de gestionarse desde el panel, porque los colores por modelo no se ofrecen en Accesorios.
+
+**Colores que quedaron sin uso** en local: Cereza y Dorado. No se borraron; aparecen con la etiqueta "Sin uso" en "Editar colores" para eliminarlos a mano. Negro, Plateado y Rosa siguen en uso por fundas.
+
+**En producción** la migración hace lo mismo con los datos de allá, que no consulté: puede tocar otros productos de Accesorios que acá no existen.
+
+### Punto 3: "Pasar a motivo"
+En "Editar colores", cada color en uso tiene "Pasar a motivo". Primero consulta cuántas variantes, productos y fotos se moverían y pide confirmación con ese conteo; al confirmar las pasa al motivo del mismo nombre (lo crea si no existe). El color queda en la lista, sin uso.
+
+### Punto 4: productos de Accesorios con color y motivo a la vez
+**En la base local no hay ninguno.** La migración no los toca: los devuelve en una lista `skipped` para decidirlos a mano. Para saber si hay alguno en producción, antes o después de aplicarla:
+
+```sql
+select p.name
+from products p
+where category_is_accessory(p.category_id)
+  and exists (select 1 from product_variants v where v.product_id = p.id and v.color_id is not null)
+  and exists (select 1 from product_variants v where v.product_id = p.id and v.motif_id is not null);
+```
+
+### Algo que apareció al probar
+Ahora un mismo nombre puede ser color y motivo (Rosa, Negro, Plateado). Al cargar una variante escribiendo solo el texto (compras), "Rosa" en un protector se enlazaba al color. Lo corregí: si el producto ya usa motivos, se busca primero el motivo. Tiene su prueba.
+
 ## Commits de esta tanda
 
 | Commit | Qué |
@@ -53,13 +105,14 @@ Las filas muestran el color o el motivo de cada variante, y una variante nueva e
 | `087be88` | Panel: matriz, motivos, modal "Editar colores", fotos con buscador; se va la pestaña |
 | `3a4ed96` | Tienda: selector de motivo, galería por motivo, `?motivo=` |
 | `f1bf9fd` | Pruebas de colores adaptadas al nuevo borrado |
-| (este) | `npm run test:motivos` e informe |
+| `e5e141b` | `npm run test:motivos` e informe |
+| (este) | Ajuste final: chips de fotos con buscador, aviso de nombre parecido, Accesorios a motivos, "Pasar a motivo" |
 
 ## Pruebas
 
 | Comando | Resultado |
 |---|---|
-| `npm run test:motivos` (nuevo) | 170/170 OK |
+| `npm run test:motivos` (nuevo) | 226/226 OK |
 | `npm run test:colores` | 119/119 OK |
 | `npm run test:colores-gestion` | 113/113 OK |
 | `npm run test:compras` | 162/162 OK |
@@ -79,7 +132,8 @@ Qué cubre `test:motivos`:
 - **Tienda**, con los dos ejemplos pedidos:
   - *Silicone*: en iPhone 15 se pueden elegir Azul, Gris y Verde, con Rojo y Amarillo apagados; en iPhone 13, Rojo, Amarillo y Azul. El Azul muestra la misma foto en los dos modelos.
   - *Protector con 3 motivos*: lista "Motivo" con los tres, el agotado deshabilitado con "(sin stock)", y al elegir otro cambia la foto grande.
-- La migración se corrió dos veces seguidas en local sin errores.
+- **Ajuste final**: Accesorios a motivos (variantes intactas, color no borrado, fundas sin tocar, mixto omitido, idempotente), "Pasar a motivo" (vista previa con conteo, sin mover nada hasta confirmar), que nada crea colores solo, y el detector de nombres parecidos.
+- La migración se corrió varias veces seguidas en local sin errores.
 
 ### Lo que no está probado
 - **La interfaz en el navegador**, incluida la matriz a 390px: no corro Playwright ni saco capturas. Verifiqué el servidor, la base, la compilación y, para la tienda, el HTML que devuelve cada URL.
@@ -96,13 +150,12 @@ Qué cubre `test:motivos`:
 - **El primer color va a todas las variantes** aunque se haya tildado un solo modelo, como pedía el brief.
 - **Por categoría, con una lista de modelos, no entran las variantes sin modelo.** Sin lista ("todos") sí. Y los productos sin color o que usan motivos se omiten, con el motivo.
 - **Los motivos agotados se ven en la ficha; los colores agotados en todos los modelos, no.** Para los motivos hago una consulta aparte de las variantes activas; los colores quedaron como estaban porque el brief pedía no cambiarlos.
-- **"Cereza" y "Rosa" de los protectores quedaron como colores.** El brief menciona "Cerezas" como ejemplo de motivo, pero la lista a migrar eran solo los cuatro personajes. Si son motivos, se cambian desde el panel: no hay un botón que convierta un color en motivo, hay que dar de baja el color y agregar el motivo.
 - **"Nuevo producto" sigue ofreciendo solo color** (y descripción libre). Los motivos se agregan después desde Catálogo.
 - **Las funciones viejas** (`add_color_to_product` y las otras tres) quedaron en la base y con sus endpoints: no las usa el panel, pero siguen funcionando y tienen sus pruebas.
 
 ## "Sin color asignado" pendientes
 
-**En la base local no queda ninguno**: los cinco que había eran los cuatro personajes (ahora motivos) y el cable (ahora descripción).
+**En la base local no queda ninguno**: los cinco que había eran los cuatro personajes (ahora motivos) y el cable (ahora descripción). Sin uso quedaron Cereza y Dorado (ver el ajuste final).
 
 **En producción no lo sé.** La migración anterior sembró los colores con los datos de allá y no los consulté. Lo que haga esta migración allá:
 - Los cuatro personajes y cualquier "Tipo X a …" se resuelven solos.
@@ -113,7 +166,6 @@ Para verlos después de aplicarla: en cualquier selector de color, "Editar color
 ## Lo que quedó sin hacer
 
 - La prueba en navegador (ver arriba).
-- Convertir un color existente en motivo con un click.
 - Ordenar a mano colores o motivos (`sort_order` existe, no hay cómo editarlo).
 - Cambiar el color o motivo de una variante ya creada.
 - Sigue pendiente de antes: la matriz modelo × color en la pantalla de Compras.

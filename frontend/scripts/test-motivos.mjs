@@ -13,6 +13,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { suggestSku } from "../src/app/admin/productos/sku.ts";
+import { findSimilar, similarity } from "../src/app/admin/similarNames.ts";
 import {
   availableMotifIds,
   imagesForColor,
@@ -262,10 +263,11 @@ async function main() {
   if (batman.length > 0) check("la variante BATMAN quedó como motivo, con su precio y SKU", batman.every((v) => v.motif_id !== null && v.color_id === null && v.sku && Number(v.price) > 0));
   const cable = allVariants.filter((v) => /^tipo [a-z] a /i.test(v.color ?? ""));
   if (cable.length > 0) check('"Tipo C a Lightning" quedó como descripción libre (sin color ni motivo), con su texto', cable.every((v) => v.color_id === null && v.motif_id === null));
-  eq("ningún texto de variante coincide con un motivo sin estar enlazado", allVariants.filter((v) => v.motif_id === null && v.color && motifNames.has(v.color)).length, 0);
+  // Un nombre puede ser color y motivo a la vez (Rosa): esas variantes están enlazadas al color.
+  eq("ningún texto de variante coincide con un motivo sin estar enlazado a nada", allVariants.filter((v) => v.motif_id === null && v.color_id === null && v.color && motifNames.has(v.color)).length, 0);
   const { data: syncAgain } = await admin.rpc("sync_colors_from_variants");
   eq("sync_colors_from_variants no vuelve a crear como color lo que es motivo o descripción", syncAgain, 0);
-  eq("…y siguen sin estar en colors", (await admin.from("colors").select("name")).data.filter((c) => motifNames.has(c.name) || /^tipo [a-z] a /i.test(c.name)).length, 0);
+  eq("…y siguen sin estar en colors", (await admin.from("colors").select("name")).data.filter((c) => ["BATMAN", "BOB", "CAP AMÉRICA", "IRON MAN"].includes(c.name) || /^tipo [a-z] a /i.test(c.name)).length, 0);
 
   group("1b. Permisos");
   const anonMotifs = await anon.from("motifs").select("id, name, slug").limit(3);
@@ -619,6 +621,130 @@ async function main() {
   eq("la del protector queda enlazada al motivo", boughtMotif, { color: mD.name, color_id: null, motif_id: mD.id, stock_quantity: 4 });
   const { data: boughtColor } = await admin.from("product_variants").select("color, color_id, motif_id, stock_quantity").eq("sku", `TM-${RUN}-BUY-C`).single();
   eq("la de la funda, al color", boughtColor, { color: verde.name, color_id: verde.id, motif_id: null, stock_quantity: 2 });
+
+  // ------------------------------------------------------------------------
+  group("11. El sistema nunca crea colores por su cuenta");
+  const invented = `${MARK} Inventado`;
+  const colorCount = async () => (await admin.from("colors").select("id", { count: "exact", head: true })).count;
+  const colorsBefore = await colorCount();
+  const loose = await api("POST", "/api/product-variants", { product_id: catA.id, iphone_model_id: m13.id, color: invented, sku: `TM-${RUN}-INV`, price: 4000 });
+  eq("variante con un texto que no es un color existente -> queda como descripción", [loose.status, loose.body?.data?.color, loose.body?.data?.color_id], [201, invented, null]);
+  const buyUnknown = await api("POST", "/api/purchases", {
+    supplier_id: supplier.id,
+    products: [{ product_id: catA.id, rows: [{ iphone_model_id: m15.id, color: `${invented} 2`, sku: `TM-${RUN}-INV2`, price: 4000, quantity: 1, unit_cost: 1500 }] }],
+  });
+  eq("compra con un color que no existe -> 201, sin crearlo", buyUnknown.status, 201);
+  const { data: syncResult } = await admin.rpc("sync_colors_from_variants");
+  eq("sync_colors_from_variants (seed e importación) no enlaza nada nuevo", syncResult, 0);
+  eq("…y la lista de colores no creció", await colorCount(), colorsBefore);
+  eq("…ni hay un color con ese nombre", (await admin.from("colors").select("id").like("name", `${invented}%`)).data.length, 0);
+  await admin.from("product_variants").delete().in("sku", [`TM-${RUN}-INV`]);
+
+  group("11b. Aviso de nombre igual o parecido al crear");
+  eq("mismo nombre con otra mayúscula -> exacto", similarity("celeste", "Celeste"), "exact");
+  eq("mismo nombre sin tilde -> exacto", similarity("Bordo", "Bordó"), "exact");
+  eq("con espacios de más -> exacto", similarity(" Rosa  viejo ", "Rosa viejo"), "exact");
+  eq("plural -> parecido", similarity("Rosas", "Rosa"), "close");
+  eq("una letra cambiada -> parecido", similarity("Negra", "Negro"), "close");
+  eq("letras cruzadas -> parecido", similarity("Voileta", "Violeta"), "close");
+  eq("una letra de más en un nombre largo -> parecido", similarity("Celeste pastell", "Celeste pastel"), "close");
+  eq("Rojo y Rosa no se confunden", similarity("Rojo", "Rosa"), null);
+  eq("Azul y Azul marino no se confunden", similarity("Azul", "Azul marino"), null);
+  eq("Verde y Verde agua no se confunden", similarity("Verde", "Verde agua"), null);
+  eq("Celeste y Celeste pastel no se confunden", similarity("Celeste", "Celeste pastel"), null);
+  const palette = [{ name: "Rosa" }, { name: "Rosa viejo" }, { name: "Celeste" }];
+  eq("busca primero el exacto", findSimilar("ROSA", palette), { item: { name: "Rosa" }, kind: "exact" });
+  eq("…y si no, el parecido", findSimilar("Celestee", palette), { item: { name: "Celeste" }, kind: "close" });
+  eq("nombre nuevo de verdad -> sin aviso", findSimilar("Verde menta", palette), null);
+
+  // ------------------------------------------------------------------------
+  group("12. Accesorios: las variantes con color pasan a motivo");
+  const soloAcc = await newColor("Solo accesorio", "#aa5500");
+  const accProduct = await newProduct("Protector con color", protectores.id, [
+    { iphone_model_id: null, color: azul.name, price: 3000, stock_quantity: 4 },
+    { iphone_model_id: null, color: soloAcc.name, price: 3200, stock_quantity: 0 },
+  ]);
+  const accPhoto = (await upload(accProduct.id, { color_id: azul.id })).body.data;
+  const mMix = await motif("Mixto");
+  const mixed = await newProduct("Protector mixto", protectores.id, [
+    { iphone_model_id: null, color: rojo.name, price: 3000, stock_quantity: 1 },
+    { iphone_model_id: null, color: mMix.name, price: 3000, stock_quantity: 1 },
+  ]);
+  const accBefore = await variantsOf(accProduct.id);
+  eq("antes: el protector tiene variantes con color", accBefore.map((v) => v.color_id !== null), [true, true]);
+  const fundasAzulBefore = (await variantsOf(silicone.id, { colorId: azul.id })).map((v) => v.id);
+
+  for (const [role, client] of [["anon", anon], ["authenticated", authed]]) {
+    const { error } = await client.rpc("accessory_colors_to_motifs");
+    check(`accessory_colors_to_motifs con rol ${role} -> permiso denegado`, error?.code === "42501", `code ${error?.code ?? "sin error"}`);
+  }
+  const { data: migration, error: migrationError } = await admin.rpc("accessory_colors_to_motifs");
+  check("la migración corre", !migrationError, migrationError?.message);
+  eq("pasa las 2 variantes y la foto del protector", [migration?.variants, migration?.images], [2, 1]);
+  eq("…e informa qué producto tocó", migration?.products.map((x) => x.product_id), [accProduct.id]);
+  const accAfter = await variantsOf(accProduct.id);
+  eq("son las mismas variantes, con stock, precio y SKU intactos", accAfter.map((v) => [v.id, v.stock_quantity, v.price, v.sku, v.active]), accBefore.map((v) => [v.id, v.stock_quantity, v.price, v.sku, v.active]));
+  eq("ahora sin color y con motivo", accAfter.map((v) => [v.color_id, v.motif_id !== null]), [[null, true], [null, true]]);
+  eq("el texto no cambia (mismo nombre)", accAfter.map((v) => v.color).sort(), [azul.name, soloAcc.name].sort());
+  const { data: newMotifs } = await admin.from("motifs").select("id, name").in("name", [azul.name, soloAcc.name]);
+  eq("se crearon los motivos con el mismo nombre", newMotifs.map((m) => m.name).sort(), [azul.name, soloAcc.name].sort());
+  eq("la foto pasó al motivo", (await admin.from("product_images").select("color_id, motif_id").eq("id", accPhoto.id).single()).data, { color_id: null, motif_id: newMotifs.find((m) => m.name === azul.name).id });
+  const colorsNow = (await api("GET", "/api/colors")).body.data;
+  check("el color que también usan las fundas sigue en la lista, en uso", colorsNow.find((c) => c.id === azul.id)?.variant_count > 0);
+  eq("el que solo usaba el accesorio NO se borra: queda sin uso", colorsNow.find((c) => c.id === soloAcc.id)?.variant_count, 0);
+  eq("las fundas con ese color no se tocan", (await variantsOf(silicone.id, { colorId: azul.id })).map((v) => v.id), fundasAzulBefore);
+  eq("el producto con color Y motivo a la vez no se toca: va a 'skipped'", [migration?.skipped.map((x) => x.product_id), (await variantsOf(mixed.id)).filter((v) => v.color_id !== null).length], [[mixed.id], 1]);
+  // Azul ahora es color (fundas) y motivo (protector): el texto solo se enlaza según el producto.
+  const sameNameMotif = await api("POST", "/api/product-variants", { product_id: accProduct.id, iphone_model_id: m13.id, color: azul.name, sku: `TM-${RUN}-SAME-M`, price: 3000 });
+  eq("un nombre que es color y motivo, en un producto con motivos -> se enlaza al motivo", [sameNameMotif.body?.data?.color_id, sameNameMotif.body?.data?.motif_id !== null], [null, true]);
+  const sameNameColor = await api("POST", "/api/product-variants", { product_id: catA.id, iphone_model_id: m16.id, color: azul.name, sku: `TM-${RUN}-SAME-C`, price: 4000 });
+  eq("…y en una funda con colores -> al color", [sameNameColor.body?.data?.color_id, sameNameColor.body?.data?.motif_id], [azul.id, null]);
+  await admin.from("product_variants").delete().in("sku", [`TM-${RUN}-SAME-M`, `TM-${RUN}-SAME-C`]);
+  const { data: again } = await admin.rpc("accessory_colors_to_motifs");
+  eq("idempotente: la segunda vez no pasa nada (y vuelve a informar el mixto)", [again?.variants, again?.products, again?.skipped.map((x) => x.product_id)], [0, [], [mixed.id]]);
+  const accPage = await page(`/producto/${accProduct.id}`);
+  check("en la tienda ya no muestra círculos de color", accPage.status === 200 && radios(accPage.html).length === 0);
+
+  // ------------------------------------------------------------------------
+  group("13. Editar colores: Pasar a motivo");
+  const lunares = await newColor("Lunares", "#333333");
+  const dotted = await newProduct("Lunares", fundas.id, [
+    { iphone_model_id: m13.id, color: lunares.name, price: 6000, stock_quantity: 2 },
+    { iphone_model_id: m15.id, color: lunares.name, price: 6200, stock_quantity: 3 },
+  ]);
+  const dotPhoto = (await upload(dotted.id, { color_id: lunares.id })).body.data;
+  const dottedBefore = await variantsOf(dotted.id);
+  eq("sin sesión -> 401", (await api("POST", `/api/colors/${lunares.id}/to-motif`, {}, { auth: false })).status, 401);
+  for (const [role, client] of [["anon", anon], ["authenticated", authed]]) {
+    const { error } = await client.rpc("color_to_motif", { p_color_id: lunares.id });
+    check(`color_to_motif con rol ${role} -> permiso denegado`, error?.code === "42501", `code ${error?.code ?? "sin error"}`);
+  }
+  const toDry = await api("POST", `/api/colors/${lunares.id}/to-motif`, { dry_run: true });
+  eq("vista previa -> 200 con el conteo para confirmar", [toDry.status, toDry.body?.data?.variants, toDry.body?.data?.products, toDry.body?.data?.units, toDry.body?.data?.images, toDry.body?.data?.motif_existed], [200, 2, 1, 5, 1, false]);
+  eq("…sin mover nada", (await variantsOf(dotted.id)).map((v) => [v.color_id, v.motif_id]), [[lunares.id, null], [lunares.id, null]]);
+  eq("…ni crear el motivo", (await admin.from("motifs").select("id").eq("name", lunares.name)).data.length, 0);
+  const to = await api("POST", `/api/colors/${lunares.id}/to-motif`, {});
+  eq("POST /api/colors/:id/to-motif -> 200", [to.status, to.body?.data?.variants, to.body?.data?.images], [200, 2, 1]);
+  const lunaresMotif = (await admin.from("motifs").select("id").eq("name", lunares.name).single()).data;
+  const dottedAfter = await variantsOf(dotted.id);
+  eq("las variantes pasan al motivo del mismo nombre", dottedAfter.map((v) => [v.color_id, v.motif_id, v.color]), dottedAfter.map(() => [null, lunaresMotif.id, lunares.name]));
+  eq("…con stock, precio y SKU intactos", dottedAfter.map((v) => [v.id, v.stock_quantity, v.price, v.sku]), dottedBefore.map((v) => [v.id, v.stock_quantity, v.price, v.sku]));
+  eq("la foto también", (await admin.from("product_images").select("color_id, motif_id").eq("id", dotPhoto.id).single()).data, { color_id: null, motif_id: lunaresMotif.id });
+  eq("el color queda en la lista, sin uso", (await api("GET", "/api/colors")).body.data.find((c) => c.id === lunares.id)?.variant_count, 0);
+  eq("…y entonces se puede eliminar de a uno", (await api("DELETE", `/api/colors/${lunares.id}`)).status, 204);
+  const dottedPage = await page(`/producto/${dotted.id}?modelo=${m13.id}`);
+  check("en la tienda el producto ya no tiene círculos", dottedPage.status === 200 && radios(dottedPage.html).length === 0);
+  const again2 = await newColor("Rayas", "#444444");
+  await motif("Rayas");
+  await api("POST", "/api/product-variants", { product_id: dotted.id, iphone_model_id: m16.id, color: "x", sku: `TM-${RUN}-RAY`, price: 6000 });
+  await admin.from("product_variants").update({ color_id: again2.id }).eq("sku", `TM-${RUN}-RAY`);
+  const existed = await api("POST", `/api/colors/${again2.id}/to-motif`, { dry_run: true });
+  eq("si ya hay un motivo con ese nombre, lo avisa y usa ese", existed.body?.data?.motif_existed, true);
+  await api("POST", `/api/colors/${again2.id}/to-motif`, {});
+  eq("…sin crear otro", (await admin.from("motifs").select("id").eq("name", again2.name)).data.length, 1);
+  eq("color sin variantes: nada que pasar", (await api("POST", `/api/colors/${again2.id}/to-motif`, {})).body?.data?.variants, 0);
+  eq("color inexistente -> 404", (await api("POST", `/api/colors/${FAKE_ID}/to-motif`, {})).status, 404);
+  eq("id que no es uuid -> 400", (await api("POST", "/api/colors/x/to-motif", {})).status, 400);
 }
 
 let crashed = null;

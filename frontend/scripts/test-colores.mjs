@@ -196,11 +196,12 @@ async function main() {
   const unassigned = allColors.filter((c) => !c.assigned);
   check("los nombres desconocidos quedan en gris y sin asignar", unassigned.every((c) => c.hex === "#9ca3af"));
 
-  const { data: variants } = await admin.from("product_variants").select("color, color_id");
+  const { data: variants } = await admin.from("product_variants").select("color, color_id, motif_id");
   const colorNameById = new Map(allColors.map((c) => [c.id, c.name]));
   eq(
     "backfill: ninguna variante quedó con un texto que es un color y sin color_id",
-    variants.filter((v) => v.color_id === null && v.color && names.has(v.color.trim().toLowerCase())).length,
+    // Las de Accesorios pasaron a motivo con el mismo nombre (Rosa): esas no cuentan.
+    variants.filter((v) => v.color_id === null && v.motif_id === null && v.color && names.has(v.color.trim().toLowerCase())).length,
     0,
   );
   eq(
