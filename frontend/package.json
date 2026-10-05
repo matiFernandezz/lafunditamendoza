@@ -11,6 +11,7 @@
     "test:compras": "node scripts/test-compras.mjs",
     "test:colores": "node scripts/test-colores.mjs",
     "test:colores-gestion": "node scripts/test-colores-gestion.mjs",
+    "test:motivos": "node scripts/test-motivos.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },
