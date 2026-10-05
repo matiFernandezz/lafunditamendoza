@@ -232,7 +232,37 @@ async function main() {
     }
     return res.body.data;
   }
-  const cells = (productId, body) => api("POST", `/api/products/${productId}/cells`, body);
+  // Antes esto era una celda de la matriz. Ahora: active true = "Agregar
+  // variante" (una por modelo); active false = "Eliminar" la variante de cada
+  // modelo. Devuelve los dos con la misma forma, para comparar fácil.
+  async function cells(productId, { kind, attr_id, models, active, dry_run, force }) {
+    if (active !== false) {
+      const res = await api("POST", `/api/products/${productId}/variants`, { kind, attr_id, models, stock: 0, dry_run });
+      if (res.body?.data) res.body.data = { deactivated: 0, blocked: false, with_stock: [], ...res.body.data };
+      return res;
+    }
+    const column = kind === "color" ? "color_id" : "motif_id";
+    const { data: rows } = await admin
+      .from("product_variants")
+      .select("id, sku, stock_quantity, iphone_model_id, iphone_models(name)")
+      .eq("product_id", productId)
+      .eq(column, attr_id)
+      .eq("active", true);
+    const out = { created: 0, reactivated: 0, existing: 0, assigned: 0, deactivated: 0, units: 0, blocked: false, with_stock: [] };
+    let status = 200;
+    for (const row of (rows ?? []).filter((r) => models.includes(r.iphone_model_id))) {
+      const res = await api("DELETE", `/api/product-variants/${row.id}?${force ? "force=1" : ""}${dry_run ? "&dry_run=1" : ""}`);
+      status = res.status;
+      if (res.body?.data?.blocked) {
+        out.blocked = true;
+        out.units += res.body.data.units;
+        out.with_stock.push({ id: row.id, sku: row.sku, model: row.iphone_models?.name ?? null, stock: row.stock_quantity });
+      } else if (res.status === 200) {
+        out.deactivated += 1;
+      }
+    }
+    return { status, body: { data: out } };
+  }
   const summary = (res) => [res.body?.data?.created, res.body?.data?.reactivated, res.body?.data?.existing, res.body?.data?.deactivated];
 
   async function upload(productId, extra = {}) {
@@ -278,8 +308,11 @@ async function main() {
   check("anon sigue sin poder leer cost_price", !!(await anon.from("product_variants").select("cost_price").limit(1)).error);
   const authed = createClient(SUPABASE_URL, ANON_KEY, { auth: { persistSession: false }, global: { headers: { Authorization: `Bearer ${accessToken}` } } });
   const rpcCalls = {
-    apply_attribute_cells: { p_product_id: FAKE_ID, p_kind: "color", p_attr_id: FAKE_ID, p_models: [null], p_active: true },
-    _apply_attribute_cells: { p_product_id: FAKE_ID, p_kind: "color", p_attr_id: FAKE_ID, p_models: [null], p_active: true, p_force: false },
+    add_product_variants: { p_product_id: FAKE_ID, p_kind: "color", p_attr_id: FAKE_ID, p_text: null, p_models: [null] },
+    _add_product_variants: { p_product_id: FAKE_ID, p_kind: "color", p_attr_id: FAKE_ID, p_text: null, p_models: [null], p_stock: 0, p_price: null, p_sku: null },
+    delete_variant: { p_variant_id: FAKE_ID },
+    purge_archived_variants: {},
+    variant_reference_count: { p_variant_id: FAKE_ID },
     add_color_to_category_models: { p_category_id: FAKE_ID, p_color_id: FAKE_ID },
     remove_color_from_category_models: { p_category_id: FAKE_ID, p_color_id: FAKE_ID },
     merge_attributes: { p_kind: "color", p_from: FAKE_ID, p_into: FAKE_ID },
@@ -292,23 +325,23 @@ async function main() {
   }
   const endpoints = [
     ["GET", "/api/motifs"], ["POST", "/api/motifs"], ["PATCH", `/api/motifs/${FAKE_ID}`], ["DELETE", `/api/motifs/${FAKE_ID}`],
-    ["POST", `/api/motifs/${FAKE_ID}/merge`], ["POST", `/api/colors/${FAKE_ID}/merge`], ["POST", `/api/products/${FAKE_ID}/cells`],
+    ["POST", `/api/motifs/${FAKE_ID}/merge`], ["POST", `/api/colors/${FAKE_ID}/merge`], ["POST", `/api/products/${FAKE_ID}/variants`], ["DELETE", `/api/product-variants/${FAKE_ID}`],
   ];
   for (const [method, path] of endpoints) {
     eq(`${method} ${path.replaceAll(FAKE_ID, ":id")} sin sesión -> 401`, (await api(method, path, method === "GET" || method === "DELETE" ? undefined : {}, { auth: false })).status, 401);
   }
 
   // ------------------------------------------------------------------------
-  group("2. Matriz de colores: Silicone con iPhone 15 {Azul, Gris, Verde} e iPhone 13 {Rojo, Amarillo, Azul}");
+  group("2. Colores por modelo: Silicone con iPhone 15 {Azul, Gris, Verde} e iPhone 13 {Rojo, Amarillo, Azul}");
   const silicone = await newProduct("Silicone", fundas.id, [{ iphone_model_id: m15.id, color: azul.name, price: 9000, stock_quantity: 2 }]);
   const colorCell = (colorId, models, active, extra = {}) => cells(silicone.id, { kind: "color", attr_id: colorId, models, active, ...extra });
 
   const dryGris = await colorCell(gris.id, [m15.id], true, { dry_run: true });
-  eq("vista previa de tildar: crearía 1", [dryGris.status, ...summary(dryGris)], [200, 1, 0, 0, 0]);
+  eq("vista previa de agregar: crearía 1", [dryGris.status, ...summary(dryGris)], [200, 1, 0, 0, 0]);
   eq("…sin crear nada", (await variantsOf(silicone.id)).length, 1);
 
   const tGris = await colorCell(gris.id, [m15.id], true);
-  eq("tildar (iPhone 15, Gris) crea la variante", [tGris.status, ...summary(tGris)], [200, 1, 0, 0, 0]);
+  eq("agregar (iPhone 15, Gris) crea la variante", [tGris.status, ...summary(tGris)], [200, 1, 0, 0, 0]);
   const grisV = (await variantsOf(silicone.id, { colorId: gris.id }))[0];
   eq("…con stock 0, activa y el precio de otra variante del mismo modelo", [grisV.stock_quantity, grisV.active, grisV.price, grisV.iphone_model_id], [0, true, 9000, m15.id]);
   eq("…y el SKU con la lógica del alta de variantes", grisV.sku, suggestSku(silicone.name, m15.name, gris.name));
@@ -317,7 +350,7 @@ async function main() {
 
   // iPhone 13 es un modelo nuevo para el producto: el precio sale de otra variante del producto.
   const tRojo = await colorCell(rojo.id, [m13.id], true);
-  eq("tildar un modelo que el producto no tenía: crea la variante", summary(tRojo), [1, 0, 0, 0]);
+  eq("agregar un modelo que el producto no tenía: crea la variante", summary(tRojo), [1, 0, 0, 0]);
   eq("…con el precio de otra variante del producto", (await variantsOf(silicone.id, { colorId: rojo.id }))[0].price, 9000);
   await colorCell(amarillo.id, [m13.id], true);
   await colorCell(azul.id, [m13.id], true);
@@ -328,39 +361,37 @@ async function main() {
     for (const k of Object.keys(out)) out[k].sort();
     return out;
   };
-  eq("la matriz quedó como el ejemplo", await matrix(), { "iPhone 13": ["Amarillo", "Azul", "Rojo"], "iPhone 15": ["Azul", "Gris", "Verde"] });
+  eq("el producto quedó como el ejemplo", await matrix(), { "iPhone 13": ["Amarillo", "Azul", "Rojo"], "iPhone 15": ["Azul", "Gris", "Verde"] });
   eq("Gris no se creó para iPhone 13 (los colores son por modelo)", (await variantsOf(silicone.id, { colorId: gris.id })).length, 1);
   check("todos los SKU son distintos", new Set((await variantsOf(silicone.id)).map((v) => v.sku)).size === 6);
-  eq("tildar una celda ya tildada no duplica", summary(await colorCell(gris.id, [m15.id], true)), [0, 0, 1, 0]);
+  eq("agregar una combinación que ya existe no duplica", summary(await colorCell(gris.id, [m15.id], true)), [0, 0, 1, 0]);
 
   const off = await colorCell(gris.id, [m15.id], false);
-  eq("destildar da de baja", summary(off), [0, 0, 0, 1]);
-  const grisOff = (await variantsOf(silicone.id, { colorId: gris.id }))[0];
-  eq("…la variante sigue en la base, dada de baja", [grisOff.id, grisOff.active], [grisV.id, false]);
+  eq("eliminar una variante sin stock", summary(off), [0, 0, 0, 1]);
+  eq("…sin historial, se borra de la base", (await variantsOf(silicone.id, { colorId: gris.id })).length, 0);
   const on = await colorCell(gris.id, [m15.id], true);
-  eq("retildar reactiva la misma variante (no crea otra)", [summary(on), (await variantsOf(silicone.id, { colorId: gris.id })).map((v) => [v.id, v.active])], [[0, 1, 0, 0], [[grisV.id, true]]]);
+  eq("volver a agregarla la crea de nuevo", [summary(on), (await variantsOf(silicone.id, { colorId: gris.id })).map((v) => v.active)], [[1, 0, 0, 0], [true]]);
 
   const azul15 = (await variantsOf(silicone.id, { colorId: azul.id })).find((v) => v.iphone_model_id === m15.id);
   const blocked = await colorCell(azul.id, [m15.id], false);
-  eq("destildar algo con stock, sin confirmar: no hace nada", [blocked.body?.data?.blocked, blocked.body?.data?.deactivated, blocked.body?.data?.units], [true, 0, 2]);
+  eq("eliminar algo con stock, sin confirmar: no hace nada", [blocked.body?.data?.blocked, blocked.body?.data?.deactivated, blocked.body?.data?.units], [true, 0, 2]);
   eq("…y devuelve qué variante tiene stock", blocked.body?.data?.with_stock, [{ id: azul15.id, sku: azul15.sku, model: m15.name, stock: 2 }]);
-  eq("…la celda sigue tildada", (await variantsOf(silicone.id, { colorId: azul.id })).find((v) => v.id === azul15.id).active, true);
+  eq("…la variante sigue ahí", (await variantsOf(silicone.id, { colorId: azul.id })).find((v) => v.id === azul15.id).active, true);
   const forced = await colorCell(azul.id, [m15.id], false, { force: true });
-  eq("confirmado: la da de baja sin tocar el stock", [forced.body?.data?.deactivated, (await variantsOf(silicone.id, { colorId: azul.id })).find((v) => v.id === azul15.id).stock_quantity], [1, 2]);
-  eq("retildar la reactiva con su stock", [summary(await colorCell(azul.id, [m15.id], true)), (await variantsOf(silicone.id, { colorId: azul.id })).find((v) => v.id === azul15.id).stock_quantity], [[0, 1, 0, 0], 2]);
+  eq("confirmado: la elimina", [forced.body?.data?.deactivated, (await variantsOf(silicone.id, { colorId: azul.id })).some((v) => v.id === azul15.id)], [1, false]);
+  eq("y se puede volver a agregar", summary(await colorCell(azul.id, [m15.id], true)), [1, 0, 0, 0]);
 
-  eq('"Tildar todos los modelos" de Verde: crea el que falta', summary(await colorCell(verde.id, [m13.id, m15.id], true)), [1, 0, 1, 0]);
-  eq('"Ninguno" de Verde: da de baja los dos', summary(await colorCell(verde.id, [m13.id, m15.id], false)), [0, 0, 0, 2]);
+  eq("agregar Verde a los dos modelos: crea el que falta", summary(await colorCell(verde.id, [m13.id, m15.id], true)), [1, 0, 1, 0]);
+  eq("eliminar Verde de los dos modelos", summary(await colorCell(verde.id, [m13.id, m15.id], false)), [0, 0, 0, 2]);
   await colorCell(verde.id, [m15.id], true);
-  eq("la matriz vuelve a ser la del ejemplo", await matrix(), { "iPhone 13": ["Amarillo", "Azul", "Rojo"], "iPhone 15": ["Azul", "Gris", "Verde"] });
+  eq("el producto vuelve a ser el del ejemplo", await matrix(), { "iPhone 13": ["Amarillo", "Azul", "Rojo"], "iPhone 15": ["Azul", "Gris", "Verde"] });
 
-  group("2b. Validación de las celdas");
+  group("2b. Validación al agregar variantes");
   eq("sin modelos -> 400", (await colorCell(gris.id, [], true)).status, 400);
   eq("modelo repetido -> 400", (await colorCell(gris.id, [m15.id, m15.id], true)).status, 400);
   eq("modelo que no es uuid -> 400", (await colorCell(gris.id, ["iphone"], true)).status, 400);
   eq("modelo inexistente -> 404", (await colorCell(gris.id, [FAKE_ID], true)).status, 404);
   eq("kind inválido -> 400", (await cells(silicone.id, { kind: "talle", attr_id: gris.id, models: [m15.id], active: true })).status, 400);
-  eq("active que no es booleano -> 400", (await cells(silicone.id, { kind: "color", attr_id: gris.id, models: [m15.id], active: "si" })).status, 400);
   eq("color inexistente -> 404", (await colorCell(FAKE_ID, [m15.id], true)).status, 404);
   eq("producto inexistente -> 404", (await cells(FAKE_ID, { kind: "color", attr_id: gris.id, models: [m15.id], active: true })).status, 404);
 
@@ -381,7 +412,7 @@ async function main() {
   eq("son las mismas variantes, con stock, precio y SKU intactos", after.map((v) => [v.id, v.stock_quantity, v.price, v.sku]), before.map((v) => [v.id, v.stock_quantity, v.price, v.sku]));
   eq("…ahora con el color", after.map((v) => [v.color, v.color_id]), [[rojo.name, rojo.id], [rojo.name, rojo.id]]);
   await cells(plain.id, { kind: "color", attr_id: rojo.id, models: [m15.id], active: false, force: true });
-  eq("después se destilda el modelo que no lo tiene", (await variantsOf(plain.id)).map((v) => v.active), [true, false]);
+  eq("después se elimina el modelo que no lo tiene", (await variantsOf(plain.id)).map((v) => v.iphone_model_id), [m13.id]);
   const second = await cells(plain.id, { kind: "color", attr_id: azul.id, models: [m15.id], active: true });
   eq("el segundo color ya es una variante nueva con stock 0", [second.body?.data?.created, second.body?.data?.assigned], [1, 0]);
 
@@ -414,19 +445,22 @@ async function main() {
 
   const addB = await motifCell(mB.id, true);
   eq('"+ Agregar motivo": una variante nueva', summary(addB), [1, 0, 0, 0]);
-  const vB = (await variantsOf(protector.id, { motifId: mB.id }))[0];
+  let vB = (await variantsOf(protector.id, { motifId: mB.id }))[0];
   eq("…sin modelo, con stock 0 y el precio copiado", [vB.iphone_model_id, vB.stock_quantity, vB.price, vB.active], [null, 0, 6500, true]);
   eq("…y SKU con la lógica del alta", vB.sku, suggestSku(protector.name, "", mB.name));
   await motifCell(mC.id, true);
   eq("el protector queda con 3 motivos, uno por variante", (await variantsOf(protector.id)).map((v) => v.color).sort(), [mA.name, mB.name, mC.name].sort());
 
-  eq("quitar un motivo sin stock: la da de baja", summary(await motifCell(mB.id, false)), [0, 0, 0, 1]);
-  eq("…sin borrarla", (await variantsOf(protector.id, { motifId: mB.id })).map((v) => [v.id, v.active]), [[vB.id, false]]);
-  eq("volver a agregarlo la reactiva", [summary(await motifCell(mB.id, true)), (await variantsOf(protector.id, { motifId: mB.id })).map((v) => [v.id, v.active])], [[0, 1, 0, 0], [[vB.id, true]]]);
+  eq("eliminar la variante de un motivo sin stock", summary(await motifCell(mB.id, false)), [0, 0, 0, 1]);
+  eq("…se borra", (await variantsOf(protector.id, { motifId: mB.id })).length, 0);
+  eq("volver a agregar el motivo la crea de nuevo", summary(await motifCell(mB.id, true)), [1, 0, 0, 0]);
+  vB = (await variantsOf(protector.id, { motifId: mB.id }))[0];
   const stockBlocked = await motifCell(mA.id, false);
-  eq("quitar un motivo con stock pide confirmación", [stockBlocked.body?.data?.blocked, stockBlocked.body?.data?.units], [true, 3]);
-  eq("…y confirmado lo da de baja", (await motifCell(mA.id, false, { force: true })).body?.data?.deactivated, 1);
+  eq("eliminar un motivo con stock pide confirmación", [stockBlocked.body?.data?.blocked, stockBlocked.body?.data?.units], [true, 3]);
+  eq("…y confirmado lo elimina", (await motifCell(mA.id, false, { force: true })).body?.data?.deactivated, 1);
   await motifCell(mA.id, true);
+  // Vuelve a quedar con 3 unidades, como arrancó (lo usan las pruebas de la tienda).
+  await api("PATCH", `/api/product-variants/${(await variantsOf(protector.id, { motifId: mA.id }))[0].id}`, { stock_quantity: 3 });
 
   group("4b. Colores en Accesorios y exclusión mutua");
   const colorInAccessory = await cells(protector.id, { kind: "color", attr_id: rojo.id, models: [null], active: true });
@@ -602,7 +636,7 @@ async function main() {
   check("…sin duplicar los que ya estaban", allModels.body?.data?.existing >= 2);
   const rmOnly16 = await api("DELETE", `/api/categories/${fundas.id}/colors/${amarillo.id}?models=${m16.id}`);
   eq("quitar solo en iPhone 16 -> 200", rmOnly16.status, 200);
-  eq("…da de baja solo ese modelo", (await variantsOf(catA.id, { colorId: amarillo.id })).map((v) => [v.iphone_models.name, v.active]), [["iPhone 13", true], ["iPhone 15", true], ["iPhone 16", false]]);
+  eq("…elimina solo la de ese modelo (sin historial: se borra)", (await variantsOf(catA.id, { colorId: amarillo.id })).map((v) => [v.iphone_models.name, v.active]), [["iPhone 13", true], ["iPhone 15", true]]);
   eq("model_ids inválido -> 400", (await api("POST", `/api/categories/${fundas.id}/colors`, { color_id: amarillo.id, model_ids: ["x"] })).status, 400);
   eq("model_ids vacío -> 400", (await api("POST", `/api/categories/${fundas.id}/colors`, { color_id: amarillo.id, model_ids: [] })).status, 400);
   eq("Accesorios sigue rechazado", (await api("POST", `/api/categories/${accessories.id}/colors`, { color_id: amarillo.id, model_ids: [m15.id] })).status, 400);
