@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/server/auth";
+import { deleteUnusedAttribute } from "@/lib/server/colorManagement";
 import { jsonData, jsonError, readJsonBody } from "@/lib/server/http";
 import { COLOR_SELECT } from "@/lib/server/selects";
 import { isUuid } from "@/lib/server/validate";
@@ -47,18 +48,15 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/colors
   return jsonData(data);
 }
 
-// "No es un color": lo saca de la lista. Sus variantes conservan el texto como
-// descripción y sus fotos pasan a ser generales (FK on delete set null).
-export async function DELETE(_request: NextRequest, ctx: RouteContext<"/api/colors/[id]">) {
+// Elimina un color sin uso. Si lo usa alguna variante responde 409: hay que
+// unirlo con otro, o mandar ?keep_text=1 ("no es un color") para que sus
+// variantes conserven el nombre como descripción y sus fotos pasen a generales.
+export async function DELETE(request: NextRequest, ctx: RouteContext<"/api/colors/[id]">) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
   const { id } = await ctx.params;
   if (!isUuid(id)) return jsonError(400, "id debe ser un uuid valido");
 
-  const { data, error } = await supabaseAdmin().from("colors").delete().eq("id", id).select("id").maybeSingle();
-
-  if (error) return jsonError(500, error.message);
-  if (!data) return jsonError(404, "No existe un color con ese id");
-  return new Response(null, { status: 204 });
+  return deleteUnusedAttribute("color", id, request);
 }

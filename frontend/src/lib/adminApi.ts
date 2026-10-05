@@ -47,14 +47,17 @@ export type AdminVariant = {
   iphone_model_id: string | null;
   /** El color de la variante; null si no tiene o si `color` es una descripción. */
   color_id: string | null;
+  /** El motivo (BATMAN…). Una variante tiene color o motivo, nunca los dos. */
+  motif_id: string | null;
 };
 
 export type AdminProductImage = {
   id: string;
   url: string;
   sort_order: number;
-  /** null = foto general del producto. */
+  /** color_id y motif_id null = foto general del producto. */
   color_id: string | null;
+  motif_id: string | null;
 };
 
 export type AdminProduct = {
@@ -356,7 +359,7 @@ export function updateProduct(
 export async function addProductImage(
   productId: string,
   file: File,
-  colorId: string | null = null,
+  group: { colorId?: string | null; motifId?: string | null } = {},
 ): Promise<{ data: AdminProductImage }> {
   const signed = await adminFetch<{ data: { path: string; token: string } }>(
     `/api/products/${productId}/images/upload-url`,
@@ -376,7 +379,7 @@ export async function addProductImage(
 
   return adminFetch(`/api/products/${productId}/images`, {
     method: "POST",
-    body: JSON.stringify({ path: signed.data.path, color_id: colorId }),
+    body: JSON.stringify({ path: signed.data.path, color_id: group.colorId ?? null, motif_id: group.motifId ?? null }),
   });
 }
 
@@ -420,9 +423,92 @@ export function updateColor(
   return adminFetch(`/api/colors/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
 
-/** "No es un color": sus variantes conservan el texto como descripción. */
-export async function deleteColor(id: string): Promise<void> {
-  await adminFetch(`/api/colors/${id}`, { method: "DELETE" });
+/**
+ * Elimina un color sin uso (si está en uso, el servidor responde 409). Con
+ * keepText se saca igual ("no es un color") y sus variantes conservan el
+ * nombre como descripción libre.
+ */
+export async function deleteColor(id: string, keepText = false): Promise<void> {
+  await adminFetch(`/api/colors/${id}${keepText ? "?keep_text=1" : ""}`, { method: "DELETE" });
+}
+
+export type MergeResult = { from: string; into: string; variants: number; merged: number; images: number };
+
+/** "Unir colores": pasa variantes y fotos de `id` a `into` y borra `id`. */
+export function mergeColor(id: string, into: string): Promise<{ data: MergeResult }> {
+  return adminFetch(`/api/colors/${id}/merge`, { method: "POST", body: JSON.stringify({ into }) });
+}
+
+export type AdminMotif = { id: string; name: string; slug: string; sort_order: number; variant_count: number };
+
+export function getMotifs(): Promise<{ data: AdminMotif[] }> {
+  return adminFetch("/api/motifs");
+}
+
+export function createMotif(name: string): Promise<{ data: AdminMotif }> {
+  return adminFetch("/api/motifs", { method: "POST", body: JSON.stringify({ name }) });
+}
+
+export function updateMotif(id: string, name: string): Promise<{ data: Omit<AdminMotif, "variant_count"> }> {
+  return adminFetch(`/api/motifs/${id}`, { method: "PATCH", body: JSON.stringify({ name }) });
+}
+
+export async function deleteMotif(id: string, keepText = false): Promise<void> {
+  await adminFetch(`/api/motifs/${id}${keepText ? "?keep_text=1" : ""}`, { method: "DELETE" });
+}
+
+export function mergeMotif(id: string, into: string): Promise<{ data: MergeResult }> {
+  return adminFetch(`/api/motifs/${id}/merge`, { method: "POST", body: JSON.stringify({ into }) });
+}
+
+// --- matriz modelo × color (o motivo) ---------------------------------------------
+
+export type AttributeKind = "color" | "motif";
+
+export type CellsResult = {
+  product_id: string;
+  product_name: string;
+  created: number;
+  reactivated: number;
+  existing: number;
+  /** Primer color/motivo de un producto sin ninguno: se asignó a sus variantes actuales. */
+  assigned: number;
+  deactivated: number;
+  /** Unidades en stock de lo que se da de baja (o de lo asignado). */
+  units: number;
+  with_stock: { id: string; sku: string; model: string | null; stock: number }[];
+  /** Se quiso dar de baja algo con stock sin forzar: no se hizo nada. */
+  blocked: boolean;
+  skus: string[];
+  dry_run: boolean;
+};
+
+/**
+ * Tilda (active true) o destilda (false) celdas de la matriz de un producto.
+ * `models`: ids de modelo; null es la variante sin modelo.
+ */
+export function applyCells(
+  productId: string,
+  payload: {
+    kind: AttributeKind;
+    attrId: string;
+    models: (string | null)[];
+    active: boolean;
+    force?: boolean;
+    dryRun?: boolean;
+  },
+): Promise<{ data: CellsResult }> {
+  return adminFetch(`/api/products/${productId}/cells`, {
+    method: "POST",
+    body: JSON.stringify({
+      kind: payload.kind,
+      attr_id: payload.attrId,
+      models: payload.models,
+      active: payload.active,
+      force: payload.force ?? false,
+      dry_run: payload.dryRun ?? false,
+    }),
+  });
 }
 
 // --- colores de un producto / de una categoría --------------------------------
@@ -497,14 +583,16 @@ export type AddColorToCategoryResult = {
   dry_run: boolean;
 };
 
+/** `modelIds` null = todos los modelos de cada producto. */
 export function addColorToCategory(
   categoryId: string,
   colorId: string,
   dryRun = false,
+  modelIds: string[] | null = null,
 ): Promise<{ data: AddColorToCategoryResult }> {
   return adminFetch(`/api/categories/${categoryId}/colors`, {
     method: "POST",
-    body: JSON.stringify({ color_id: colorId, dry_run: dryRun }),
+    body: JSON.stringify({ color_id: colorId, dry_run: dryRun, ...(modelIds ? { model_ids: modelIds } : {}) }),
   });
 }
 
@@ -522,10 +610,12 @@ export function removeColorFromCategory(
   categoryId: string,
   colorId: string,
   dryRun = false,
+  modelIds: string[] | null = null,
 ): Promise<{ data: RemoveColorFromCategoryResult }> {
-  return adminFetch(`/api/categories/${categoryId}/colors/${colorId}${dryRun ? "?dry_run=1" : ""}`, {
-    method: "DELETE",
-  });
+  const query = new URLSearchParams();
+  if (dryRun) query.set("dry_run", "1");
+  if (modelIds) query.set("models", modelIds.join(","));
+  return adminFetch(`/api/categories/${categoryId}/colors/${colorId}?${query}`, { method: "DELETE" });
 }
 
 export type WebOrderStatus = "pendiente" | "pagada" | "cancelada";

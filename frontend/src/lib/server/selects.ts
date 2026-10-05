@@ -3,9 +3,11 @@
 export const PRODUCT_SELECT = "id, name, description, active, category_id, image_url, created_at";
 
 export const VARIANT_SELECT =
-  "id, product_id, iphone_model_id, color, color_id, sku, price, cost_price, stock_quantity, active";
+  "id, product_id, iphone_model_id, color, color_id, motif_id, sku, price, cost_price, stock_quantity, active";
 
-export const PRODUCT_IMAGE_SELECT = "id, url, sort_order, color_id";
+export const PRODUCT_IMAGE_SELECT = "id, url, sort_order, color_id, motif_id";
+
+export const MOTIF_SELECT = "id, name, slug, sort_order";
 
 export const COLOR_SELECT = "id, name, slug, hex, assigned, sort_order";
 
