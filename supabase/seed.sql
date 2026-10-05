@@ -66,7 +66,21 @@ insert into iphone_models (name, sort_order) values
   ('iPhone 18 Pro Max', 26)
 on conflict (name) do update set sort_order = excluded.sort_order;
 
--- Colores: se crean a partir de los textos de las variantes que todavía no
--- tengan color (idempotente; sin variantes no hace nada). El script de
--- importación la vuelve a llamar después de cargar el catálogo.
+-- Colores: la paleta base del entorno local. El sistema no crea colores por
+-- su cuenta (en producción se crean desde el panel); acá se cargan a mano,
+-- como el resto del seed, para que una base nueva tenga con qué enlazar el
+-- catálogo importado. Idempotente.
+insert into colors (name, slug, hex, assigned)
+select initcap(left(n, 1)) || substr(n, 2), slugify(n), color_hex_for(n), true
+from unnest(array[
+  'negro', 'blanco', 'gris', 'gris oscuro', 'plateado', 'dorado', 'rojo', 'bordó', 'vinotinto', 'cherry', 'cereza',
+  'amarillo pastel', 'verde', 'verde oscuro', 'verde agua', 'verde pastel', 'verde plomo', 'celeste', 'celeste pastel',
+  'azul', 'azul marino', 'azul oscuro', 'azul petróleo', 'violeta', 'lila', 'morado', 'púrpura', 'rosa', 'rosa pastel',
+  'rosa viejo', 'magenta', 'beige', 'crema', 'marrón', 'marrón claro'
+]) as n
+where color_hex_for(n) is not null
+on conflict do nothing;
+
+-- Enlaza las variantes que ya estén cargadas con los colores y motivos que
+-- existan (no crea ninguno). El script de importación la vuelve a llamar.
 select sync_colors_from_variants();

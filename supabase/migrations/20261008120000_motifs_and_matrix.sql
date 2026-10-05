@@ -65,7 +65,8 @@ create index if not exists idx_product_images_motif_id on product_images (motif_
 --   * hay color_id -> el texto es el nombre del color (y no hay motif_id)
 --   * llega o cambia solo el texto (compras, importación) -> se busca un color
 --     con ese nombre y, si no, un motivo; si no hay ninguno, queda como
---     descripción libre.
+--     descripción libre. Un mismo nombre puede ser color y motivo ("Rosa"): si
+--     el producto ya usa motivos, se busca primero el motivo.
 -- ---------------------------------------------------------------------------
 create or replace function product_variants_sync_color()
 returns trigger
@@ -78,6 +79,7 @@ declare
   v_motif_changed boolean := tg_op = 'INSERT' or new.motif_id is distinct from old.motif_id;
   v_color_changed boolean := tg_op = 'INSERT' or new.color_id is distinct from old.color_id;
   v_text_changed boolean := tg_op = 'INSERT' or new.color is distinct from old.color;
+  v_uses_motifs boolean;
 begin
   if v_motif_changed and new.motif_id is not null then
     new.color_id := null;
@@ -91,16 +93,18 @@ begin
     new.color_id := null;
     new.motif_id := null;
     if nullif(btrim(new.color), '') is not null then
+      v_uses_motifs := exists (
+        select 1 from product_variants
+        where product_id = new.product_id and motif_id is not null and id is distinct from new.id
+      );
       select * into v_color from colors where lower(name) = lower(color_canonical_name(new.color));
-      if found then
+      select * into v_motif from motifs where lower(name) = lower(btrim(new.color));
+      if v_motif.id is not null and (v_uses_motifs or v_color.id is null) then
+        new.motif_id := v_motif.id;
+        new.color := v_motif.name;
+      elsif v_color.id is not null then
         new.color_id := v_color.id;
         new.color := v_color.name;
-      else
-        select * into v_motif from motifs where lower(name) = lower(btrim(new.color));
-        if found then
-          new.motif_id := v_motif.id;
-          new.color := v_motif.name;
-        end if;
       end if;
     end if;
   end if;
@@ -179,14 +183,18 @@ begin
 end;
 $$;
 
--- sync_colors_from_variants: ahora no vuelve a crear como color lo que es un motivo.
+-- sync_colors_from_variants: el sistema NUNCA crea colores por su cuenta. Los
+-- colores (y los motivos) los crea una persona desde el panel. Esta función
+-- solo ENLAZA: a las variantes sin color ni motivo cuyo texto coincide con un
+-- motivo o un color que ya existe. Devuelve cuántas variantes enlazó.
 create or replace function sync_colors_from_variants()
 returns int
 language plpgsql
 set search_path = public, extensions
 as $$
 declare
-  v_created int;
+  v_motifs int;
+  v_colors int;
 begin
   -- Un texto que coincide con un motivo se enlaza al motivo.
   update product_variants pv
@@ -195,22 +203,7 @@ begin
   where pv.color_id is null and pv.motif_id is null
     and nullif(btrim(pv.color), '') is not null
     and lower(m.name) = lower(btrim(pv.color));
-
-  insert into colors (name, slug, hex, assigned)
-  select d.name, slugify(d.name), coalesce(color_hex_for(d.name), '#9ca3af'), color_hex_for(d.name) is not null
-  from (
-    select distinct on (lower(color_canonical_name(color))) color_canonical_name(color) as name
-    from product_variants
-    where color_id is null
-      and motif_id is null
-      and nullif(btrim(color), '') is not null
-      and lower(unaccent(btrim(color))) <> 'unico'
-      -- Las descripciones de cables no son colores.
-      and lower(unaccent(btrim(color))) !~ '^tipo [a-z] a '
-    order by lower(color_canonical_name(color)), color
-  ) d
-  on conflict do nothing;
-  get diagnostics v_created = row_count;
+  get diagnostics v_motifs = row_count;
 
   update product_variants pv
   set color_id = c.id
@@ -219,8 +212,9 @@ begin
     and pv.motif_id is null
     and nullif(btrim(pv.color), '') is not null
     and lower(c.name) = lower(color_canonical_name(pv.color));
+  get diagnostics v_colors = row_count;
 
-  return v_created;
+  return v_motifs + v_colors;
 end;
 $$;
 
@@ -733,6 +727,129 @@ begin
   );
 end;
 $$;
+
+-- ---------------------------------------------------------------------------
+-- color_to_motif: "Pasar a motivo". Mueve TODAS las variantes y fotos de un
+-- color a un motivo con el mismo nombre (lo crea si no existe). Las variantes
+-- conservan stock, precio y SKU. El color no se borra: queda en la lista, sin
+-- uso, para eliminarlo a mano si corresponde. Con p_dry_run solo cuenta.
+-- ---------------------------------------------------------------------------
+create or replace function color_to_motif(p_color_id uuid, p_dry_run boolean default false)
+returns jsonb
+language plpgsql
+set search_path = public, extensions
+as $$
+declare
+  v_name text;
+  v_motif_id uuid;
+  v_variants int;
+  v_products int;
+  v_images int;
+  v_units int;
+  v_existed boolean;
+begin
+  select name into v_name from colors where id = p_color_id;
+  if not found then
+    raise exception 'No existe un color con ese id' using errcode = 'CC404';
+  end if;
+
+  perform 1 from product_variants where color_id = p_color_id order by id for update;
+
+  select count(*), count(distinct product_id), coalesce(sum(stock_quantity), 0)
+  into v_variants, v_products, v_units
+  from product_variants where color_id = p_color_id;
+  select count(*) into v_images from product_images where color_id = p_color_id;
+
+  select id into v_motif_id from motifs where lower(name) = lower(v_name);
+  v_existed := v_motif_id is not null;
+
+  if not coalesce(p_dry_run, false) then
+    if v_motif_id is null then
+      insert into motifs (name) values (v_name) returning id into v_motif_id;
+    end if;
+    update product_images set motif_id = v_motif_id, color_id = null where color_id = p_color_id;
+    -- motif_id pisa al color_id (trigger): stock, precio y SKU no se tocan.
+    update product_variants set motif_id = v_motif_id where color_id = p_color_id;
+  end if;
+
+  return jsonb_build_object(
+    'name', v_name, 'variants', v_variants, 'products', v_products, 'units', v_units, 'images', v_images,
+    'motif_existed', v_existed,
+    'dry_run', coalesce(p_dry_run, false)
+  );
+end;
+$$;
+
+-- ---------------------------------------------------------------------------
+-- accessory_colors_to_motifs: en Accesorios (y sus tipos) no hay colores por
+-- modelo, hay motivos. Pasa a motivo, con el mismo nombre, las variantes de
+-- productos de Accesorios que tengan color (ej. los protectores de cargador
+-- "Cereza" y "Rosa"), y sus fotos. Conservan stock, precio y SKU.
+--   * El color NO se borra de la lista: puede usarlo una funda (Rosa). Si
+--     queda sin uso, se ve como "sin uso" en "Editar colores".
+--   * Un producto que ya tiene variantes con color Y con motivo no se toca:
+--     se devuelve en `skipped` para decidirlo a mano.
+-- Idempotente: la segunda vez no encuentra nada que pasar.
+-- ---------------------------------------------------------------------------
+create or replace function accessory_colors_to_motifs()
+returns jsonb
+language plpgsql
+set search_path = public, extensions
+as $$
+declare
+  v_color record;
+  v_motif_id uuid;
+  v_rows int;
+  v_variants int := 0;
+  v_images int := 0;
+  v_touched jsonb;
+  v_skipped jsonb;
+begin
+  drop table if exists _accessory_targets;
+  create temp table _accessory_targets on commit drop as
+  select p.id as product_id, p.name as product_name,
+         exists (select 1 from product_variants x where x.product_id = p.id and x.motif_id is not null) as mixed
+  from products p
+  where category_is_accessory(p.category_id)
+    and exists (select 1 from product_variants v where v.product_id = p.id and v.color_id is not null);
+
+  select coalesce(jsonb_agg(jsonb_build_object('product_id', product_id, 'product_name', product_name) order by product_name), '[]'::jsonb)
+  into v_skipped from _accessory_targets where mixed;
+  select coalesce(jsonb_agg(jsonb_build_object('product_id', product_id, 'product_name', product_name) order by product_name), '[]'::jsonb)
+  into v_touched from _accessory_targets where not mixed;
+
+  for v_color in
+    select distinct c.id, c.name
+    from product_variants pv
+    join colors c on c.id = pv.color_id
+    where pv.product_id in (select product_id from _accessory_targets where not mixed)
+  loop
+    insert into motifs (name) values (v_color.name) on conflict do nothing;
+    select id into v_motif_id from motifs where lower(name) = lower(v_color.name);
+    -- Sin motivo (chocó el slug con otro nombre): ese color se deja como está.
+    continue when v_motif_id is null;
+
+    update product_images set motif_id = v_motif_id, color_id = null
+    where color_id = v_color.id and product_id in (select product_id from _accessory_targets where not mixed);
+    get diagnostics v_rows = row_count;
+    v_images := v_images + v_rows;
+
+    update product_variants set motif_id = v_motif_id
+    where color_id = v_color.id and product_id in (select product_id from _accessory_targets where not mixed);
+    get diagnostics v_rows = row_count;
+    v_variants := v_variants + v_rows;
+  end loop;
+
+  return jsonb_build_object('variants', v_variants, 'images', v_images, 'products', v_touched, 'skipped', v_skipped);
+end;
+$$;
+
+select accessory_colors_to_motifs();
+
+revoke execute on function color_to_motif(uuid, boolean) from public, anon, authenticated;
+revoke execute on function accessory_colors_to_motifs() from public, anon, authenticated;
+grant execute on function color_to_motif(uuid, boolean) to service_role;
+grant execute on function accessory_colors_to_motifs() to service_role;
 
 -- Solo el servidor (service_role).
 revoke execute on function _apply_attribute_cells(uuid, text, uuid, jsonb, boolean, boolean) from public, anon, authenticated;

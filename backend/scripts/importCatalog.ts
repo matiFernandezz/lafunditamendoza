@@ -758,11 +758,11 @@ async function main() {
 
   console.log(`Variantes upserteadas: ${upserted}`);
 
-  // Crea en `colors` los colores nuevos que trajo el import y enlaza las
-  // variantes (las que ya tenían color no se tocan). Idempotente.
-  const { data: colorsCreated, error: colorsError } = await supabase.rpc('sync_colors_from_variants');
-  if (colorsError) throw new Error(`Error al sincronizar colores: ${colorsError.message}`);
-  console.log(`Colores nuevos: ${colorsCreated}`);
+  // Enlaza las variantes con los colores y motivos que ya existen (no crea
+  // ninguno: se crean desde el panel o en seed.sql). Idempotente.
+  const { data: linked, error: colorsError } = await supabase.rpc('sync_colors_from_variants');
+  if (colorsError) throw new Error(`Error al enlazar colores: ${colorsError.message}`);
+  console.log(`Variantes enlazadas a un color o motivo: ${linked}`);
   console.log('\nEjemplos:');
   for (const ex of examples) console.log(' - ' + ex);
 }
