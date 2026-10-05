@@ -2,7 +2,7 @@
 
 import { Check, ImagePlus, ListPlus, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import type { AdminCategory, AdminColor, AdminIphoneModel } from "@/lib/adminApi";
+import type { AdminCategory, AdminIphoneModel } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import {
   MAX_PRODUCT_IMAGE_SIZE,
@@ -54,8 +54,6 @@ export default function ProductDraftForm({
   onChange,
   categories,
   models,
-  colors,
-  onColorCreated,
   skuByKey,
   idPrefix,
   disabled = false,
@@ -68,9 +66,6 @@ export default function ProductDraftForm({
   onChange: (update: (draft: ProductDraft) => ProductDraft) => void;
   categories: AdminCategory[];
   models: AdminIphoneModel[];
-  /** Lista de colores para elegir el de cada fila. */
-  colors: AdminColor[];
-  onColorCreated: (color: AdminColor) => void;
   skuByKey: Map<string, string>;
   idPrefix: string;
   /** Guardando: nada se puede editar. */
@@ -398,8 +393,6 @@ export default function ProductDraftForm({
                   <ColorField
                     label={`Color, fila ${n}`}
                     value={row.color}
-                    colors={colors}
-                    onColorCreated={onColorCreated}
                     disabled={off}
                     onChange={(value) => updateRow(row.key, { color: value })}
                     className={purchase ? "col-span-6 md:col-span-2" : "col-span-3 lg:col-span-1"}

@@ -23,23 +23,28 @@ import { ADMIN_TEXT_MUTED, adminButton } from "../adminStyles";
  * arrastrar, de a una). Tocar una miniatura la selecciona y muestra
  * Antes / Después / Quitar.
  *
- * Muestra un grupo por vez: las fotos generales (`colorId` null) o las de un
- * color. Subir, mover y quitar actúan sobre ese grupo; `images` y `onChange`
+ * Muestra un grupo por vez: las fotos generales, las de un color o las de un
+ * motivo. Subir, mover y quitar actúan sobre ese grupo; `images` y `onChange`
  * manejan siempre todas las fotos del producto.
  */
+const GENERAL = { colorId: null, motifId: null };
+
 export default function ProductImageGallery({
   productId,
   images,
-  colorId = null,
+  group = GENERAL,
   onChange,
 }: {
   productId: string;
   images: AdminProductImage[];
-  colorId?: string | null;
+  /** De qué son las fotos que se ven. Por defecto, las generales. */
+  group?: { colorId: string | null; motifId: string | null };
   onChange: (images: AdminProductImage[]) => void;
 }) {
   const all = [...images].sort((a, b) => a.sort_order - b.sort_order);
-  const sorted = all.filter((img) => img.color_id === colorId);
+  const inGroup = (img: AdminProductImage) => img.color_id === group.colorId && img.motif_id === group.motifId;
+  const isGeneral = group.colorId === null && group.motifId === null;
+  const sorted = all.filter(inGroup);
 
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -60,7 +65,7 @@ export default function ProductImageGallery({
     setUploading(true);
     setError(null);
     try {
-      const res = await addProductImage(productId, file, colorId);
+      const res = await addProductImage(productId, file, group);
       onChange([...images, res.data]);
     } catch (err) {
       setError(err instanceof AdminApiError ? err.message : "No se pudo subir la imagen.");
@@ -92,7 +97,7 @@ export default function ProductImageGallery({
     // El servidor pide el orden de TODAS las fotos del producto: las de este
     // grupo cambian de lugar entre sí y el resto queda donde estaba.
     const queue = [...reordered];
-    const order = all.map((img) => (img.color_id === colorId ? queue.shift()!.id : img.id));
+    const order = all.map((img) => (inGroup(img) ? queue.shift()!.id : img.id));
 
     setBusyId(sorted[index].id);
     setError(null);
@@ -222,10 +227,10 @@ export default function ProductImageGallery({
         </div>
       ) : (
         <p className={ADMIN_TEXT_MUTED}>
-          {colorId !== null
+          {!isGeneral
             ? sorted.length > 0
-              ? "Se muestran cuando el cliente elige este color. Tocá una foto para moverla o quitarla."
-              : "Sin fotos de este color: en la web se usan las generales."
+              ? `Se muestran cuando el cliente elige este ${group.motifId ? "motivo" : "color"}. Tocá una foto para moverla o quitarla.`
+              : `Sin fotos de este ${group.motifId ? "motivo" : "color"}: en la web se usan las generales.`
             : sorted.length > 0
               ? "La primera es la foto principal en la web. Tocá una foto para moverla o quitarla."
               : "Sin fotos: en la web se ve el recuadro vacío."}

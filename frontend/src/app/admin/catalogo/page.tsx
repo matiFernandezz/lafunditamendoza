@@ -6,21 +6,20 @@ import {
   AdminApiError,
   createProductVariant,
   getAdminCategories,
-  getColors,
   getAdminIphoneModels,
   getAdminProducts,
   updateProduct,
   updateVariant,
   type AdminCategory,
-  type AdminColor,
   type AdminIphoneModel,
   type AdminProduct,
   type AdminVariant,
 } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
-import { colorsWithoutPhotos } from "@/lib/productColors";
+import { colorsWithoutPhotos, motifsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
 import ColorField from "../ColorField";
+import { LIBRARY_TOUCHED_PRODUCTS } from "../attributeLibrary";
 import { categoryPathById, categorySubtree, isAccessoryCategory } from "../categoryPath";
 import {
   ADMIN_EMPTY,
@@ -55,13 +54,12 @@ const STOCK_FILTERS: { value: StockFilter; label: string }[] = [
 ];
 
 async function loadData() {
-  const [categories, models, products, colors] = await Promise.all([
+  const [categories, models, products] = await Promise.all([
     getAdminCategories(),
     getAdminIphoneModels(),
     getAdminProducts(),
-    getColors(),
   ]);
-  return { categories: categories.data, models: models.data, products: products.data, colors: colors.data };
+  return { categories: categories.data, models: models.data, products: products.data };
 }
 
 function errorMessage(err: unknown) {
@@ -71,7 +69,6 @@ function errorMessage(err: unknown) {
 export default function CatalogoPage() {
   const [categories, setCategories] = useState<AdminCategory[]>([]);
   const [models, setModels] = useState<AdminIphoneModel[]>([]);
-  const [colors, setColors] = useState<AdminColor[]>([]);
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -117,7 +114,6 @@ export default function CatalogoPage() {
         if (ignore) return;
         setCategories(result.categories);
         setModels(result.models);
-        setColors(result.colors);
         setProducts(result.products);
         setLoading(false);
       })
@@ -149,17 +145,12 @@ export default function CatalogoPage() {
       .then((result) => {
         setCategories(result.categories);
         setModels(result.models);
-        setColors(result.colors);
         setProducts(result.products);
       })
       .catch((err) => {
         setLoadError(err instanceof Error ? err.message : "No se pudieron cargar los datos.");
       })
       .finally(() => setLoading(false));
-  }
-
-  function addColor(created: AdminColor) {
-    setColors((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name, "es")));
   }
 
   // Se agregó o quitó un color (de un producto o de una categoría): se muestra
@@ -177,6 +168,18 @@ export default function CatalogoPage() {
       // El próximo guardado o "Reintentar" lo refresca.
     }
   }
+
+  // Al renombrar, unir o eliminar un color o un motivo ("Editar colores")
+  // cambian las variantes: se vuelve a pedir la lista.
+  useEffect(() => {
+    const onTouched = () => {
+      getAdminProducts()
+        .then((res) => setProducts(res.data))
+        .catch(() => {});
+    };
+    window.addEventListener(LIBRARY_TOUCHED_PRODUCTS, onTouched);
+    return () => window.removeEventListener(LIBRARY_TOUCHED_PRODUCTS, onTouched);
+  }, []);
 
   function patchProductInState(productId: string, patch: Partial<AdminProduct>) {
     setProducts((prev) => prev.map((p) => (p.id === productId ? { ...p, ...patch } : p)));
@@ -346,6 +349,8 @@ export default function CatalogoPage() {
   }
 
   const selectedProduct = products.find((p) => p.id === productId);
+  // El producto elegido en "Agregar variante" ya usa motivos: se elige un motivo, no un color.
+  const addUsesMotifs = selectedProduct?.product_variants.some((v) => v.active && v.motif_id !== null) ?? false;
   const addModelName =
     addModelId === UNIVERSAL ? "" : modelNameById.get(addModelId) ?? "";
   const suggestedSku = suggestSku(selectedProduct?.name ?? "", addModelName, color);
@@ -536,8 +541,7 @@ export default function CatalogoPage() {
         <CategoryColors
           key={selectedCategory.id}
           category={selectedCategory}
-          colors={colors}
-          onColorCreated={addColor}
+          models={sortedModels}
           onChanged={handleColorsChanged}
         />
       )}
@@ -593,20 +597,21 @@ export default function CatalogoPage() {
           </div>
 
           <div>
-            <span className={ADMIN_LABEL}>Color</span>
+            <span className={ADMIN_LABEL}>{addUsesMotifs ? "Motivo" : "Color"}</span>
             <ColorField
-              label="Color de la variante"
+              key={addUsesMotifs ? "motif" : "color"}
+              kind={addUsesMotifs ? "motif" : "color"}
+              label={addUsesMotifs ? "Motivo de la variante" : "Color de la variante"}
               value={color}
-              colors={colors}
               onChange={(value) => {
                 setColor(value);
                 setVariantError(null);
               }}
-              onColorCreated={addColor}
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
-              Opcional. Si lo que distingue a la variante no es un color (un cable “tipo C a C”), elegí “Otra
-              descripción”.
+              {addUsesMotifs
+                ? "Este producto usa motivos (el dibujo o personaje)."
+                : "Opcional. Si lo que distingue a la variante no es un color (un cable “tipo C a C”), elegí “Otra descripción”."}
             </p>
           </div>
 
@@ -627,7 +632,7 @@ export default function CatalogoPage() {
             />
             <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
               {skuOverride === null ? (
-                "Sugerido según producto, modelo y color. Podés editarlo."
+                `Sugerido según producto, modelo y ${addUsesMotifs ? "motivo" : "color"}. Podés editarlo.`
               ) : (
                 <>
                   Editado a mano.{" "}
@@ -749,6 +754,9 @@ export default function CatalogoPage() {
                       {colorsWithoutPhotos(all, product.product_images).length > 0 && (
                         <span className={adminBadge("warn")}>Color sin foto</span>
                       )}
+                      {motifsWithoutPhotos(all, product.product_images).length > 0 && (
+                        <span className={adminBadge("warn")}>Motivo sin foto</span>
+                      )}
                       {unsaved && <span className={adminBadge("ink")}>Sin guardar</span>}
                     </span>
                     <span className={`mt-0.5 flex flex-wrap gap-x-1.5 ${ADMIN_TEXT_MUTED}`}>
@@ -780,10 +788,9 @@ export default function CatalogoPage() {
                       draft={draft}
                       onDraftChange={(update) => updateDraft(product.id, update)}
                       modelNameById={modelNameById}
-                      colors={colors}
-                      colorControls={!isAccessory(product.category_id)}
-                      onColorCreated={addColor}
-                      onColorsChanged={handleColorsChanged}
+                      models={sortedModels}
+                      accessory={isAccessory(product.category_id)}
+                      onAttributesChanged={refreshProducts}
                       saving={savingId === product.id}
                       error={saveError?.productId === product.id ? saveError.message : null}
                       justSaved={savedId === product.id}

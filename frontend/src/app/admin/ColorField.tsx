@@ -1,9 +1,11 @@
 "use client";
 
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Pencil, Plus } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
-import { AdminApiError, createColor, type AdminColor } from "@/lib/adminApi";
+import { AdminApiError, createColor, createMotif, type AttributeKind } from "@/lib/adminApi";
+import AttributeManager from "./AttributeManager";
 import { ADMIN_TEXT_MUTED, adminButton, adminInput } from "./adminStyles";
+import { KIND_TEXT, addToLibrary, useAttributeLibrary } from "./attributeLibrary";
 
 const DEFAULT_NEW_HEX = "#9ca3af";
 
@@ -19,49 +21,56 @@ export function ColorDot({ hex, size = 18 }: { hex: string; size?: number }) {
 }
 
 type Mode = "list" | "new" | "text";
+type Option = { id: string; name: string; hex?: string; assigned?: boolean };
+
+const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /**
- * Elegir el color de una variante de la lista `colors` (con su círculo), o
- * crear uno nuevo ahí mismo. El valor es el nombre del color, que es lo que
- * guarda la variante. "Otra descripción" queda para lo que no es un color
- * ("Tipo C a C"): ese texto no entra en la lista de colores.
- * La lista se filtra con el buscador de arriba.
+ * Selector de un color (con su círculo) o de un motivo, de la lista del panel:
+ * con buscador, "Crear … nuevo" ahí mismo y "Editar …", que abre el modal para
+ * renombrar, unir y eliminar. El valor es el nombre, que es lo que guarda la
+ * variante. "Otra descripción" queda para lo que no es ni color ni motivo
+ * ("Tipo C a C"): ese texto no entra en ninguna lista.
  */
 export default function ColorField({
   value,
   onChange,
-  colors,
-  onColorCreated,
   label,
+  kind = "color",
   disabled = false,
   className = "",
-  placeholder = "Sin color",
+  placeholder,
   allowEmpty = true,
   allowText = true,
   takenIds,
 }: {
   value: string;
   onChange: (value: string) => void;
-  colors: AdminColor[];
-  onColorCreated: (color: AdminColor) => void;
   /** Rótulo accesible ("Color, fila 2"). */
   label: string;
+  kind?: AttributeKind;
   disabled?: boolean;
   className?: string;
   /** Texto del botón cuando no hay nada elegido. */
   placeholder?: string;
-  /** Ofrecer "Sin color". */
+  /** Ofrecer "Sin color" / "Sin motivo". */
   allowEmpty?: boolean;
-  /** Ofrecer "Otra descripción (no es un color)". */
+  /** Ofrecer "Otra descripción". */
   allowText?: boolean;
-  /** Colores que ya están en uso: se muestran marcados y no se pueden elegir. */
+  /** Los que ya están en uso: se muestran marcados y no se pueden elegir. */
   takenIds?: Set<string>;
 }) {
+  const library = useAttributeLibrary();
+  const text = KIND_TEXT[kind];
+  const options: Option[] = kind === "color" ? library.colors : library.motifs;
+  const none = `Sin ${text.one}`;
+
   const [open, setOpen] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [mode, setMode] = useState<Mode>("list");
   const [newName, setNewName] = useState("");
   const [newHex, setNewHex] = useState(DEFAULT_NEW_HEX);
-  const [text, setText] = useState("");
+  const [freeText, setFreeText] = useState("");
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,7 +78,7 @@ export default function ColorField({
   const listId = useId();
 
   const trimmed = value.trim();
-  const selected = colors.find((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+  const selected = options.find((o) => o.name.toLowerCase() === trimmed.toLowerCase());
 
   useEffect(() => {
     if (!open) return;
@@ -90,9 +99,8 @@ export default function ColorField({
   }, [open]);
 
   // Búsqueda por nombre, sin distinguir mayúsculas ni tildes.
-  const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const term = fold(search.trim());
-  const visibleColors = term === "" ? colors : colors.filter((c) => fold(c.name).includes(term));
+  const visible = term === "" ? options : options.filter((o) => fold(o.name).includes(term));
 
   function toggle() {
     setOpen((o) => !o);
@@ -110,7 +118,7 @@ export default function ColorField({
     const name = newName.trim();
     if (name === "" || saving) return;
     // Si ya existe con ese nombre, se elige ese en vez de fallar.
-    const existing = colors.find((c) => c.name.toLowerCase() === name.toLowerCase());
+    const existing = options.find((o) => o.name.toLowerCase() === name.toLowerCase());
     if (existing) {
       pick(existing.name);
       return;
@@ -118,13 +126,14 @@ export default function ColorField({
     setSaving(true);
     setError(null);
     try {
-      const res = await createColor({ name, hex: newHex });
-      onColorCreated(res.data);
+      const res = kind === "color" ? await createColor({ name, hex: newHex }) : await createMotif(name);
+      // Antes de elegirlo: quien recibe el onChange ya lo encuentra en la lista.
+      addToLibrary(kind, res.data);
       setNewName("");
       setNewHex(DEFAULT_NEW_HEX);
       pick(res.data.name);
     } catch (err) {
-      setError(err instanceof AdminApiError ? err.message : "No se pudo crear el color.");
+      setError(err instanceof AdminApiError ? err.message : `No se pudo crear el ${text.one}.`);
     } finally {
       setSaving(false);
     }
@@ -148,13 +157,13 @@ export default function ColorField({
       >
         {selected ? (
           <>
-            <ColorDot hex={selected.hex} />
+            {selected.hex && <ColorDot hex={selected.hex} />}
             <span className="min-w-0 flex-1 truncate">{selected.name}</span>
           </>
         ) : trimmed !== "" ? (
           <span className="min-w-0 flex-1 truncate">{trimmed}</span>
         ) : (
-          <span className="min-w-0 flex-1 truncate text-admin-muted">{placeholder}</span>
+          <span className="min-w-0 flex-1 truncate text-admin-muted">{placeholder ?? none}</span>
         )}
         <ChevronDown
           aria-hidden="true"
@@ -175,8 +184,8 @@ export default function ColorField({
                   value={search}
                   autoFocus
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Buscar color"
-                  aria-label="Buscar color"
+                  placeholder={`Buscar ${text.one}`}
+                  aria-label={`Buscar ${text.one}`}
                   className={adminInput()}
                 />
               </div>
@@ -184,60 +193,71 @@ export default function ColorField({
                 {allowEmpty && term === "" && (
                   <li role="option" aria-selected={trimmed === ""}>
                     <button type="button" onClick={() => pick("")} className={`${option} text-admin-muted`}>
-                      Sin color
+                      {none}
                     </button>
                   </li>
                 )}
-                {visibleColors.map((color) => {
-                  const taken = takenIds?.has(color.id) ?? false;
+                {visible.map((item) => {
+                  const taken = takenIds?.has(item.id) ?? false;
                   return (
-                    <li key={color.id} role="option" aria-selected={color.id === selected?.id} aria-disabled={taken}>
+                    <li key={item.id} role="option" aria-selected={item.id === selected?.id} aria-disabled={taken}>
                       <button
                         type="button"
-                        onClick={() => pick(color.name)}
+                        onClick={() => pick(item.name)}
                         disabled={taken}
                         className={`${option} disabled:opacity-50 disabled:hover:bg-white ${
-                          color.id === selected?.id ? "bg-admin-bg font-semibold" : ""
+                          item.id === selected?.id ? "bg-admin-bg font-semibold" : ""
                         }`}
                       >
-                        <ColorDot hex={color.hex} />
-                        <span className="min-w-0 flex-1 break-words">{color.name}</span>
+                        {item.hex && <ColorDot hex={item.hex} />}
+                        <span className="min-w-0 flex-1 break-words">{item.name}</span>
                         {taken ? (
                           <span className={ADMIN_TEXT_MUTED}>ya lo tiene</span>
                         ) : (
-                          !color.assigned && <span className={ADMIN_TEXT_MUTED}>sin color asignado</span>
+                          item.assigned === false && <span className={ADMIN_TEXT_MUTED}>sin color asignado</span>
                         )}
                       </button>
                     </li>
                   );
                 })}
-                {visibleColors.length === 0 && (
-                  <li className={`px-3.5 py-2.5 ${ADMIN_TEXT_MUTED}`}>Ningún color con ese nombre.</li>
+                {visible.length === 0 && (
+                  <li className={`px-3.5 py-2.5 ${ADMIN_TEXT_MUTED}`}>Ningún {text.one} con ese nombre.</li>
                 )}
               </ul>
               <div className="border-t border-admin-border">
                 <button
                   type="button"
                   onClick={() => {
-                    // Lo que se venía buscando es, casi seguro, el nombre del color nuevo.
-                    if (visibleColors.length === 0) setNewName(search.trim());
+                    // Lo que se venía buscando es, casi seguro, el nombre del nuevo.
+                    if (visible.length === 0) setNewName(search.trim());
                     setMode("new");
                   }}
                   className={`${option} font-semibold`}
                 >
                   <Plus aria-hidden="true" className="size-[18px]" />
-                  Crear color nuevo
+                  {text.new}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setManaging(true);
+                  }}
+                  className={option}
+                >
+                  <Pencil aria-hidden="true" className="size-4" />
+                  {text.edit}
                 </button>
                 {allowText && (
                   <button
                     type="button"
                     onClick={() => {
-                      setText(selected ? "" : trimmed);
+                      setFreeText(selected ? "" : trimmed);
                       setMode("text");
                     }}
                     className={`${option} text-admin-muted`}
                   >
-                    Otra descripción (no es un color)
+                    Otra descripción (no es un {text.one})
                   </button>
                 )}
               </div>
@@ -247,13 +267,15 @@ export default function ColorField({
           {mode === "new" && (
             <div className="flex flex-col gap-2 p-3">
               <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={newHex}
-                  onChange={(e) => setNewHex(e.target.value)}
-                  aria-label="Color"
-                  className="h-12 w-12 shrink-0 cursor-pointer rounded-md border border-admin-border-strong bg-white p-1"
-                />
+                {kind === "color" && (
+                  <input
+                    type="color"
+                    value={newHex}
+                    onChange={(e) => setNewHex(e.target.value)}
+                    aria-label="Tono"
+                    className="h-12 w-12 shrink-0 cursor-pointer rounded-md border border-admin-border-strong bg-white p-1"
+                  />
+                )}
                 <input
                   type="text"
                   value={newName}
@@ -262,8 +284,8 @@ export default function ColorField({
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleCreate();
                   }}
-                  placeholder="Nombre: Verde menta"
-                  aria-label="Nombre del color nuevo"
+                  placeholder={kind === "color" ? "Nombre: Verde menta" : "Nombre: Spiderman"}
+                  aria-label={`Nombre del ${text.one} nuevo`}
                   className={adminInput()}
                 />
               </div>
@@ -292,22 +314,22 @@ export default function ColorField({
             <div className="flex flex-col gap-2 p-3">
               <input
                 type="text"
-                value={text}
+                value={freeText}
                 autoFocus
-                onChange={(e) => setText(e.target.value)}
+                onChange={(e) => setFreeText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") pick(text.trim());
+                  if (e.key === "Enter") pick(freeText.trim());
                 }}
                 placeholder="Ej.: tipo C a C, 20W"
                 aria-label="Descripción de la variante"
                 className={adminInput()}
               />
-              <p className={ADMIN_TEXT_MUTED}>Para lo que distingue a la variante y no es un color.</p>
+              <p className={ADMIN_TEXT_MUTED}>Para lo que distingue a la variante y no es un {text.one}.</p>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => setMode("list")} className={adminButton("secondary", "sm")}>
                   Volver
                 </button>
-                <button type="button" onClick={() => pick(text.trim())} className={adminButton("primary", "sm")}>
+                <button type="button" onClick={() => pick(freeText.trim())} className={adminButton("primary", "sm")}>
                   Usar
                 </button>
               </div>
@@ -315,6 +337,8 @@ export default function ColorField({
           )}
         </div>
       )}
+
+      {managing && <AttributeManager kind={kind} onClose={() => setManaging(false)} />}
     </div>
   );
 }

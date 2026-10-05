@@ -2,9 +2,8 @@
 
 import { Check, Plus } from "lucide-react";
 import { useState } from "react";
-import type { AdminColor, AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
-import { colorsWithoutPhotos } from "@/lib/productColors";
-import { ColorDot } from "../ColorField";
+import type { AdminIphoneModel, AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
+import { colorsWithoutPhotos, motifsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
 import { MoneyInput, UnitsInput } from "../GridInputs";
 import {
@@ -14,11 +13,12 @@ import {
   ADMIN_TEXT_MUTED,
   adminBadge,
   adminButton,
-  adminChip,
   adminInput,
 } from "../adminStyles";
+import { useAttributeLibrary } from "../attributeLibrary";
 import { displayColor } from "../ventas/utils";
-import ProductColors from "./ProductColors";
+import PhotoGroupSelect, { type PhotoGroup } from "./PhotoGroupSelect";
+import ProductAttributes from "./ProductAttributes";
 import ProductImageGallery from "./ProductImageGallery";
 import { draftChanges, type CatalogDraft } from "./catalogDraft";
 
@@ -35,10 +35,9 @@ export default function ProductEditor({
   draft,
   onDraftChange,
   modelNameById,
-  colors,
-  colorControls,
-  onColorCreated,
-  onColorsChanged,
+  models,
+  accessory,
+  onAttributesChanged,
   saving,
   error,
   justSaved,
@@ -53,11 +52,12 @@ export default function ProductEditor({
   draft: CatalogDraft;
   onDraftChange: (update: (draft: CatalogDraft) => CatalogDraft) => void;
   modelNameById: Map<string, string>;
-  colors: AdminColor[];
-  /** Mostrar "Colores" (agregar / quitar un color en todos los modelos). No va en Accesorios. */
-  colorControls: boolean;
-  onColorCreated: (color: AdminColor) => void;
-  onColorsChanged: (message: string) => void;
+  /** Todos los modelos de iPhone, en orden (filas de la matriz de colores). */
+  models: AdminIphoneModel[];
+  /** La categoría es Accesorios o uno de sus tipos: sin colores por modelo. */
+  accessory: boolean;
+  /** Se tildó o destildó algo en la matriz: hay que volver a pedir los productos. */
+  onAttributesChanged: () => Promise<void> | void;
   saving: boolean;
   error: string | null;
   justSaved: boolean;
@@ -67,19 +67,31 @@ export default function ProductEditor({
   onAddVariant: () => void;
 }) {
   const [bulkPrice, setBulkPrice] = useState("");
-  // Qué fotos se están viendo: null = las generales, o las de un color.
-  const [photoColorId, setPhotoColorId] = useState<string | null>(null);
+  const library = useAttributeLibrary();
+  // Qué fotos se están viendo: null = las generales, o las de un color o motivo.
+  const [photoGroupId, setPhotoGroupId] = useState<string | null>(null);
   const all = product.product_variants;
   const changes = draftChanges(product, draft);
   const hidden = all.length - variants.length;
 
-  // Colores que tiene el producto (por sus variantes), en el orden de la lista.
-  const usedColorIds = new Set(all.map((v) => v.color_id));
-  const productColors = colors.filter((c) => usedColorIds.has(c.id));
-  const missingPhotos = new Set(colorsWithoutPhotos(all, product.product_images));
-  // Si el color elegido dejó de ser del producto, se vuelve a las generales.
-  const activePhotoColorId = productColors.some((c) => c.id === photoColorId) ? photoColorId : null;
-  const photoCount = (colorId: string | null) => product.product_images.filter((img) => img.color_id === colorId).length;
+  // Colores o motivos del producto (los de sus variantes activas), en orden.
+  // Un producto usa unos u otros: de eso son los grupos de fotos.
+  const usesMotifs = all.some((v) => v.active && v.motif_id !== null);
+  const usedIds = new Set(all.filter((v) => v.active).map((v) => (usesMotifs ? v.motif_id : v.color_id)));
+  const attrs: { id: string; name: string; hex?: string }[] = (usesMotifs ? library.motifs : library.colors).filter(
+    (a) => usedIds.has(a.id),
+  );
+  const missingPhotos = new Set(
+    usesMotifs ? motifsWithoutPhotos(all, product.product_images) : colorsWithoutPhotos(all, product.product_images),
+  );
+  const imagesOf = (id: string | null) =>
+    product.product_images.filter((img) => (usesMotifs ? img.motif_id : img.color_id) === id && (id !== null || (img.color_id === null && img.motif_id === null))).length;
+  const photoGroups: PhotoGroup[] = [
+    { id: null, name: "General", count: imagesOf(null) },
+    ...attrs.map((a) => ({ id: a.id, name: a.name, hex: a.hex, count: imagesOf(a.id) })),
+  ];
+  // Si el elegido dejó de ser del producto, se vuelve a las generales.
+  const activeGroupId = attrs.some((a) => a.id === photoGroupId) ? photoGroupId : null;
 
   const name = draft.name ?? product.name;
   const description = draft.description ?? product.description ?? "";
@@ -128,53 +140,31 @@ export default function ProductEditor({
             </span>
           </EditorSection>
 
-          {colorControls && (
-            <EditorSection title="Colores">
-              <ProductColors
-                product={product}
-                colors={colors}
-                onColorCreated={onColorCreated}
-                onChanged={onColorsChanged}
-              />
-            </EditorSection>
-          )}
+          <ProductAttributes product={product} models={models} accessory={accessory} onChanged={onAttributesChanged} />
 
           <EditorSection title={`Fotos en la web (${product.product_images.length})`}>
-            {productColors.length > 0 && (
-              <div role="radiogroup" aria-label="Fotos de" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-                {[null, ...productColors].map((color) => {
-                  const id = color?.id ?? null;
-                  return (
-                    <button
-                      key={id ?? "general"}
-                      type="button"
-                      role="radio"
-                      aria-checked={activePhotoColorId === id}
-                      onClick={() => setPhotoColorId(id)}
-                      className={`${adminChip(activePhotoColorId === id)} flex items-center gap-2`}
-                    >
-                      {color && <ColorDot hex={color.hex} size={16} />}
-                      {color?.name ?? "General"}
-                      <span className="font-mono text-xs opacity-70">{photoCount(id)}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            {attrs.length > 0 && (
+              <PhotoGroupSelect
+                groups={photoGroups}
+                value={activeGroupId}
+                onChange={setPhotoGroupId}
+                kindLabel={usesMotifs ? "motivo" : "color"}
+              />
             )}
             <ProductImageGallery
               productId={product.id}
               images={product.product_images}
-              colorId={activePhotoColorId}
+              group={{ colorId: usesMotifs ? null : activeGroupId, motifId: usesMotifs ? activeGroupId : null }}
               onChange={onImagesChange}
             />
             {missingPhotos.size > 0 && (
               <p className={ADMIN_TEXT_MUTED}>
                 Sin fotos propias:{" "}
-                {productColors
-                  .filter((c) => missingPhotos.has(c.id))
-                  .map((c) => c.name)
+                {attrs
+                  .filter((a) => missingPhotos.has(a.id))
+                  .map((a) => a.name)
                   .join(", ")}
-                . Al elegir esos colores, la tienda muestra las fotos generales.
+                . Al elegirlos, la tienda muestra las fotos generales.
               </p>
             )}
           </EditorSection>

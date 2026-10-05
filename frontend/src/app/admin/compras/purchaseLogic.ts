@@ -43,6 +43,8 @@ export type ExistingBlock = {
   newSalePrice: string;
   /** Costo de la última compra del producto (para las variantes nuevas). */
   productPrevCost: number | null;
+  /** El producto usa motivos en vez de colores: las variantes nuevas eligen un motivo. */
+  attrKind?: "color" | "motif";
   rows: ExistingRow[];
 };
 

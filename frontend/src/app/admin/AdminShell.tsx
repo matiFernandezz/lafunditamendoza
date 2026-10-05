@@ -6,7 +6,6 @@ import {
   Menu,
   Package,
   PackagePlus,
-  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   ReceiptText,
@@ -33,7 +32,6 @@ const TABS: Tab[] = [
   { href: "/admin/compras", label: "Compras", icon: Truck },
   { href: "/admin/productos", label: "Nuevo producto", icon: PackagePlus },
   { href: "/admin/catalogo", label: "Catálogo", icon: Package },
-  { href: "/admin/colores", label: "Colores", icon: Palette },
 ];
 
 /** Avisa al shell que cambiaron las reservas web (para refrescar el contador). */
