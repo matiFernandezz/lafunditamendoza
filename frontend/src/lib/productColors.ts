@@ -11,7 +11,11 @@ type VariantLike = {
   color_ref: ColorInfo | null;
 };
 
-type ImageLike = { id: string; url: string; sort_order: number; color_id: string | null };
+type ImageLike = { id: string; url: string; sort_order: number; color_id: string | null; motif_id?: string | null };
+
+/** Foto general: ni de un color ni de un motivo. */
+const isGeneral = (img: { color_id: string | null; motif_id?: string | null }) =>
+  img.color_id === null && (img.motif_id ?? null) === null;
 
 /** El selector de círculos aparece solo con esta cantidad de colores o más. */
 export const MIN_COLORS_FOR_SELECTOR = 2;
@@ -43,9 +47,56 @@ export function imagesForColor<T extends ImageLike>(images: T[], colorId: string
     const own = sorted.filter((img) => img.color_id === colorId);
     if (own.length > 0) return own;
   }
-  const general = sorted.filter((img) => img.color_id === null);
+  const general = sorted.filter(isGeneral);
   if (general.length > 0) return general;
   return sorted.slice(0, 1);
+}
+
+// --- motivos -------------------------------------------------------------------
+// Un motivo (BATMAN, BOB…) se comporta igual que un color para elegir fotos y
+// disponibilidad; lo único distinto es cómo se muestra (una lista, sin círculo).
+// Estas funciones reusan las de colores mirando motif_ref / motif_id.
+
+export type MotifInfo = { id: string; name: string; slug: string; sort_order: number };
+
+const asColor = (motif: MotifInfo): ColorInfo => ({ ...motif, hex: "" });
+
+/** Motivos distintos de las variantes, en orden. */
+export function productMotifs(variants: { motif_ref: MotifInfo | null }[]): MotifInfo[] {
+  return productColors(variants.map((v) => ({ color_ref: v.motif_ref ? asColor(v.motif_ref) : null })));
+}
+
+/** Fotos de un motivo; sin fotos propias, las generales; si no, la primera. */
+export function imagesForMotif<T extends ImageLike>(images: T[], motifId: string | null): T[] {
+  const sorted = [...images].sort((a, b) => a.sort_order - b.sort_order);
+  if (motifId !== null) {
+    const own = sorted.filter((img) => (img.motif_id ?? null) === motifId);
+    if (own.length > 0) return own;
+  }
+  const general = sorted.filter(isGeneral);
+  if (general.length > 0) return general;
+  return sorted.slice(0, 1);
+}
+
+/** Motivos con stock para un modelo (o para cualquiera, sin modelo elegido). */
+export function availableMotifIds(
+  variants: { iphone_model_id: string | null; stock_quantity: number; motif_ref: MotifInfo | null }[],
+  modelId: string | null,
+): Set<string> {
+  return availableColorIds(
+    variants.map((v) => ({ ...v, color_ref: v.motif_ref ? asColor(v.motif_ref) : null })),
+    modelId,
+  );
+}
+
+/** El motivo que queda elegido: el pedido si hay stock; si no, el primero disponible. */
+export function resolveMotif(motifs: MotifInfo[], available: Set<string>, wantedId: string | null): string | null {
+  return resolveColor(motifs.map(asColor), available, wantedId);
+}
+
+/** Motivo inicial: el de `?motivo=<slug>` si se puede elegir; si no, el primero con stock. */
+export function initialMotif(motifs: MotifInfo[], available: Set<string>, slug: string | undefined): string | null {
+  return initialColor(motifs.map(asColor), available, slug);
 }
 
 /**
@@ -96,13 +147,27 @@ export function firstImageOfColor(images: ImageLike[], colorId: string): string 
  * usa las fotos generales y no falta nada.
  */
 export function colorsWithoutPhotos(
-  variants: { color_id: string | null }[],
+  variants: { color_id: string | null; active?: boolean }[],
   images: { color_id: string | null }[],
 ): string[] {
-  const colorIds = [...new Set(variants.map((v) => v.color_id).filter((id): id is string => id !== null))];
+  // Los colores dados de baja no cuentan: no se ven en la tienda.
+  const colorIds = [
+    ...new Set(variants.filter((v) => v.active !== false).map((v) => v.color_id).filter((id): id is string => id !== null)),
+  ];
   if (colorIds.length < MIN_COLORS_FOR_SELECTOR) return [];
   const withPhoto = new Set(images.map((img) => img.color_id));
   return colorIds.filter((id) => !withPhoto.has(id));
+}
+
+/** Lo mismo para motivos: "Motivo sin foto". */
+export function motifsWithoutPhotos(
+  variants: { motif_id: string | null; active?: boolean }[],
+  images: { motif_id: string | null }[],
+): string[] {
+  return colorsWithoutPhotos(
+    variants.map((v) => ({ color_id: v.motif_id, active: v.active })),
+    images.map((img) => ({ color_id: img.motif_id })),
+  );
 }
 
 /** Blanco o negro, lo que se lea mejor sobre ese hex (para la raya y el tilde). */

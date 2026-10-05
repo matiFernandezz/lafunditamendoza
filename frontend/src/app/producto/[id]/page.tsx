@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductDetail from "@/components/ProductDetail";
-import { categoryHref, getCategoryGroups, getProduct, isUuid } from "@/lib/catalog";
+import { categoryHref, getCategoryGroups, getProduct, getProductMotifs, isUuid } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -9,12 +9,13 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   const { id } = await props.params;
   if (!isUuid(id)) notFound();
 
-  const { modelo, color } = await props.searchParams;
+  const { modelo, color, motivo } = await props.searchParams;
   const initialModelId = isUuid(modelo) ? modelo : undefined;
   // ?color=<slug>: link compartible a un color puntual.
   const initialColorSlug = typeof color === "string" ? color : undefined;
+  const initialMotifSlug = typeof motivo === "string" ? motivo : undefined;
 
-  const [product, groups] = await Promise.all([getProduct(id), getCategoryGroups()]);
+  const [product, groups, motifs] = await Promise.all([getProduct(id), getCategoryGroups(), getProductMotifs(id)]);
   if (!product) notFound();
 
   // Migas: Inicio / Fundas / Diseño / Producto. El tipo lleva al listado de su
@@ -43,7 +44,13 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
         <span className="text-ink">{product.name}</span>
       </nav>
 
-      <ProductDetail product={product} initialModelId={initialModelId} initialColorSlug={initialColorSlug} />
+      <ProductDetail
+        product={product}
+        motifs={motifs}
+        initialModelId={initialModelId}
+        initialColorSlug={initialColorSlug}
+        initialMotifSlug={initialMotifSlug}
+      />
     </div>
   );
 }

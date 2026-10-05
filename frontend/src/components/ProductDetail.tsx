@@ -4,36 +4,46 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
 import { useCart } from "@/lib/cart";
-import { coverImage, type Product } from "@/lib/catalog";
+import { coverImage, type MotifRef, type Product } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import {
+  MIN_COLORS_FOR_SELECTOR,
   availableColorIds,
+  availableMotifIds,
   hasColorSelector,
   imagesForColor,
+  imagesForMotif,
   initialColor,
+  initialMotif,
   productColors,
   resolveColor,
+  resolveMotif,
 } from "@/lib/productColors";
 import { STORE_BUTTON, STORE_TEXT_LINK } from "@/lib/storeStyles";
 
 const LOW_STOCK = 3;
 
-/** Deja `?color=<slug>` en la URL sin recargar: el link queda compartible. */
-function writeColorToUrl(slug: string | undefined) {
+/** Deja `?color=<slug>` (o `?motivo=`) en la URL sin recargar: el link queda compartible. */
+function writeToUrl(param: "color" | "motivo", slug: string | undefined) {
   const url = new URL(window.location.href);
-  if (slug) url.searchParams.set("color", slug);
-  else url.searchParams.delete("color");
+  if (slug) url.searchParams.set(param, slug);
+  else url.searchParams.delete(param);
   window.history.replaceState(null, "", url);
 }
 
 export default function ProductDetail({
   product,
+  motifs = [],
   initialModelId,
   initialColorSlug,
+  initialMotifSlug,
 }: {
   product: Product;
+  /** Todos los motivos del producto con variante activa, también los agotados. */
+  motifs?: MotifRef[];
   initialModelId?: string;
   initialColorSlug?: string;
+  initialMotifSlug?: string;
 }) {
   // Modelos puntuales que este producto realmente tiene (no los 22, solo los
   // que tienen variante propia). Si no hay ninguno, el producto es universal.
@@ -77,6 +87,19 @@ export default function ProductDetail({
   const colorId = swatches ? resolveColor(colors, available, wantedColorId) : null;
   const selectedColor = colors.find((c) => c.id === colorId);
 
+  // Motivos (BATMAN, BOB…): una lista desplegable, con 2 o más. Un producto usa
+  // colores o motivos, nunca los dos. Los agotados se ven deshabilitados.
+  const motifList = useMemo(() => (swatches ? [] : motifs), [swatches, motifs]);
+  const motifSelect = motifList.length >= MIN_COLORS_FOR_SELECTOR;
+  const availableMotifs = useMemo(
+    () => availableMotifIds(product.product_variants, modelId || null),
+    [product.product_variants, modelId],
+  );
+  const [wantedMotifId, setWantedMotifId] = useState<string | null>(() =>
+    initialMotif(motifList, availableMotifIds(product.product_variants, modelId || null), initialMotifSlug),
+  );
+  const motifId = motifSelect ? resolveMotif(motifList, availableMotifs, wantedMotifId) : null;
+
   const optionLabels = useMemo(
     () => [...new Set(availableVariants.map((v) => v.color).filter((c): c is string => !!c))],
     [availableVariants],
@@ -85,24 +108,34 @@ export default function ProductDetail({
 
   const selectedVariant = swatches
     ? (availableVariants.find((v) => v.color_ref?.id === colorId) ?? availableVariants[0])
-    : (availableVariants.find((v) => (option ? v.color === option : true)) ?? availableVariants[0]);
+    : motifSelect
+      ? (availableVariants.find((v) => v.motif_ref?.id === motifId) ?? availableVariants[0])
+      : (availableVariants.find((v) => (option ? v.color === option : true)) ?? availableVariants[0]);
 
   const selectedModelName = modelOptions.find((m) => m.id === modelId)?.name;
 
   // Fotos del color elegido; sin fotos propias, las generales. Un producto de
   // un solo color también usa las suyas si las tiene.
   const photoColorId = swatches ? colorId : (colors[0]?.id ?? null);
+  // Con motivos: las fotos del motivo elegido (o del único que tiene).
+  const usesMotifs = motifList.length > 0;
+  const photoMotifId = motifSelect ? motifId : (motifList[0]?.id ?? null);
   const galleryImages = useMemo(
-    () => imagesForColor(product.product_images, photoColorId),
-    [product.product_images, photoColorId],
+    () =>
+      usesMotifs
+        ? imagesForMotif(product.product_images, photoMotifId)
+        : imagesForColor(product.product_images, photoColorId),
+    [product.product_images, usesMotifs, photoMotifId, photoColorId],
   );
   // Si algún color tiene más de una foto, la columna de miniaturas queda
   // siempre: la foto no cambia de tamaño al cambiar de color.
   const reserveThumbs = useMemo(
     () =>
-      swatches &&
-      [null, ...colors.map((c) => c.id)].some((id) => imagesForColor(product.product_images, id).length > 1),
-    [swatches, colors, product.product_images],
+      (swatches &&
+        [null, ...colors.map((c) => c.id)].some((id) => imagesForColor(product.product_images, id).length > 1)) ||
+      (motifSelect &&
+        [null, ...motifList.map((m) => m.id)].some((id) => imagesForMotif(product.product_images, id).length > 1)),
+    [swatches, colors, motifSelect, motifList, product.product_images],
   );
 
   const cart = useCart();
@@ -117,13 +150,26 @@ export default function ProductDetail({
     setOption("");
     if (swatches) {
       const next = resolveColor(colors, availableColorIds(product.product_variants, nextModelId || null), wantedColorId);
-      writeColorToUrl(colors.find((c) => c.id === next)?.slug);
+      writeToUrl("color", colors.find((c) => c.id === next)?.slug);
+    }
+    if (motifSelect) {
+      const next = resolveMotif(
+        motifList,
+        availableMotifIds(product.product_variants, nextModelId || null),
+        wantedMotifId,
+      );
+      writeToUrl("motivo", motifList.find((m) => m.id === next)?.slug);
     }
   }
 
   function handleColorChange(id: string) {
     setWantedColorId(id);
-    writeColorToUrl(colors.find((c) => c.id === id)?.slug);
+    writeToUrl("color", colors.find((c) => c.id === id)?.slug);
+  }
+
+  function handleMotifChange(id: string) {
+    setWantedMotifId(id);
+    writeToUrl("motivo", motifList.find((m) => m.id === id)?.slug);
   }
 
   function handleAdd() {
@@ -132,7 +178,8 @@ export default function ProductDetail({
       variantId: selectedVariant.id,
       productId: product.id,
       name: product.name,
-      // Modelo y color: es lo que después va en la reserva y en el mensaje de WhatsApp.
+      // Modelo y color o motivo (el texto de la variante es el nombre de
+      // cualquiera de los dos): es lo que va en la reserva y en el mensaje de WhatsApp.
       detail: [selectedVariant.iphone_models?.name ?? selectedModelName, selectedVariant.color]
         .filter(Boolean)
         .join(" · "),
@@ -223,10 +270,35 @@ export default function ProductDetail({
               })}
             </div>
           </fieldset>
+        ) : motifSelect ? (
+          <div>
+            <label htmlFor="motivo-detalle" className="mb-2 block font-medium">
+              Motivo
+            </label>
+            {/* Lista, no círculos: mismo estilo que "Elegí tu modelo". */}
+            <select
+              id="motivo-detalle"
+              value={motifId ?? ""}
+              onChange={(e) => handleMotifChange(e.target.value)}
+              className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
+            >
+              {motifList.map((m) => {
+                const inStock = availableMotifs.has(m.id);
+                return (
+                  <option key={m.id} value={m.id} disabled={!inStock}>
+                    {m.name}
+                    {!inStock && " (sin stock)"}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         ) : (
           optionLabels.length > 0 && (
             <div>
-              <span className="mb-2 block font-medium">{colors.length === 1 ? "Color" : "Elegí una opción"}</span>
+              <span className="mb-2 block font-medium">
+                {colors.length === 1 ? "Color" : motifList.length === 1 ? "Motivo" : "Elegí una opción"}
+              </span>
               <div className="flex flex-wrap gap-2">
                 {optionLabels.map((label) => {
                   const pressed = (option || optionLabels[0]) === label;

@@ -15,6 +15,8 @@ export type IphoneModel = {
   slug: string;
 };
 
+export type MotifRef = { id: string; name: string; slug: string; sort_order: number };
+
 export type ColorRef = { id: string; name: string; slug: string; hex: string; sort_order: number };
 
 export type Variant = {
@@ -23,6 +25,8 @@ export type Variant = {
   /** Nombre del color, o una descripción libre si la variante no tiene color_ref. */
   color: string | null;
   color_ref: ColorRef | null;
+  /** El motivo (BATMAN…), si el producto usa motivos en vez de colores. */
+  motif_ref: MotifRef | null;
   price: number;
   stock_quantity: number;
   iphone_model_id: string | null;
@@ -33,8 +37,9 @@ export type ProductImage = {
   id: string;
   url: string;
   sort_order: number;
-  /** null = foto general del producto. */
+  /** color_id y motif_id null = foto general del producto. */
   color_id: string | null;
+  motif_id: string | null;
 };
 
 export type Product = {
@@ -49,15 +54,15 @@ export type Product = {
 
 /**
  * La portada de un producto: su primera foto general (sort_order más bajo); si
- * todas son de algún color, la primera que haya. null si no tiene ninguna.
+ * todas son de algún color o motivo, la primera que haya. null si no tiene ninguna.
  */
 export function coverImage(product: Pick<Product, "product_images">): string | null {
   const images = product.product_images;
-  return (images.find((img) => img.color_id === null) ?? images[0])?.url ?? null;
+  return (images.find((img) => img.color_id === null && img.motif_id === null) ?? images[0])?.url ?? null;
 }
 
 const PRODUCT_SELECT =
-  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order, color_id), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name), color_ref:colors(id, name, slug, hex, sort_order))";
+  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order, color_id, motif_id), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name), color_ref:colors(id, name, slug, hex, sort_order), motif_ref:motifs(id, name, slug, sort_order))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -265,6 +270,26 @@ export async function getProduct(id: string): Promise<Product | null> {
     .overrideTypes<Product | null, { merge: false }>();
   if (error) throw new Error(`No se pudo cargar el producto: ${error.message}`);
   return data;
+}
+
+/**
+ * Todos los motivos de un producto que tienen alguna variante activa, tengan
+ * stock o no. getProduct solo trae variantes con stock; esto sirve para que
+ * la ficha muestre también los motivos agotados, deshabilitados.
+ */
+export async function getProductMotifs(productId: string): Promise<MotifRef[]> {
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("motif_ref:motifs(id, name, slug, sort_order)")
+    .eq("product_id", productId)
+    .eq("active", true)
+    .not("motif_id", "is", null)
+    .overrideTypes<{ motif_ref: MotifRef | null }[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar los motivos: ${error.message}`);
+
+  const byId = new Map<string, MotifRef>();
+  for (const row of data) if (row.motif_ref) byId.set(row.motif_ref.id, row.motif_ref);
+  return [...byId.values()].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "es"));
 }
 
 /** Cantidad de productos activos con al menos una variante activa y con stock, por categoría. */
