@@ -223,7 +223,7 @@ export default function ComprasPage() {
         currentStock: v.stock_quantity,
         currentPrice: v.price,
         prevCost: variantPrevCost(v, costIndex),
-        inactive: !v.active,
+        sku: v.sku,
       })),
     };
     setBlocks((prev) => [...prev, block]);

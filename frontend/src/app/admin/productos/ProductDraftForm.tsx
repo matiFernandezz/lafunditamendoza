@@ -374,7 +374,7 @@ export default function ProductDraftForm({
                         {m.name}
                       </option>
                     ))}
-                    <option value={UNIVERSAL}>Sin modelo (sirve para todos)</option>
+                    <option value={UNIVERSAL}>Universal (sirve para todos)</option>
                   </select>
 
                   <button

@@ -1,27 +1,24 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check } from "lucide-react";
 import { useState } from "react";
-import type { AdminIphoneModel, AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
+import type { AdminProduct, AdminProductImage, AdminVariant } from "@/lib/adminApi";
 import { colorsWithoutPhotos, motifsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
 import { ColorDot } from "../ColorField";
-import { MoneyInput, UnitsInput } from "../GridInputs";
+import { MoneyInput } from "../GridInputs";
 import {
   ADMIN_CAP,
-  ADMIN_EMPTY,
   ADMIN_TEXTAREA,
   ADMIN_TEXT_MUTED,
-  adminBadge,
   adminButton,
   adminChip,
   adminInput,
 } from "../adminStyles";
 import { useAttributeLibrary } from "../attributeLibrary";
 import { foldName } from "../similarNames";
-import { displayColor } from "../ventas/utils";
-import ProductAttributes from "./ProductAttributes";
 import ProductImageGallery from "./ProductImageGallery";
+import VariantList from "./VariantList";
 import { draftChanges, type CatalogDraft } from "./catalogDraft";
 
 const MAX_DESCRIPTION = 1000;
@@ -37,9 +34,7 @@ export default function ProductEditor({
   draft,
   onDraftChange,
   modelNameById,
-  models,
-  accessory,
-  onAttributesChanged,
+  onVariantsChanged,
   saving,
   error,
   justSaved,
@@ -54,12 +49,8 @@ export default function ProductEditor({
   draft: CatalogDraft;
   onDraftChange: (update: (draft: CatalogDraft) => CatalogDraft) => void;
   modelNameById: Map<string, string>;
-  /** Todos los modelos de iPhone, en orden (filas de la matriz de colores). */
-  models: AdminIphoneModel[];
-  /** La categoría es Accesorios o uno de sus tipos: sin colores por modelo. */
-  accessory: boolean;
-  /** Se tildó o destildó algo en la matriz: hay que volver a pedir los productos. */
-  onAttributesChanged: () => Promise<void> | void;
+  /** Se eliminó una variante: `message` dice qué pasó, para mostrar y refrescar. */
+  onVariantsChanged: (message: string) => void;
   saving: boolean;
   error: string | null;
   justSaved: boolean;
@@ -73,6 +64,8 @@ export default function ProductEditor({
   // Qué fotos se están viendo: null = las generales, o las de un color o motivo.
   const [photoGroupId, setPhotoGroupId] = useState<string | null>(null);
   const [photoSearch, setPhotoSearch] = useState("");
+  // Color o motivo tocado en el resumen: filtra la lista de variantes.
+  const [attrFilterId, setAttrFilterId] = useState<string | null>(null);
   const all = product.product_variants;
   const changes = draftChanges(product, draft);
   const hidden = all.length - variants.length;
@@ -101,6 +94,9 @@ export default function ProductEditor({
   const visibleGroups = photoGroups.filter(
     (g) => g.id === null || g.id === activeGroupId || foldName(g.name).includes(photoTerm),
   );
+
+  const variantCount = (id: string) => all.filter((v) => (usesMotifs ? v.motif_id : v.color_id) === id).length;
+  const attrFilter = attrs.find((a) => a.id === attrFilterId) ?? null;
 
   const name = draft.name ?? product.name;
   const description = draft.description ?? product.description ?? "";
@@ -149,7 +145,29 @@ export default function ProductEditor({
             </span>
           </EditorSection>
 
-          <ProductAttributes product={product} models={models} accessory={accessory} onChanged={onAttributesChanged} />
+          {/* Resumen de solo lectura: qué colores (o motivos) tiene y en cuántas
+              variantes. Tocar uno filtra la lista de variantes. Se agregan y se
+              eliminan desde esa lista, variante por variante. */}
+          {attrs.length > 0 && (
+            <EditorSection title={usesMotifs ? "Motivos" : "Colores"}>
+              <div className="flex flex-wrap gap-2">
+                {attrs.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    aria-pressed={attrFilterId === a.id}
+                    onClick={() => setAttrFilterId(attrFilterId === a.id ? null : a.id)}
+                    title={`Ver las variantes de ${a.name}`}
+                    className={`${adminChip(attrFilterId === a.id)} flex items-center gap-2`}
+                  >
+                    {a.hex && <ColorDot hex={a.hex} size={16} />}
+                    {a.name}
+                    <span className="font-mono text-xs opacity-70">{variantCount(a.id)}</span>
+                  </button>
+                ))}
+              </div>
+            </EditorSection>
+          )}
 
           <section className="flex min-w-0 flex-col gap-2.5">
             {/* Título y buscador en la misma fila; en el celular el buscador
@@ -225,61 +243,18 @@ export default function ProductEditor({
           )}
         </div>
 
-        <EditorSection title={`Variantes (${variants.length}${hidden > 0 ? ` de ${all.length}` : ""})`}>
-          {all.length === 0 ? (
-            <p className={ADMIN_EMPTY}>Todavía no tiene variantes. Agregale la primera.</p>
-          ) : (
-            <div className="hidden grid-cols-[minmax(0,1fr)_108px_140px] gap-2 text-xs text-admin-muted lg:grid">
-              <span>Modelo · color · SKU</span>
-              <span className="text-right">Stock</span>
-              <span className="text-right">Precio</span>
-            </div>
-          )}
-          <ul className="divide-y divide-admin-border">
-            {variants.map((v) => {
-              const modelName = v.iphone_model_id ? modelNameById.get(v.iphone_model_id) : "Sin modelo";
-              const detail = [modelName, displayColor(v.color)].filter(Boolean).join(" · ");
-              const stockText = draft.stock[v.id] ?? String(v.stock_quantity);
-              const priceText = draft.price[v.id] ?? String(v.price);
-              const patch = changes.variants.find((p) => p.id === v.id);
-              return (
-                <li
-                  key={v.id}
-                  className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-start gap-2 py-3 first:pt-0 lg:grid-cols-[minmax(0,1fr)_108px_140px]"
-                >
-                  <div className="col-span-2 min-w-0 lg:col-span-1 lg:self-center">
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-[15px] font-semibold text-admin-text">{detail}</span>
-                      {!v.active && <span className={adminBadge("neutral")}>Dada de baja</span>}
-                      {v.active && v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
-                    </span>
-                    <span className="mt-0.5 block font-mono text-xs text-admin-muted">{v.sku}</span>
-                  </div>
-                  <UnitsInput
-                    label={`Stock ${detail}`}
-                    value={stockText}
-                    disabled={saving}
-                    invalid={changes.invalid.has(`${v.id}:stock`)}
-                    dirty={patch?.stock_quantity !== undefined}
-                    onChange={(value) => onDraftChange((d) => ({ ...d, stock: { ...d.stock, [v.id]: value } }))}
-                  />
-                  <MoneyInput
-                    label={`Precio ${detail}`}
-                    value={priceText}
-                    disabled={saving}
-                    invalid={changes.invalid.has(`${v.id}:price`)}
-                    dirty={patch?.price !== undefined}
-                    onChange={(value) => onDraftChange((d) => ({ ...d, price: { ...d.price, [v.id]: value } }))}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-          <button type="button" onClick={onAddVariant} className={`${adminButton("secondary")} w-full`}>
-            <Plus aria-hidden="true" className="size-[18px]" />
-            Agregar variante
-          </button>
-        </EditorSection>
+        <VariantList
+          product={product}
+          variants={variants}
+          draft={draft}
+          onDraftChange={onDraftChange}
+          modelNameById={modelNameById}
+          saving={saving}
+          attrFilter={attrFilter}
+          onClearAttrFilter={() => setAttrFilterId(null)}
+          onAddVariant={onAddVariant}
+          onChanged={onVariantsChanged}
+        />
       </div>
 
       {/* Un solo Guardar para todo el producto. Queda pegado abajo de la

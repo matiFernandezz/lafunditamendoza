@@ -1,10 +1,9 @@
 "use client";
 
 import { ChevronDown, ChevronLeft, ChevronRight, ImageOff, Plus, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AdminApiError,
-  createProductVariant,
   getAdminCategories,
   getAdminIphoneModels,
   getAdminProducts,
@@ -18,25 +17,20 @@ import {
 import { formatPrice } from "@/lib/format";
 import { colorsWithoutPhotos, motifsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../AdminNotice";
-import ColorField from "../ColorField";
 import { LIBRARY_TOUCHED_PRODUCTS } from "../attributeLibrary";
 import { categoryPathById, categorySubtree, isAccessoryCategory } from "../categoryPath";
 import {
   ADMIN_EMPTY,
   ADMIN_INPUT,
-  ADMIN_INPUT_ADORNMENT,
-  ADMIN_LABEL,
   ADMIN_PAGE_SUBTITLE,
   ADMIN_PAGE_TITLE,
-  ADMIN_SECTION_TITLE,
   ADMIN_TEXT_MUTED,
   adminBadge,
   adminButton,
   adminInput,
   adminSegment,
 } from "../adminStyles";
-import Combobox from "../productos/Combobox";
-import { suggestSku } from "../productos/sku";
+import AddVariantDialog from "./AddVariantDialog";
 import CategoryColors from "./CategoryColors";
 import ProductEditor from "./ProductEditor";
 import { EMPTY_DRAFT, draftChanges, type CatalogDraft } from "./catalogDraft";
@@ -89,17 +83,9 @@ export default function CatalogoPage() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<{ productId: string; message: string } | null>(null);
 
-  // Formulario de "agregar variante nueva"
-  const [productId, setProductId] = useState("");
-  const [color, setColor] = useState("");
-  const [skuOverride, setSkuOverride] = useState<string | null>(null);
-  const [price, setPrice] = useState("");
-  const [stock, setStock] = useState("0");
-  const [savingVariant, setSavingVariant] = useState(false);
-  const [variantError, setVariantError] = useState<string | null>(null);
   const [addedNotice, setAddedNotice] = useState<string | null>(null);
-  const [addModelId, setAddModelId] = useState("");
-  const addDialogRef = useRef<HTMLDialogElement>(null);
+  // Ventana "Agregar variante": null = cerrada; "" = abierta sin producto elegido.
+  const [addFor, setAddFor] = useState<string | null>(null);
 
   const sortedModels = useMemo(
     () => [...models].sort((a, b) => a.sort_order - b.sort_order),
@@ -153,8 +139,8 @@ export default function CatalogoPage() {
       .finally(() => setLoading(false));
   }
 
-  // Se agregó o quitó un color (de un producto o de una categoría): se muestra
-  // el resultado y se vuelve a pedir la lista, que ahora tiene otras variantes.
+  // Se agregaron o eliminaron variantes (desde un producto, la ventana o una
+  // categoría): se muestra el resultado y se vuelve a pedir la lista.
   async function handleColorsChanged(message: string) {
     setAddedNotice(message);
     await refreshProducts();
@@ -273,11 +259,6 @@ export default function CatalogoPage() {
 
   const categoryPath = useMemo(() => categoryPathById(categories), [categories]);
 
-  const sortedProducts = useMemo(
-    () => [...products].sort((a, b) => a.name.localeCompare(b.name, "es")),
-    [products],
-  );
-
   const modelNameById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
 
   const modelOrderById = useMemo(() => new Map(models.map((m) => [m.id, m.sort_order])), [models]);
@@ -348,67 +329,7 @@ export default function CatalogoPage() {
     window.scrollTo({ top: 0 });
   }
 
-  const selectedProduct = products.find((p) => p.id === productId);
-  // El producto elegido en "Agregar variante" ya usa motivos: se elige un motivo, no un color.
-  const addUsesMotifs = selectedProduct?.product_variants.some((v) => v.active && v.motif_id !== null) ?? false;
-  const addModelName =
-    addModelId === UNIVERSAL ? "" : modelNameById.get(addModelId) ?? "";
-  const suggestedSku = suggestSku(selectedProduct?.name ?? "", addModelName, color);
-  const sku = skuOverride ?? suggestedSku;
-
-  const priceNumber = Number(price);
-  const stockNumber = stock.trim() === "" ? 0 : Number(stock);
-  const priceValid = price.trim() !== "" && Number.isFinite(priceNumber) && priceNumber > 0;
-  const stockValid = Number.isInteger(stockNumber) && stockNumber >= 0;
-  const canSaveVariant =
-    !savingVariant &&
-    productId !== "" &&
-    addModelId !== "" &&
-    sku.trim() !== "" &&
-    priceValid &&
-    stockValid;
-
-  // Desde una tarjeta llega con el producto elegido; desde el botón de arriba, vacío.
-  function openAddDialog(presetProductId = "") {
-    setProductId(presetProductId);
-    setColor("");
-    setSkuOverride(null);
-    setPrice("");
-    setStock("0");
-    setVariantError(null);
-    // Si el filtro de arriba es "Todos los modelos" no hay uno concreto para
-    // preseleccionar: se arranca en el primero y se puede cambiar en el modal.
-    setAddModelId(selectedModelId !== "" ? selectedModelId : sortedModels[0]?.id ?? "");
-    addDialogRef.current?.showModal();
-  }
-
-  function closeAddDialog() {
-    addDialogRef.current?.close();
-  }
-
-  async function handleCreateVariant() {
-    if (!canSaveVariant) return;
-    setSavingVariant(true);
-    setVariantError(null);
-    try {
-      const res = await createProductVariant({
-        product_id: productId,
-        iphone_model_id: addModelId === UNIVERSAL ? null : addModelId,
-        ...(color.trim() ? { color: color.trim() } : {}),
-        sku: sku.trim(),
-        price: priceNumber,
-        stock_quantity: stockNumber,
-      });
-      closeAddDialog();
-      setAddedNotice(`Variante ${res.data.sku} agregada.`);
-      setTimeout(() => setAddedNotice(null), 4000);
-      await refreshProducts();
-    } catch (err) {
-      setVariantError(errorMessage(err));
-    } finally {
-      setSavingVariant(false);
-    }
-  }
+  const openAddDialog = (presetProductId = "") => setAddFor(presetProductId);
 
   if (loading) {
     return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
@@ -511,7 +432,7 @@ export default function CatalogoPage() {
             className={ADMIN_INPUT}
           >
             <option value="">Todos los modelos</option>
-            <option value={UNIVERSAL}>Sin modelo (universales)</option>
+            <option value={UNIVERSAL}>Universales</option>
             {sortedModels.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -546,174 +467,17 @@ export default function CatalogoPage() {
         />
       )}
 
-      <dialog
-        ref={addDialogRef}
-        aria-labelledby="agregar-variante"
-        className="fixed inset-0 m-auto h-fit max-h-[calc(100vh-2rem)] w-[calc(100%-2rem)] max-w-[480px] overflow-y-auto rounded-lg bg-white p-6 backdrop:bg-black/45"
-      >
-        <div className="flex flex-col gap-4">
-          <h2 id="agregar-variante" className={ADMIN_SECTION_TITLE}>
-            Agregar variante
-          </h2>
-
-          <Combobox
-            id="catalogo-producto"
-            label="Producto"
-            placeholder="Elegí un producto"
-            options={sortedProducts.map((p) => ({
-              id: p.id,
-              label: p.name,
-              sublabel: categoryPath(p.category_id),
-            }))}
-            value={productId}
-            onChange={(id) => {
-              setProductId(id);
-              setSkuOverride(null);
-              setVariantError(null);
-            }}
-          />
-
-          <div>
-            <label htmlFor="catalogo-agregar-modelo" className={ADMIN_LABEL}>
-              Modelo de iPhone
-            </label>
-            <select
-              id="catalogo-agregar-modelo"
-              value={addModelId}
-              onChange={(e) => {
-                setAddModelId(e.target.value);
-                setSkuOverride(null);
-                setVariantError(null);
-              }}
-              className={ADMIN_INPUT}
-            >
-              {sortedModels.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-              <option value={UNIVERSAL}>Sin modelo (sirve para todos)</option>
-            </select>
-          </div>
-
-          <div>
-            <span className={ADMIN_LABEL}>{addUsesMotifs ? "Motivo" : "Color"}</span>
-            <ColorField
-              key={addUsesMotifs ? "motif" : "color"}
-              kind={addUsesMotifs ? "motif" : "color"}
-              label={addUsesMotifs ? "Motivo de la variante" : "Color de la variante"}
-              value={color}
-              onChange={(value) => {
-                setColor(value);
-                setVariantError(null);
-              }}
-            />
-            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
-              {addUsesMotifs
-                ? "Este producto usa motivos (el dibujo o personaje)."
-                : "Opcional. Si lo que distingue a la variante no es un color (un cable “tipo C a C”), elegí “Otra descripción”."}
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="catalogo-sku" className={ADMIN_LABEL}>
-              SKU
-            </label>
-            <input
-              id="catalogo-sku"
-              type="text"
-              value={sku}
-              onChange={(e) => {
-                setSkuOverride(e.target.value);
-                setVariantError(null);
-              }}
-              autoCapitalize="characters"
-              className={adminInput({ mono: true })}
-            />
-            <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
-              {skuOverride === null ? (
-                `Sugerido según producto, modelo y ${addUsesMotifs ? "motivo" : "color"}. Podés editarlo.`
-              ) : (
-                <>
-                  Editado a mano.{" "}
-                  <button
-                    type="button"
-                    onClick={() => setSkuOverride(null)}
-                    className="font-semibold text-admin-text underline underline-offset-2"
-                  >
-                    Volver a la sugerencia
-                  </button>
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label htmlFor="catalogo-stock-inicial" className={ADMIN_LABEL}>
-                Stock
-              </label>
-              <div className="relative">
-                <input
-                  id="catalogo-stock-inicial"
-                  type="number"
-                  inputMode="numeric"
-                  min={0}
-                  step={1}
-                  value={stock}
-                  onChange={(e) => {
-                    setStock(e.target.value);
-                    setVariantError(null);
-                  }}
-                  className={adminInput({ suffix: true, align: "right", mono: true })}
-                />
-                <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} right-3.5`}>
-                  u.
-                </span>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="catalogo-precio" className={ADMIN_LABEL}>
-                Precio
-              </label>
-              <div className="relative">
-                <span aria-hidden="true" className={`${ADMIN_INPUT_ADORNMENT} left-3`}>
-                  $
-                </span>
-                <input
-                  id="catalogo-precio"
-                  type="number"
-                  inputMode="decimal"
-                  min={0}
-                  step="any"
-                  value={price}
-                  onChange={(e) => {
-                    setPrice(e.target.value);
-                    setVariantError(null);
-                  }}
-                  className={adminInput({ prefix: "text", align: "right", mono: true })}
-                />
-              </div>
-            </div>
-          </div>
-
-          {variantError && <AdminNotice kind="danger">{variantError}</AdminNotice>}
-
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={closeAddDialog} className={adminButton("secondary")}>
-              Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={handleCreateVariant}
-              disabled={!canSaveVariant}
-              className={adminButton("primary")}
-            >
-              {savingVariant ? "Agregando…" : "Agregar"}
-            </button>
-          </div>
-        </div>
-      </dialog>
+      {addFor !== null && (
+        <AddVariantDialog
+          products={products}
+          models={sortedModels}
+          isAccessory={isAccessory}
+          categoryPath={categoryPath}
+          presetProductId={addFor}
+          onClose={() => setAddFor(null)}
+          onAdded={handleColorsChanged}
+        />
+      )}
 
       {groups.length === 0 ? (
         <p className={ADMIN_EMPTY}>No hay productos con esos filtros.</p>
@@ -788,9 +552,7 @@ export default function CatalogoPage() {
                       draft={draft}
                       onDraftChange={(update) => updateDraft(product.id, update)}
                       modelNameById={modelNameById}
-                      models={sortedModels}
-                      accessory={isAccessory(product.category_id)}
-                      onAttributesChanged={refreshProducts}
+                      onVariantsChanged={handleColorsChanged}
                       saving={savingId === product.id}
                       error={saveError?.productId === product.id ? saveError.message : null}
                       justSaved={savedId === product.id}

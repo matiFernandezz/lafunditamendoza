@@ -108,7 +108,7 @@ export default function CategoryColors({
       } else {
         const { data } = await removeColorFromCategory(category.id, preview.color.id, false, modelIds(excluded));
         onChanged(
-          `Se quitó ${preview.color.name} de ${plural(data.products, "producto", "productos")} de ${category.name}: ${plural(data.deactivated, "variante dada de baja", "variantes dadas de baja")}${data.omitted.length > 0 ? `. Se omitieron ${plural(data.omitted.length, "variante", "variantes")} con stock` : ""}.`,
+          `Se quitó ${preview.color.name} de ${plural(data.products, "producto", "productos")} de ${category.name}: ${plural(data.deactivated, "variante eliminada", "variantes eliminadas")}${data.omitted.length > 0 ? `. Se omitieron ${plural(data.omitted.length, "variante", "variantes")} con stock` : ""}.`,
         );
       }
       setPreview(null);
@@ -258,14 +258,14 @@ export default function CategoryColors({
             <>
               <p className={ADMIN_BODY}>
                 {nothing ? (
-                  <>No hay variantes de {preview.color.name} sin stock para dar de baja en esos modelos.</>
+                  <>No hay variantes de {preview.color.name} sin stock para eliminar en esos modelos.</>
                 ) : (
                   <>
-                    Se {preview.data.deactivated === 1 ? "va a dar" : "van a dar"} de baja{" "}
+                    Se {preview.data.deactivated === 1 ? "va a eliminar" : "van a eliminar"}{" "}
                     <strong className="font-semibold">{plural(preview.data.deactivated, "variante", "variantes")}</strong> de{" "}
                     {preview.color.name} en{" "}
-                    <strong className="font-semibold">{plural(preview.data.products, "producto", "productos")}</strong>. No
-                    se borran.
+                    <strong className="font-semibold">{plural(preview.data.products, "producto", "productos")}</strong>. Las
+                    que ya tenían ventas se conservan solo en el historial.
                   </>
                 )}
               </p>
@@ -275,10 +275,10 @@ export default function CategoryColors({
                 >
                   {preview.data.omitted.map((v) => (
                     <li key={v.sku}>
-                      {v.product_name} · {v.model ?? "Sin modelo"} · {v.stock} u.
+                      {v.product_name} · {v.model ?? "Universal"} · {v.stock} u.
                     </li>
                   ))}
-                  <li className="list-none pt-1">Para esas, destildá el color desde cada producto.</li>
+                  <li className="list-none pt-1">Para esas, eliminá la variante desde su producto.</li>
                 </Details>
               )}
             </>
@@ -303,7 +303,7 @@ export default function CategoryColors({
                 disabled={busy}
                 className={adminButton(preview.action === "remove" ? "danger" : "primary")}
               >
-                {busy ? "Aplicando…" : preview.action === "add" ? "Agregar a todos" : "Dar de baja"}
+                {busy ? "Aplicando…" : preview.action === "add" ? "Agregar a todos" : "Eliminar"}
               </button>
             )}
           </div>

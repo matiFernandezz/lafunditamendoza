@@ -1,10 +1,13 @@
 "use client";
 
 import { ListPlus, Plus, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import type { AdminIphoneModel } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
+import { UNIVERSAL_LABEL, filterBySearch, variantHaystack } from "@/lib/variantSearch";
 import ColorField from "../ColorField";
 import { MoneyInput, UnitsInput } from "../GridInputs";
+import SearchBox from "../SearchBox";
 import {
   ADMIN_CARD,
   ADMIN_INSET,
@@ -84,10 +87,27 @@ export default function PurchaseBlock({
   const units = block.rows.reduce((sum, row) => sum + (parseQuantity(row.quantity) ?? 0), 0);
   const id = `compra-${block.key}`;
 
+  // El buscador solo oculta filas: lo cargado en las que no coinciden sigue
+  // en la compra. Las variantes nuevas (todavía sin guardar) se ven siempre.
+  const [search, setSearch] = useState("");
+  const modelLabel = (row: ExistingRow) =>
+    row.modelId === UNIVERSAL ? UNIVERSAL_LABEL : modelNameById.get(row.modelId) ?? "";
+  const existingRows = block.rows.filter((row) => row.variantId !== null);
+  const matching = new Set(
+    filterBySearch(existingRows, search, (row) => variantHaystack(modelLabel(row), row.color, row.sku ?? "")).map(
+      (row) => row.key,
+    ),
+  );
+  const visibleRows = block.rows.filter((row) => row.variantId === null || matching.has(row.key));
+  const loaded = block.rows.filter((row) => parseQuantity(row.quantity) !== null).length;
+  const loadedHidden = block.rows.filter(
+    (row) => parseQuantity(row.quantity) !== null && row.variantId !== null && !matching.has(row.key),
+  ).length;
+
   const updateRow = (key: string, patch: Partial<ExistingRow>) =>
     onChange((b) => ({ ...b, rows: b.rows.map((row) => (row.key === key ? { ...row, ...patch } : row)) }));
 
-  // Universal: todas sus variantes son "sin modelo".
+  // Universal: ninguna de sus variantes va a un modelo de iPhone.
   const isUniversal = block.rows.length > 0 && block.rows.every((row) => row.modelId === UNIVERSAL);
   const usedModels = new Set(block.rows.map((row) => row.modelId));
   const missingModels = models.filter((m) => !usedModels.has(m.id));
@@ -102,7 +122,9 @@ export default function PurchaseBlock({
             {block.name}
           </h2>
           <p className={`mt-0.5 ${ADMIN_TEXT_MUTED}`}>
-            {units === 0 ? "Cargá las cantidades que compraste." : `${units} u. en esta compra`}
+            {units === 0
+              ? "Cargá las cantidades que compraste."
+              : `${loaded === 1 ? "1 variante" : `${loaded} variantes`} con cantidad · ${units} u. en esta compra`}
           </p>
         </div>
         <button
@@ -128,6 +150,26 @@ export default function PurchaseBlock({
         onChange={(value) => onChange((b) => ({ ...b, bulkCost: value }))}
       />
 
+      {existingRows.length > 8 && (
+        <div className="flex flex-col gap-1">
+          <SearchBox
+            value={search}
+            onChange={setSearch}
+            shown={matching.size}
+            total={existingRows.length}
+            label={`Buscar variante de ${block.name}`}
+            placeholder="Buscar: 16 pro azul, SKU…"
+          />
+          {loadedHidden > 0 && (
+            <p className="text-[13px] font-medium text-admin-text">
+              {loadedHidden === 1
+                ? "1 variante con cantidad queda fuera de la búsqueda: sigue en la compra."
+                : `${loadedHidden} variantes con cantidad quedan fuera de la búsqueda: siguen en la compra.`}
+            </p>
+          )}
+        </div>
+      )}
+
       <div>
         <div className={`hidden pb-2 text-xs text-admin-muted md:grid ${ROW_GRID}`}>
           <span>Modelo · {block.attrKind === "motif" ? "motivo" : "color"}</span>
@@ -137,11 +179,11 @@ export default function PurchaseBlock({
         </div>
 
         <ul className="divide-y divide-admin-border border-y border-admin-border">
-          {block.rows.map((row) => {
+          {visibleRows.map((row) => {
             const isNew = row.variantId === null;
             const label =
               [
-                row.modelId === UNIVERSAL ? "Sin modelo" : modelNameById.get(row.modelId),
+                row.modelId === UNIVERSAL ? UNIVERSAL_LABEL : modelNameById.get(row.modelId),
                 displayColor(row.color),
               ]
                 .filter(Boolean)
@@ -165,7 +207,7 @@ export default function PurchaseBlock({
                           {m.name}
                         </option>
                       ))}
-                      <option value={UNIVERSAL}>Sin modelo (sirve para todos)</option>
+                      <option value={UNIVERSAL}>Universal (sirve para todos)</option>
                     </select>
                     <ColorField
                       kind={block.attrKind ?? "color"}
@@ -190,7 +232,6 @@ export default function PurchaseBlock({
                   <>
                     <p className="flex min-w-0 flex-wrap items-center gap-2 break-words text-[15px] font-semibold text-admin-text">
                       {label}
-                      {row.inactive && <span className={adminBadge("neutral")}>Inactiva</span>}
                     </p>
                     <p className={`text-right font-mono tabular-nums ${ADMIN_TEXT_MUTED}`}>
                       <span className="md:hidden">Stock </span>

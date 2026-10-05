@@ -3,7 +3,7 @@
 
 import type { DraftRow, ProductDraft } from "../productos/productDraft";
 
-/** Valor del selector de modelo para "Sin modelo (sirve para todos)". */
+/** Valor del selector de modelo para "Universal (sirve para todos)". */
 export const UNIVERSAL = "__universal__";
 
 /** El precio sugerido se redondea al múltiplo más cercano de este valor. */
@@ -29,8 +29,8 @@ export type ExistingRow = CostFields & {
   currentPrice: number | null;
   /** Costo de la última compra de esta variante. */
   prevCost: number | null;
-  /** Variante descontinuada: se puede comprar igual, pero se avisa. */
-  inactive?: boolean;
+  /** SKU de la variante existente (para el buscador del bloque). */
+  sku?: string;
 };
 
 export type ExistingBlock = {

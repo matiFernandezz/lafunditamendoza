@@ -60,7 +60,7 @@ export function releasePhotos(photos: DraftPhoto[]) {
 }
 
 export function rowLabel(row: { modelId: string; color: string }, modelNameById: Map<string, string>) {
-  const model = row.modelId === UNIVERSAL ? "Sin modelo" : modelNameById.get(row.modelId) ?? "";
+  const model = row.modelId === UNIVERSAL ? "Universal" : modelNameById.get(row.modelId) ?? "";
   return [model, row.color.trim()].filter(Boolean).join(" · ");
 }
 
