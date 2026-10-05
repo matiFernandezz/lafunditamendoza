@@ -4,18 +4,18 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
 import { useCart } from "@/lib/cart";
-import { coverImage, type MotifRef, type Product, type ProductImage } from "@/lib/catalog";
+import { coverImage, type Product, type ProductImage } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 import {
   MIN_COLORS_FOR_SELECTOR,
   availableColorIds,
   availableMotifIds,
-  hasColorSelector,
   imagesForColor,
   imagesForMotif,
   initialColor,
   initialMotif,
   productColors,
+  productMotifs,
   resolveColor,
   resolveMotif,
 } from "@/lib/productColors";
@@ -33,14 +33,11 @@ function writeToUrl(param: "color" | "motivo", slug: string | undefined) {
 
 export default function ProductDetail({
   product,
-  motifs = [],
   initialModelId,
   initialColorSlug,
   initialMotifSlug,
 }: {
   product: Product;
-  /** Todos los motivos del producto con variante activa, también los agotados. */
-  motifs?: MotifRef[];
   initialModelId?: string;
   initialColorSlug?: string;
   initialMotifSlug?: string;
@@ -70,10 +67,10 @@ export default function ProductDetail({
     [product.product_variants, modelId],
   );
 
-  // Con 2 colores o más: círculos de color. Con uno o ninguno queda como
-  // siempre: un chip por opción (que puede ser una descripción, no un color).
+  // Si el producto tiene colores, se eligen con círculos, también cuando hay
+  // uno solo. Sin colores queda un chip por opción (una descripción libre).
   const colors = useMemo(() => productColors(product.product_variants), [product.product_variants]);
-  const swatches = hasColorSelector(colors);
+  const swatches = colors.length > 0;
   // Las variantes que llegan a la tienda ya son solo las que tienen stock.
   const available = useMemo(
     () => availableColorIds(product.product_variants, modelId || null),
@@ -88,8 +85,12 @@ export default function ProductDetail({
   const selectedColor = colors.find((c) => c.id === colorId);
 
   // Motivos (BATMAN, BOB…): una lista desplegable, con 2 o más. Un producto usa
-  // colores o motivos, nunca los dos. Los agotados se ven deshabilitados.
-  const motifList = useMemo(() => (swatches ? [] : motifs), [swatches, motifs]);
+  // colores o motivos, nunca los dos. Solo se ofrece lo que hay en stock: lo
+  // agotado no se muestra, ni en colores ni en motivos.
+  const motifList = useMemo(
+    () => (swatches ? [] : productMotifs(product.product_variants)),
+    [swatches, product.product_variants],
+  );
   const motifSelect = motifList.length >= MIN_COLORS_FOR_SELECTOR;
   const availableMotifs = useMemo(
     () => availableMotifIds(product.product_variants, modelId || null),
@@ -239,46 +240,29 @@ export default function ProductDetail({
               Color{selectedColor && <span className="font-normal text-graphite"> — {selectedColor.name}</span>}
             </legend>
             {/* Radios nativos: Tab entra al grupo y las flechas cambian de
-                color, salteando los que no hay. flex-wrap: varias líneas en
-                el celular, sin scroll horizontal. */}
+                color. Solo los colores con stock para el modelo elegido.
+                flex-wrap: varias líneas en el celular, sin scroll horizontal. */}
             <div role="radiogroup" aria-label="Color" className="-ml-1.5 flex flex-wrap">
-              {colors.map((c) => {
-                const enabled = available.has(c.id);
-                const reason = `Sin stock${selectedModelName ? ` para ${selectedModelName}` : ""}`;
-                return (
-                  <label
-                    key={c.id}
-                    title={enabled ? c.name : reason}
-                    className={`relative flex size-11 items-center justify-center ${
-                      enabled ? "cursor-pointer" : "cursor-not-allowed"
-                    }`}
-                  >
+              {colors
+                .filter((c) => available.has(c.id))
+                .map((c) => (
+                  <label key={c.id} title={c.name} className="relative flex size-11 cursor-pointer items-center justify-center">
                     <input
                       type="radio"
                       name={`color-${product.id}`}
                       value={c.slug}
                       checked={c.id === colorId}
-                      disabled={!enabled}
                       onChange={() => handleColorChange(c.id)}
-                      aria-label={enabled ? c.name : `${c.name}. ${reason}`}
+                      aria-label={c.name}
                       className="peer sr-only"
                     />
                     <span
                       aria-hidden="true"
                       style={{ backgroundColor: c.hex }}
-                      className={`block size-8 rounded-full border border-ink/25 ring-ink ring-offset-2 ring-offset-paper transition-shadow duration-200 peer-checked:ring-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-4 ${
-                        enabled ? "" : "opacity-35"
-                      }`}
+                      className="block size-8 rounded-full border border-ink/25 ring-ink ring-offset-2 ring-offset-paper transition-shadow duration-200 peer-checked:ring-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-4"
                     />
-                    {!enabled && (
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-1/2 top-1/2 h-[1.5px] w-9 -translate-x-1/2 -translate-y-1/2 -rotate-45 bg-ink shadow-[0_0_0_1px_var(--color-paper)]"
-                      />
-                    )}
                   </label>
-                );
-              })}
+                ))}
             </div>
           </fieldset>
         ) : motifSelect ? (
@@ -293,22 +277,20 @@ export default function ProductDetail({
               onChange={(e) => handleMotifChange(e.target.value)}
               className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
             >
-              {motifList.map((m) => {
-                const inStock = availableMotifs.has(m.id);
-                return (
-                  <option key={m.id} value={m.id} disabled={!inStock}>
+              {motifList
+                .filter((m) => availableMotifs.has(m.id))
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
                     {m.name}
-                    {!inStock && " (sin stock)"}
                   </option>
-                );
-              })}
+                ))}
             </select>
           </div>
         ) : (
           optionLabels.length > 0 && (
             <div>
               <span className="mb-2 block font-medium">
-                {colors.length === 1 ? "Color" : motifList.length === 1 ? "Motivo" : "Elegí una opción"}
+                {motifList.length === 1 ? "Motivo" : "Elegí una opción"}
               </span>
               <div className="flex flex-wrap gap-2">
                 {optionLabels.map((label) => {

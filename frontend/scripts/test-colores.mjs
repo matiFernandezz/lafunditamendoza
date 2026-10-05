@@ -411,9 +411,8 @@ async function main() {
 
   const pM2 = await page(`${base}?modelo=${m2.id}`);
   const rM2 = radios(pM2.html);
-  const azulM2 = rM2.find((r) => r.value === azul.slug);
-  eq("modelo 2: Azul (sin stock ahí) no se puede elegir", azulM2?.disabled, true);
-  check(`…y avisa "Sin stock para ${m2.name}"`, azulM2?.label?.includes(`Sin stock para ${m2.name}`) && pM2.html.includes(`title="Sin stock para ${m2.name}"`), azulM2?.label);
+  eq("modelo 2: Azul (sin stock ahí) directamente no se muestra", rM2.map((r) => r.value), [rojo.slug]);
+  check("…sin círculos apagados ni avisos de falta", rM2.every((r) => !r.disabled) && !pM2.html.includes("Sin stock para"));
   eq("modelo 2: queda elegido Rojo", rM2.find((r) => r.checked)?.value, rojo.slug);
   check("el precio es el de la variante modelo 2 + Rojo ($ 9.500)", pM2.html.includes("9.500"));
   const pM2Azul = await page(`${base}?modelo=${m2.id}&color=${azul.slug}`);
@@ -425,8 +424,8 @@ async function main() {
   await api("POST", "/api/product-variants", { product_id: singleRes.body.data.id, iphone_model_id: m1.id, color: `${MARK} Azul`, sku: `TCOL-${RUN}-S1`, price: 5000, stock_quantity: 2 });
   const pSingle = await page(`/producto/${singleRes.body.data.id}`);
   eq("producto con un solo color -> 200", pSingle.status, 200);
-  eq("…sin radios de color", radios(pSingle.html).length, 0);
-  check("…muestra el color como chip, igual que antes", pSingle.html.includes(azul.name));
+  eq("…también se elige con un círculo (uno solo, ya elegido)", radios(pSingle.html).map((r) => [r.value, r.checked, r.disabled]), [[azul.slug, true, false]]);
+  check('…con la etiqueta "Color — <nombre>" y sin chip de texto', pSingle.html.replace(/<!-- -->/g, "").includes(` — ${azul.name}</span>`) && !pSingle.html.includes("aria-pressed"));
 
   group("7. Tarjetas del listado");
   const listPath = parentCategory ? `/categoria/${parentCategory.slug}?tipo=${category.slug}` : `/categoria/${category.slug}`;
@@ -434,7 +433,7 @@ async function main() {
   eq(`GET ${listPath} -> 200`, list.status, 200);
   check("la tarjeta del producto con 2 colores anuncia sus colores", list.html.replace(/<!-- -->/g, "").includes(`2 colores: ${azul.name}, ${rojo.name}`));
   check("…con un puntito por color", list.html.includes(`title="${azul.name}"`) && list.html.includes(`title="${rojo.name}"`));
-  check("la tarjeta de un solo color no lleva puntitos", !list.html.replace(/<!-- -->/g, "").includes("1 colores"));
+  check("la tarjeta de un solo color no lleva puntitos", !list.html.replace(/<!-- -->/g, "").includes(">1 colores"));
   check("la portada de la tarjeta es la foto general", list.html.includes(encodeURIComponent(gImg.url)));
 
   // ------------------------------------------------------------------------
@@ -471,7 +470,7 @@ async function main() {
   const unused = (await api("POST", "/api/colors", { name: `${MARK} Sin uso`, hex: "#123456" })).body.data;
   eq("un color sin uso se elimina directo -> 204", (await api("DELETE", `/api/colors/${unused.id}`)).status, 204);
   const after = await page(`${base}?modelo=${m1.id}`);
-  eq("con un solo color restante la ficha vuelve a no tener selector", radios(after.html).length, 0);
+  eq("con un solo color restante la ficha muestra un único círculo", radios(after.html).map((r) => r.value), [azul.slug]);
 }
 
 let crashed = null;

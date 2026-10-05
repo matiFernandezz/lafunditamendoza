@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductDetail from "@/components/ProductDetail";
-import { categoryHref, getCategoryGroups, getProduct, getProductMotifs, isUuid } from "@/lib/catalog";
+import { categoryHref, getCategoryGroups, getProduct, isUuid } from "@/lib/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   const initialColorSlug = typeof color === "string" ? color : undefined;
   const initialMotifSlug = typeof motivo === "string" ? motivo : undefined;
 
-  const [product, groups, motifs] = await Promise.all([getProduct(id), getCategoryGroups(), getProductMotifs(id)]);
+  const [product, groups] = await Promise.all([getProduct(id), getCategoryGroups()]);
   if (!product) notFound();
 
   // Migas: Inicio / Fundas / Diseño / Producto. El tipo lleva al listado de su
@@ -46,7 +46,6 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
 
       <ProductDetail
         product={product}
-        motifs={motifs}
         initialModelId={initialModelId}
         initialColorSlug={initialColorSlug}
         initialMotifSlug={initialMotifSlug}

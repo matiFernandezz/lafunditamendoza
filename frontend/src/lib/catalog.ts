@@ -272,26 +272,6 @@ export async function getProduct(id: string): Promise<Product | null> {
   return data;
 }
 
-/**
- * Todos los motivos de un producto que tienen alguna variante activa, tengan
- * stock o no. getProduct solo trae variantes con stock; esto sirve para que
- * la ficha muestre también los motivos agotados, deshabilitados.
- */
-export async function getProductMotifs(productId: string): Promise<MotifRef[]> {
-  const { data, error } = await supabase
-    .from("product_variants")
-    .select("motif_ref:motifs(id, name, slug, sort_order)")
-    .eq("product_id", productId)
-    .eq("active", true)
-    .not("motif_id", "is", null)
-    .overrideTypes<{ motif_ref: MotifRef | null }[], { merge: false }>();
-  if (error) throw new Error(`No se pudieron cargar los motivos: ${error.message}`);
-
-  const byId = new Map<string, MotifRef>();
-  for (const row of data) if (row.motif_ref) byId.set(row.motif_ref.id, row.motif_ref);
-  return [...byId.values()].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "es"));
-}
-
 /** Cantidad de productos activos con al menos una variante activa y con stock, por categoría. */
 export async function getProductCountsByCategory(): Promise<Record<string, number>> {
   const { data, error } = await supabase

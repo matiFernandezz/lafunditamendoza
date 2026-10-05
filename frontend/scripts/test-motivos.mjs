@@ -476,8 +476,8 @@ async function main() {
   eq("GET ficha -> 200", pPage.status, 200);
   const opts = motifOptions(pPage.html);
   check('hay una lista "Motivo" (un <select>, no círculos)', opts !== null && /<label[^>]*for="motivo-detalle"[^>]*>Motivo<\/label>/.test(pPage.html));
-  eq("…con los 3 motivos, también el agotado", opts?.map((o) => o.value), [mA.id, mB.id, mC.id]);
-  eq("el motivo sin stock está deshabilitado y dice (sin stock)", opts?.find((o) => o.value === mC.id), { value: mC.id, selected: false, disabled: true, text: `${mC.name} (sin stock)` });
+  eq("…solo con los motivos que tienen stock (el agotado no se muestra)", opts?.map((o) => o.value), [mA.id, mB.id]);
+  check("…sin opciones deshabilitadas ni avisos de falta", opts?.every((o) => !o.disabled) && !pPage.html.includes("(sin stock)"));
   eq("por defecto, el primero con stock", opts?.find((o) => o.selected)?.value, mA.id);
   eq("sin círculos de color", radios(pPage.html).length, 0);
   check("la foto grande es la del motivo elegido", hasMainPhoto(pPage.html, aPhoto.url) && !hasMainPhoto(pPage.html, bPhoto.url));
@@ -525,13 +525,12 @@ async function main() {
   const slug = (c) => c.slug;
   const s15 = await page(`${sPath}?modelo=${m15.id}`);
   const r15 = radios(s15.html);
-  eq("un círculo por cada color del producto (5)", r15.map((r) => r.value).sort(), [azul, gris, verde, rojo, amarillo].map(slug).sort());
-  eq("iPhone 15: se pueden elegir Azul, Gris y Verde", r15.filter((r) => !r.disabled).map((r) => r.value).sort(), [azul, gris, verde].map(slug).sort());
-  check("…Rojo y Amarillo apagados con el aviso", r15.filter((r) => r.disabled).every((r) => r.label.includes("Sin stock para iPhone 15")) && r15.filter((r) => r.disabled).length === 2);
+  eq("iPhone 15: solo se ven Azul, Gris y Verde", r15.map((r) => r.value).sort(), [azul, gris, verde].map(slug).sort());
+  check("…Rojo y Amarillo (que no hay para ese modelo) no aparecen, ni apagados", r15.every((r) => !r.disabled) && !s15.html.includes("Sin stock para"));
   const s13 = await page(`${sPath}?modelo=${m13.id}`);
   const r13 = radios(s13.html);
-  eq("iPhone 13: se pueden elegir Rojo, Amarillo y Azul", r13.filter((r) => !r.disabled).map((r) => r.value).sort(), [rojo, amarillo, azul].map(slug).sort());
-  eq("…Gris y Verde apagados", r13.filter((r) => r.disabled).map((r) => r.value).sort(), [gris, verde].map(slug).sort());
+  eq("iPhone 13: solo se ven Rojo, Amarillo y Azul", r13.map((r) => r.value).sort(), [rojo, amarillo, azul].map(slug).sort());
+  eq("…sin ninguno apagado", r13.filter((r) => r.disabled).length, 0);
   eq("sin lista de motivos", motifOptions(s15.html), null);
   const a15 = await page(`${sPath}?modelo=${m15.id}&color=${azul.slug}`);
   const a13 = await page(`${sPath}?modelo=${m13.id}&color=${azul.slug}`);
