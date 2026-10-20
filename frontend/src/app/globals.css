@@ -9,22 +9,25 @@
   --foreground: var(--ink);
 
   /* Paleta del panel /admin/* (design/tokens/admin.css), separada de
-     --paper/--ink/--rule (el tono "papel" de marca del catálogo público). */
-  --admin-bg: #fafafa;
-  --admin-surface: #ffffff;
-  --admin-border: #e5e5e5;
-  --admin-border-strong: #d4d4d4;
+     --paper/--ink/--rule (el tono "papel" de marca del catálogo público).
+     Fondo crema con superficies blanco cálido; --admin-on-ink es el texto
+     crema sobre el negro (sidebar, tarjeta del login). */
+  --admin-bg: #f5efe3;
+  --admin-surface: #fcfaf5;
+  --admin-border: #e7decb;
+  --admin-border-strong: #d5cab4;
   --admin-text: #1a1a1a;
-  --admin-muted: #6b6b6b;
-  --admin-ink: #000000;
+  --admin-muted: #6e685c;
+  --admin-ink: #141414;
+  --admin-on-ink: #f7f2e7;
   --admin-danger: #e11d48;
   --admin-danger-bg: #fef2f2;
   --admin-danger-border: #fecdd3;
   --admin-ok: #047857;
   --admin-ok-bg: #ecfdf5;
   --admin-warn: #b45309;
-  --admin-disabled-bg: #e5e5e5;
-  --admin-disabled-fg: #737373;
+  --admin-disabled-bg: #e7decb;
+  --admin-disabled-fg: #7a7366;
 }
 
 @theme inline {
@@ -41,6 +44,7 @@
   --color-admin-text: var(--admin-text);
   --color-admin-muted: var(--admin-muted);
   --color-admin-ink: var(--admin-ink);
+  --color-admin-on-ink: var(--admin-on-ink);
   --color-admin-danger: var(--admin-danger);
   --color-admin-danger-bg: var(--admin-danger-bg);
   --color-admin-danger-border: var(--admin-danger-border);

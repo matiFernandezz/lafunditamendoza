@@ -2,17 +2,15 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Logo from "@/components/Logo";
 import { createClient } from "@/lib/supabase/client";
+import AdminLogo from "../AdminLogo";
 import AdminNotice from "../AdminNotice";
-import {
-  ADMIN_CAP_BASE,
-  ADMIN_INPUT,
-  ADMIN_LABEL,
-  ADMIN_PAGE_SUBTITLE,
-  ADMIN_PAGE_TITLE,
-  adminButton,
-} from "../adminStyles";
+
+// Controles sobre la tarjeta negra: etiqueta en crema e input blanco cálido sin
+// borde, con anillo crema al enfocar (el contorno negro global no se vería).
+const LABEL = "mb-1.5 block text-[15px] font-semibold text-admin-on-ink";
+const INPUT =
+  "h-12 w-full min-w-0 rounded-lg bg-admin-surface px-3.5 text-base text-admin-text outline-none transition-shadow duration-200 focus:ring-2 focus:ring-admin-on-ink/70 focus:ring-offset-2 focus:ring-offset-admin-ink";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -46,30 +44,20 @@ export default function AdminLoginPage() {
     router.refresh();
   }
 
-  // Mobile: pantalla blanca con el bloque negro arriba. Desktop: tarjeta de
-  // 440px centrada sobre el gris del panel.
+  // Fondo crema con la marca repetida como marca de agua y una tarjeta negra
+  // centrada con el logo en crema (igual en mobile, con 16px de margen).
   return (
-    <div className="flex min-h-screen w-full bg-white lg:items-center lg:justify-center lg:bg-admin-bg lg:p-6">
-      <div className="flex w-full flex-col overflow-hidden bg-white lg:max-w-[440px] lg:rounded-lg lg:border lg:border-admin-border">
-        <div className="flex flex-col gap-3 bg-admin-ink px-5 pb-8 pt-12 lg:px-8 lg:py-7">
-          <span className="lg:hidden">
-            <Logo size={112} />
-          </span>
-          <span className="hidden lg:block">
-            <Logo size={96} />
-          </span>
-          <span className={`${ADMIN_CAP_BASE} text-white/60`}>Panel de administración</span>
+    <div className="flex min-h-screen w-full items-center justify-center bg-admin-bg bg-[url(/brand/login-pattern.png)] bg-size-[270px_280px] px-4 py-10">
+      <div className="w-full max-w-[420px] rounded-[22px] bg-admin-ink px-6 pb-9 pt-7 sm:px-8">
+        <div className="flex justify-center">
+          <AdminLogo size={80} />
         </div>
+        <h1 className="sr-only">Acceso al panel</h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-5 py-7 lg:p-8">
+        <form onSubmit={handleSubmit} className="mt-12 flex flex-col gap-5">
           <div>
-            <h1 className={ADMIN_PAGE_TITLE}>Acceso al panel</h1>
-            <p className={ADMIN_PAGE_SUBTITLE}>Ingresá con tu cuenta de administrador.</p>
-          </div>
-
-          <div>
-            <label htmlFor="email" className={ADMIN_LABEL}>
-              Email
+            <label htmlFor="email" className={LABEL}>
+              Mail
             </label>
             <input
               id="email"
@@ -82,13 +70,12 @@ export default function AdminLoginPage() {
                 setEmail(e.target.value);
                 setError(null);
               }}
-              className={ADMIN_INPUT}
-              placeholder="admin@lafundita.com"
+              className={INPUT}
             />
           </div>
 
           <div>
-            <label htmlFor="password" className={ADMIN_LABEL}>
+            <label htmlFor="password" className={LABEL}>
               Contraseña
             </label>
             <input
@@ -101,8 +88,7 @@ export default function AdminLoginPage() {
                 setPassword(e.target.value);
                 setError(null);
               }}
-              className={ADMIN_INPUT}
-              placeholder="••••••••"
+              className={INPUT}
             />
           </div>
 
@@ -110,8 +96,8 @@ export default function AdminLoginPage() {
 
           <button
             type="submit"
-            disabled={submitting || !email.trim() || !password}
-            className={`${adminButton("primary", "lg")} w-full`}
+            disabled={submitting}
+            className="mt-3 flex h-12 w-full items-center justify-center rounded-lg bg-admin-bg text-base font-semibold text-admin-text transition-[transform,background-color,opacity] duration-200 hover:bg-admin-surface focus-visible:outline-admin-on-ink active:scale-[0.98] disabled:opacity-60 disabled:active:scale-100"
           >
             {submitting ? "Entrando…" : "Entrar"}
           </button>

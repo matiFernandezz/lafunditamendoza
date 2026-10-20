@@ -448,7 +448,7 @@ export default function ComprasPage() {
                         type="button"
                         onClick={() => addProduct(product)}
                         disabled={added}
-                        className="flex min-h-14 w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-colors duration-200 hover:bg-admin-bg disabled:hover:bg-white"
+                        className="flex min-h-14 w-full items-center gap-3 py-2 pl-4 pr-3 text-left transition-colors duration-200 hover:bg-admin-bg disabled:hover:bg-admin-surface"
                       >
                         <span className="min-w-0 flex-1">
                           <span className="block break-words text-[15px] font-semibold text-admin-text">

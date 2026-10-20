@@ -11,7 +11,7 @@ import { orderUnits } from "./WebOrderCard";
 export const CANCEL_REASONS = ["No mandó el comprobante", "Se arrepintió", "No hay stock real"];
 
 const DIALOG =
-  "fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-[440px] rounded-lg bg-white p-6 backdrop:bg-black/45";
+  "fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-[440px] rounded-lg bg-admin-surface p-6 backdrop:bg-black/45";
 
 // <dialog> nativo abierto al montarse (foco atrapado y Escape gratis). Se
 // monta con key = id de la reserva: cada apertura arranca limpia.

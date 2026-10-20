@@ -495,7 +495,7 @@ export default function CatalogoPage() {
             const unsaved = draftChanges(product, draft).dirty;
 
             return (
-              <li key={product.id} className="min-w-0 overflow-clip rounded-md border border-admin-border bg-white">
+              <li key={product.id} className="min-w-0 overflow-clip rounded-md border border-admin-border bg-admin-surface">
                 <button
                   type="button"
                   onClick={() => setOpenId(open ? null : product.id)}

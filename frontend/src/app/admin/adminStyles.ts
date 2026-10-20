@@ -42,13 +42,13 @@ export function adminInput({ prefix, suffix, align = "left", mono, state }: Inpu
         : state === "error"
           ? "border-admin-danger"
           : "border-admin-border-strong";
-  return `h-12 w-full min-w-0 rounded-md border ${border} bg-white ${padLeft} ${padRight} ${textAlign} ${
+  return `h-12 w-full min-w-0 rounded-md border ${border} bg-admin-surface ${padLeft} ${padRight} ${textAlign} ${
     mono ? "font-mono tabular-nums" : ""
   } text-base text-admin-text outline-none transition-colors duration-200 placeholder:text-admin-muted focus:border-admin-ink disabled:opacity-60`;
 }
 export const ADMIN_INPUT = adminInput();
 export const ADMIN_TEXTAREA =
-  "w-full rounded-md border border-admin-border-strong bg-white p-3 text-base leading-[1.45] text-admin-text outline-none transition-colors duration-200 placeholder:text-admin-muted focus:border-admin-ink disabled:opacity-60";
+  "w-full rounded-md border border-admin-border-strong bg-admin-surface p-3 text-base leading-[1.45] text-admin-text outline-none transition-colors duration-200 placeholder:text-admin-muted focus:border-admin-ink disabled:opacity-60";
 // Adorno dentro del input: "$" a la izquierda (left-3) o "%"/"u." a la derecha (right-3.5).
 export const ADMIN_INPUT_ADORNMENT =
   "pointer-events-none absolute inset-y-0 flex items-center font-mono text-[15px] text-admin-muted";
@@ -65,11 +65,11 @@ const BUTTON_SIZE: Record<ButtonSize, string> = {
 const BUTTON_KIND: Record<ButtonKind, string> = {
   primary:
     "border-admin-ink bg-admin-ink text-white disabled:border-admin-disabled-bg disabled:bg-admin-disabled-bg disabled:text-admin-disabled-fg",
-  secondary: "border-admin-border-strong bg-white text-admin-text hover:bg-admin-bg disabled:opacity-45",
+  secondary: "border-admin-border-strong bg-admin-surface text-admin-text hover:bg-admin-bg disabled:opacity-45",
   danger:
     "border-admin-danger bg-admin-danger text-white disabled:border-admin-disabled-bg disabled:bg-admin-disabled-bg disabled:text-admin-disabled-fg",
   dangerOutline:
-    "border-admin-danger-border bg-white text-admin-danger hover:bg-admin-danger-bg disabled:opacity-45",
+    "border-admin-danger-border bg-admin-surface text-admin-danger hover:bg-admin-danger-bg disabled:opacity-45",
   ghost: "border-transparent bg-transparent text-admin-text hover:bg-admin-bg disabled:opacity-45",
 };
 export function adminButton(kind: ButtonKind = "primary", size: ButtonSize = "md") {
@@ -84,7 +84,7 @@ export const ADMIN_BUTTON_DANGER_OUTLINE = adminButton("dangerOutline");
 // Botón de ícono: 44px táctil (md) o 36px (sm, dentro de una miniatura).
 export function adminIconButton(kind: "plain" | "outline" | "danger" = "outline", size: "sm" | "md" = "md") {
   const box = size === "sm" ? "size-9" : "size-11";
-  const surface = kind === "plain" ? "border-transparent bg-transparent" : "border-admin-border-strong bg-white";
+  const surface = kind === "plain" ? "border-transparent bg-transparent" : "border-admin-border-strong bg-admin-surface";
   const color =
     kind === "danger" ? "text-admin-danger hover:bg-admin-danger-bg" : "text-admin-text hover:bg-admin-bg";
   return `inline-flex ${box} shrink-0 items-center justify-center rounded-md border ${surface} ${color} transition-colors duration-200 disabled:opacity-30`;
@@ -97,7 +97,7 @@ export function adminSegment(active: boolean, size: "md" | "lg" = "md") {
   return `flex ${size === "lg" ? "h-14" : "h-12"} min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border px-2 text-[15px] font-semibold transition-colors duration-200 ${
     active
       ? "border-admin-ink bg-admin-ink text-white"
-      : "border-admin-border-strong bg-white text-admin-text hover:bg-admin-bg"
+      : "border-admin-border-strong bg-admin-surface text-admin-text hover:bg-admin-bg"
   }`;
 }
 
@@ -106,13 +106,13 @@ export function adminChip(active: boolean) {
   return `h-11 shrink-0 whitespace-nowrap rounded-full border px-4 text-[15px] font-semibold transition-colors duration-200 ${
     active
       ? "border-admin-ink bg-admin-ink text-white"
-      : "border-admin-border-strong bg-white text-admin-text hover:bg-admin-bg"
+      : "border-admin-border-strong bg-admin-surface text-admin-text hover:bg-admin-bg"
   }`;
 }
 
-export const ADMIN_CARD = "min-w-0 rounded-md border border-admin-border bg-white p-4";
+export const ADMIN_CARD = "min-w-0 rounded-md border border-admin-border bg-admin-surface p-4";
 export const ADMIN_ROW_LIST =
-  "divide-y divide-admin-border overflow-hidden rounded-md border border-admin-border bg-white";
+  "divide-y divide-admin-border overflow-hidden rounded-md border border-admin-border bg-admin-surface";
 export const ADMIN_EMPTY =
   "rounded-md border border-dashed border-admin-border-strong p-6 text-center text-sm text-admin-muted";
 // Recuadro gris claro dentro de una tarjeta (resumen de la venta, precio masivo).
@@ -121,7 +121,7 @@ export const ADMIN_INSET = "rounded-md border border-admin-border bg-admin-bg p-
 // Etiquetas: −15%, ANULADA, SIN STOCK.
 export function adminBadge(kind: "neutral" | "danger" | "ok" | "ink" | "warn" = "neutral") {
   const look = {
-    neutral: "border-admin-border bg-[#f5f5f5] text-admin-text",
+    neutral: "border-admin-border bg-admin-bg text-admin-text",
     danger: "border-admin-danger-border bg-admin-danger-bg text-admin-danger",
     ok: "border-[#a7f3d0] bg-admin-ok-bg text-admin-ok",
     ink: "border-admin-ink bg-admin-ink text-white",

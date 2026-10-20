@@ -183,7 +183,7 @@ export default function AddVariantDialog({
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="agregar-variante"
-      className="fixed inset-0 m-auto h-fit max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[520px] overflow-y-auto rounded-lg bg-white p-0 backdrop:bg-black/45"
+      className="fixed inset-0 m-auto h-fit max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[520px] overflow-y-auto rounded-lg bg-admin-surface p-0 backdrop:bg-black/45"
     >
       <form
         onSubmit={(e) => {

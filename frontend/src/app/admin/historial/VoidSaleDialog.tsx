@@ -57,7 +57,7 @@ export default function VoidSaleDialog({
       ref={dialogRef}
       aria-labelledby="anular-titulo"
       onClose={onClose}
-      className="fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-[440px] rounded-lg bg-white p-6 backdrop:bg-black/45"
+      className="fixed inset-0 m-auto h-fit w-[calc(100%-2rem)] max-w-[440px] rounded-lg bg-admin-surface p-6 backdrop:bg-black/45"
     >
       <div className="flex flex-col gap-4">
         <div>

@@ -28,7 +28,7 @@ import { KIND_TEXT, LIBRARY_TOUCHED_PRODUCTS, reloadLibrary, useAttributeLibrary
 type Draft = { name?: string; hex?: string };
 type Item = { id: string; name: string; variant_count: number; hex?: string; assigned?: boolean };
 
-const COLOR_INPUT = "h-12 w-12 shrink-0 cursor-pointer rounded-md border border-admin-border-strong bg-white p-1";
+const COLOR_INPUT = "h-12 w-12 shrink-0 cursor-pointer rounded-md border border-admin-border-strong bg-admin-surface p-1";
 
 function errorMessage(err: unknown) {
   return err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.";
@@ -176,7 +176,7 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
       ref={dialogRef}
       onClose={onClose}
       aria-labelledby="editar-atributos"
-      className="fixed inset-0 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[640px] flex-col overflow-hidden rounded-lg bg-white p-0 backdrop:bg-black/45"
+      className="fixed inset-0 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[640px] flex-col overflow-hidden rounded-lg bg-admin-surface p-0 backdrop:bg-black/45"
     >
       <div className="flex items-center justify-between gap-3 border-b border-admin-border py-3 pl-5 pr-2.5">
         <h2 id="editar-atributos" className={ADMIN_SECTION_TITLE}>

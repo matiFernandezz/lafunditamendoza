@@ -49,7 +49,7 @@ export default function SaleRow({
   const detailId = `venta-${sale.id}`;
 
   return (
-    <li className={voided ? "bg-admin-bg" : "bg-white"}>
+    <li className={voided ? "bg-admin-bg" : "bg-admin-surface"}>
       <button
         type="button"
         onClick={onToggle}

@@ -260,7 +260,7 @@ export default function ProductEditor({
       {/* Un solo Guardar para todo el producto. Queda pegado abajo de la
           pantalla mientras haya cambios, así no hay que ir a buscarlo. */}
       {(changes.dirty || error) && (
-        <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t border-admin-border bg-white p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-6px_16px_rgb(0_0_0/0.06)] lg:px-6">
+        <div className="sticky bottom-0 z-10 flex flex-col gap-2 border-t border-admin-border bg-admin-surface p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-6px_16px_rgb(0_0_0/0.06)] lg:px-6">
           {error && <AdminNotice kind="danger">{error}</AdminNotice>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p

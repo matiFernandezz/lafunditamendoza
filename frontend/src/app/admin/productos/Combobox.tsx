@@ -65,7 +65,7 @@ export default function Combobox({
         aria-expanded={open}
         aria-controls={listboxId}
         onClick={() => setOpen((o) => !o)}
-        className={`flex h-12 w-full items-center justify-between gap-3 rounded-md border bg-white px-3.5 text-left text-base text-admin-text transition-colors duration-200 ${
+        className={`flex h-12 w-full items-center justify-between gap-3 rounded-md border bg-admin-surface px-3.5 text-left text-base text-admin-text transition-colors duration-200 ${
           open ? "border-admin-ink" : "border-admin-border-strong"
         }`}
       >
@@ -90,7 +90,7 @@ export default function Combobox({
           id={listboxId}
           role="listbox"
           aria-labelledby={id}
-          className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-admin-border-strong bg-white py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
+          className="absolute z-10 mt-1 max-h-72 w-full overflow-y-auto rounded-md border border-admin-border-strong bg-admin-surface py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
         >
           {options.length === 0 ? (
             <li className="px-3 py-2.5 text-sm text-admin-muted">No hay opciones</li>

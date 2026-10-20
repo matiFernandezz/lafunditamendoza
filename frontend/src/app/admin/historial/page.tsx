@@ -399,7 +399,7 @@ function SummaryTile({
   return (
     <div
       className={`min-w-0 rounded-md p-4 ${wide ? "col-span-2 lg:col-span-1" : ""} ${
-        inverse ? "bg-admin-ink text-white" : "border border-admin-border bg-white text-admin-text"
+        inverse ? "bg-admin-ink text-white" : "border border-admin-border bg-admin-surface text-admin-text"
       }`}
     >
       <p className={`${ADMIN_CAP_BASE} ${inverse ? "text-white/70" : "text-admin-muted"}`}>{label}</p>

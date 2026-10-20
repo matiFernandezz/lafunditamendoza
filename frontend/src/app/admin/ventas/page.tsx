@@ -349,7 +349,7 @@ export default function VentasPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="venta-registrada"
-            className="flex w-full max-w-[400px] flex-col items-center gap-1.5 rounded-lg bg-white p-6 text-center"
+            className="flex w-full max-w-[400px] flex-col items-center gap-1.5 rounded-lg bg-admin-surface p-6 text-center"
           >
             <CircleCheck aria-hidden="true" className="size-12 text-admin-ok" strokeWidth={1.5} />
             <h2 id="venta-registrada" className="mt-2 font-display text-[22px] font-semibold text-admin-text">

@@ -173,7 +173,7 @@ export default function ProductImageGallery({
               if (file && !uploading) upload(file);
             }}
             className={`flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed p-2 text-center text-admin-text transition-colors duration-200 disabled:opacity-60 lg:h-28 lg:w-[220px] ${
-              dragOver ? "border-admin-ink bg-admin-bg" : "border-admin-border-strong bg-white hover:bg-admin-bg"
+              dragOver ? "border-admin-ink bg-admin-bg" : "border-admin-border-strong bg-admin-surface hover:bg-admin-bg"
             }`}
           >
             {uploading ? (

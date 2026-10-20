@@ -36,7 +36,7 @@ export default function ProductGrid({
       {products.map((product) => {
         const image = firstImage(product);
         return (
-          <li key={product.id} className="min-w-0 overflow-hidden rounded-md border border-admin-border bg-white">
+          <li key={product.id} className="min-w-0 overflow-hidden rounded-md border border-admin-border bg-admin-surface">
             <div className="flex items-center gap-3 px-4 py-3">
               <div className="relative flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-admin-border bg-admin-bg">
                 {image ? (
@@ -67,7 +67,7 @@ export default function ProductGrid({
                       onClick={() => onAdd(product, variant)}
                       disabled={blocked}
                       className={`flex min-h-[60px] w-full items-center justify-between gap-3 border-t border-admin-border py-2 pl-4 pr-3 text-left transition-colors duration-200 enabled:hover:bg-admin-bg ${
-                        inCart > 0 ? "bg-[#f5f5f5]" : "bg-white"
+                        inCart > 0 ? "bg-admin-bg" : "bg-admin-surface"
                       }`}
                     >
                       <span className={`min-w-0 ${outOfStock ? "opacity-45" : ""}`}>

@@ -17,9 +17,9 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import Logo from "@/components/Logo";
 import { getWebOrderCounts } from "@/lib/adminApi";
 import { createClient } from "@/lib/supabase/client";
+import AdminLogo from "./AdminLogo";
 import { ADMIN_CAP_BASE } from "./adminStyles";
 
 type Tab = { href: string; label: string; icon: LucideIcon };
@@ -84,7 +84,7 @@ function PendingDot({ count, className = "" }: { count: number; className?: stri
 const NAV_ITEM =
   "flex h-12 w-full items-center gap-3 rounded-md px-3 text-[15px] font-semibold transition-colors duration-200";
 const NAV_ICON_BUTTON =
-  "size-11 shrink-0 items-center justify-center rounded-md text-white/78 transition-colors duration-200 hover:bg-white/10 hover:text-white";
+  "size-11 shrink-0 items-center justify-center rounded-md text-admin-on-ink/78 transition-colors duration-200 hover:bg-admin-on-ink/10 hover:text-admin-on-ink";
 
 /**
  * Shell del panel: navegación lateral negra. En desktop (lg+) el sidebar queda
@@ -182,7 +182,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <Menu aria-hidden="true" className="size-6" />
           <PendingDot count={pendingWeb} className="absolute right-0.5 top-0.5 inline-flex" />
         </button>
-        <Logo size={42} />
+        <AdminLogo size={40} />
       </header>
 
       {drawerOpen && (
@@ -205,8 +205,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           }`}
         >
           <div className={`flex items-center gap-3 ${labelClass}`}>
-            <Logo size={46} />
-            <span className={`${ADMIN_CAP_BASE} text-white/60`}>Panel</span>
+            <AdminLogo size={44} />
+            <span className={`${ADMIN_CAP_BASE} text-admin-on-ink/60`}>Panel</span>
           </div>
           <button
             type="button"
@@ -244,7 +244,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 aria-current={current ? "page" : undefined}
                 title={collapsed ? tab.label : undefined}
                 className={`${NAV_ITEM} ${itemLayout} ${
-                  current ? "bg-white text-black" : "text-white/78 hover:bg-white/10 hover:text-white"
+                  current ? "bg-admin-bg text-admin-text" : "text-admin-on-ink/78 hover:bg-admin-on-ink/10 hover:text-admin-on-ink"
                 }`}
               >
                 <span className="relative flex shrink-0">
@@ -261,12 +261,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        <div className="shrink-0 border-t border-white/15 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+        <div className="shrink-0 border-t border-admin-on-ink/15 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
           <button
             type="button"
             onClick={handleLogout}
             title={collapsed ? "Salir" : undefined}
-            className={`${NAV_ITEM} ${itemLayout} text-white/78 hover:bg-white/10 hover:text-white`}
+            className={`${NAV_ITEM} ${itemLayout} text-admin-on-ink/78 hover:bg-admin-on-ink/10 hover:text-admin-on-ink`}
           >
             <LogOut aria-hidden="true" className="size-5 shrink-0" />
             <span className={labelClass}>Salir</span>

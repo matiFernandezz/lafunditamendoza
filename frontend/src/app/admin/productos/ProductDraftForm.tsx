@@ -283,7 +283,7 @@ export default function ProductDraftForm({
                 e.preventDefault();
                 if (!disabled) addPhotos(e.dataTransfer.files);
               }}
-              className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed border-admin-border-strong bg-white p-2 text-center text-admin-text transition-colors duration-200 hover:bg-admin-bg disabled:opacity-60 lg:h-28 lg:w-[220px]"
+              className="flex h-24 w-24 flex-col items-center justify-center gap-1.5 rounded border-2 border-dashed border-admin-border-strong bg-admin-surface p-2 text-center text-admin-text transition-colors duration-200 hover:bg-admin-bg disabled:opacity-60 lg:h-28 lg:w-[220px]"
             >
               <ImagePlus aria-hidden="true" className="size-6" />
               <span className="text-[13px] font-semibold leading-tight lg:hidden">Agregar fotos</span>

@@ -72,7 +72,7 @@ export default function WebOrderCard({
 
   return (
     <li
-      className={`flex min-w-0 flex-col gap-3 rounded-md border bg-white p-4 ${
+      className={`flex min-w-0 flex-col gap-3 rounded-md border bg-admin-surface p-4 ${
         expired ? "border-admin-danger-border" : "border-admin-border"
       } ${o.status === "cancelada" ? "opacity-60" : ""}`}
     >
@@ -163,7 +163,7 @@ export default function WebOrderCard({
           title={o.customer_phone}
           className={
             pending
-              ? "inline-flex h-12 items-center justify-center rounded-md border border-admin-border-strong bg-white text-admin-text transition-colors duration-200 hover:bg-admin-bg"
+              ? "inline-flex h-12 items-center justify-center rounded-md border border-admin-border-strong bg-admin-surface text-admin-text transition-colors duration-200 hover:bg-admin-bg"
               : adminButton("secondary")
           }
         >

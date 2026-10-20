@@ -81,7 +81,7 @@ export default function ModelMultiSelect({
           {selected.map((m) => (
             <li
               key={m.id}
-              className="flex h-9 items-center gap-1 rounded-full border border-admin-border-strong bg-white pl-3 pr-1 text-sm font-semibold text-admin-text"
+              className="flex h-9 items-center gap-1 rounded-full border border-admin-border-strong bg-admin-surface pl-3 pr-1 text-sm font-semibold text-admin-text"
             >
               {m.name}
               <button
@@ -136,7 +136,7 @@ export default function ModelMultiSelect({
           id={listId}
           role="listbox"
           aria-label="Modelos"
-          className="absolute left-0 z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-admin-border-strong bg-white py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
+          className="absolute left-0 z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-admin-border-strong bg-admin-surface py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
         >
           {options.length === 0 ? (
             <li className={`px-3.5 py-2.5 ${ADMIN_TEXT_MUTED}`}>

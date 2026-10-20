@@ -150,7 +150,7 @@ export default function ColorField({
         aria-controls={listId}
         disabled={disabled}
         onClick={toggle}
-        className={`flex h-12 w-full min-w-0 items-center gap-2.5 rounded-md border bg-white px-3.5 text-left text-base text-admin-text transition-colors duration-200 disabled:opacity-60 ${
+        className={`flex h-12 w-full min-w-0 items-center gap-2.5 rounded-md border bg-admin-surface px-3.5 text-left text-base text-admin-text transition-colors duration-200 disabled:opacity-60 ${
           open ? "border-admin-ink" : "border-admin-border-strong"
         }`}
       >
@@ -173,7 +173,7 @@ export default function ColorField({
       {open && (
         <div
           id={listId}
-          className="absolute left-0 z-20 mt-1 w-full min-w-[240px] rounded-md border border-admin-border-strong bg-white py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
+          className="absolute left-0 z-20 mt-1 w-full min-w-[240px] rounded-md border border-admin-border-strong bg-admin-surface py-1 shadow-[0_8px_24px_rgb(0_0_0/0.12)]"
         >
           {mode === "list" && (
             <>
@@ -204,7 +204,7 @@ export default function ColorField({
                         type="button"
                         onClick={() => pick(item.name)}
                         disabled={taken}
-                        className={`${option} disabled:opacity-50 disabled:hover:bg-white ${
+                        className={`${option} disabled:opacity-50 disabled:hover:bg-admin-surface ${
                           item.id === selected?.id ? "bg-admin-bg font-semibold" : ""
                         }`}
                       >
@@ -272,7 +272,7 @@ export default function ColorField({
                     value={newHex}
                     onChange={(e) => setNewHex(e.target.value)}
                     aria-label="Tono"
-                    className="h-12 w-12 shrink-0 cursor-pointer rounded-md border border-admin-border-strong bg-white p-1"
+                    className="h-12 w-12 shrink-0 cursor-pointer rounded-md border border-admin-border-strong bg-admin-surface p-1"
                   />
                 )}
                 <input
