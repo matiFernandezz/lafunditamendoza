@@ -79,5 +79,5 @@ export function useAttributeLibrary(): Library {
 /** Textos de cada tipo de atributo, para los componentes que sirven a los dos. */
 export const KIND_TEXT = {
   color: { one: "color", many: "colores", One: "Color", Many: "Colores", new: "Crear color nuevo", edit: "Editar colores" },
-  motif: { one: "motivo", many: "motivos", One: "Motivo", Many: "Motivos", new: "Crear motivo nuevo", edit: "Editar motivos" },
+  motif: { one: "diseño", many: "diseños", One: "Diseño", Many: "Diseños", new: "Crear diseño nuevo", edit: "Editar diseños" },
 } as const;

@@ -36,6 +36,7 @@ export default function VariantList({
   attrFilter,
   onClearAttrFilter,
   onAddVariant,
+  addLabel = "Agregar variante",
   onChanged,
 }: {
   product: AdminProduct;
@@ -49,6 +50,8 @@ export default function VariantList({
   attrFilter: { id: string; name: string } | null;
   onClearAttrFilter: () => void;
   onAddVariant: () => void;
+  /** Texto del botón de agregar ("Agregar modelos o colores"…). */
+  addLabel?: string;
   /** Se eliminó una variante: `message` dice qué pasó, para mostrar y refrescar. */
   onChanged: (message: string) => void;
 }) {
@@ -216,7 +219,7 @@ export default function VariantList({
 
       <button type="button" onClick={onAddVariant} className={`${adminButton("secondary")} w-full`}>
         <Plus aria-hidden="true" className="size-[18px]" />
-        Agregar variante
+        {addLabel}
       </button>
     </section>
   );

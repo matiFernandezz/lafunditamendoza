@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CircleCheck, Search, X } from "lucide-react";
-import { getCategoryGroups, getIphoneModels, type IphoneModel } from "@/lib/catalog";
+import { getCategoryGroups, getIphoneModels, type CategoryGroup, type IphoneModel } from "@/lib/catalog";
 import {
   AdminApiError,
   createSale,
@@ -20,13 +20,14 @@ import {
   ADMIN_PAGE_TITLE,
   ADMIN_TEXT_MUTED,
   adminButton,
-  adminChip,
   adminIconButton,
   adminInput,
 } from "../adminStyles";
 import { resolveDiscount, variantLabel } from "./utils";
-import ProductGrid from "./ProductGrid";
+import ProductList, { type ListedProduct } from "./ProductList";
+import { SALES_CHANGED } from "./salesEvents";
 import CartPanel from "./CartPanel";
+import CategoryFilter, { type CategorySelection } from "./CategoryFilter";
 import type { CartItem, DiscountChoice, PaymentMethod } from "./types";
 
 type CategoryChip = { id: string; name: string };
@@ -39,7 +40,9 @@ export default function VentasPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [groups, setGroups] = useState<CategoryGroup[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<CategorySelection>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -47,6 +50,7 @@ export default function VentasPage() {
   const [submitting, setSubmitting] = useState(false);
   const [saleError, setSaleError] = useState<string | null>(null);
   const [discount, setDiscount] = useState<DiscountChoice>({ kind: "none" });
+  const [customerName, setCustomerName] = useState("");
   const [lastSale, setLastSale] = useState<CreatedSale | null>(null);
 
   const modelNamesById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
@@ -63,14 +67,14 @@ export default function VentasPage() {
       getIphoneModels(),
       getAdminProducts(),
     ]);
-    // Un chip por tipo, con la ruta completa ("Fundas › Diseño"). La categoría
-    // de tope solo lleva chip si tiene productos propios (sin tipo asignado).
+    // Nombre de cada categoría con la ruta completa ("Fundas › Diseño"), para el
+    // renglón de cada producto. El filtro usa los grupos tal cual.
     const withOwnProducts = new Set(productsRes.data.map((p) => p.category_id));
     const flatCategories: CategoryChip[] = groups.flatMap((g) => [
       ...(g.children.length === 0 || withOwnProducts.has(g.id) ? [{ id: g.id, name: g.name }] : []),
       ...g.children.map((c) => ({ id: c.id, name: `${g.name}${CATEGORY_SEPARATOR}${c.name}` })),
     ]);
-    return { categories: flatCategories, models: modelsList, products: productsRes.data };
+    return { categories: flatCategories, groups, models: modelsList, products: productsRes.data };
   }
 
   // Patrón "ignore flag" recomendado por React para fetchear en un efecto:
@@ -82,6 +86,7 @@ export default function VentasPage() {
       .then((result) => {
         if (ignore) return;
         setCategories(result.categories);
+        setGroups(result.groups);
         setModels(result.models);
         setProducts(result.products);
         setLoadError(null);
@@ -104,6 +109,7 @@ export default function VentasPage() {
     loadCatalogData()
       .then((result) => {
         setCategories(result.categories);
+        setGroups(result.groups);
         setModels(result.models);
         setProducts(result.products);
         setLoadError(null);
@@ -118,6 +124,7 @@ export default function VentasPage() {
     loadCatalogData()
       .then((result) => {
         setCategories(result.categories);
+        setGroups(result.groups);
         setModels(result.models);
         setProducts(result.products);
       })
@@ -132,19 +139,41 @@ export default function VentasPage() {
     return map;
   }, [cart]);
 
-  const filteredProducts = useMemo(() => {
+  // Busca por producto, modelo de iPhone o SKU. Si coincide el nombre se ven
+  // todos sus modelos; si coincide un modelo o SKU, solo esos y ya desplegados.
+  const listedProducts = useMemo<ListedProduct[]>(() => {
     const q = search.trim().toLowerCase();
+    // Una categoría grande incluye sus tipos; un tipo, solo ese.
+    const group = selectedCategory ? groups.find((g) => g.id === selectedCategory.groupId) : undefined;
+    const allowed = !selectedCategory
+      ? null
+      : selectedCategory.childId
+        ? new Set([selectedCategory.childId])
+        : new Set([selectedCategory.groupId, ...(group?.children.map((c) => c.id) ?? [])]);
     return products
       .filter((p) => p.active)
-      .filter((p) => !selectedCategory || p.category_id === selectedCategory)
-      .filter((p) => {
-        if (!q) return true;
-        if (p.name.toLowerCase().includes(q)) return true;
-        return p.product_variants.some((v) => v.sku.toLowerCase().includes(q));
-      })
-      .map((p) => ({ ...p, product_variants: p.product_variants.filter((v) => v.active) }))
-      .filter((p) => p.product_variants.length > 0);
-  }, [products, search, selectedCategory]);
+      .filter((p) => !allowed || allowed.has(p.category_id))
+      .flatMap((p): ListedProduct[] => {
+        const variants = p.product_variants.filter((v) => v.active);
+        if (variants.length === 0) return [];
+        if (!q || p.name.toLowerCase().includes(q)) return [{ product: p, variants, autoOpen: false }];
+        const matching = variants.filter(
+          (v) =>
+            v.sku.toLowerCase().includes(q) ||
+            (v.iphone_model_id && modelNamesById.get(v.iphone_model_id)?.toLowerCase().includes(q)),
+        );
+        return matching.length > 0 ? [{ product: p, variants: matching, autoOpen: true }] : [];
+      });
+  }, [products, search, selectedCategory, groups, modelNamesById]);
+
+  function toggleProduct(productId: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(productId)) next.delete(productId);
+      else next.add(productId);
+      return next;
+    });
+  }
 
   function handleAdd(product: AdminProduct, variant: AdminVariant) {
     setSaleError(null);
@@ -193,6 +222,7 @@ export default function VentasPage() {
         payment_method: paymentMethod,
         channel: "feria",
         discount_percent: discountPercent,
+        customer_name: customerName.trim() || null,
         items: cart.map((i) => ({
           variant_id: i.variantId,
           quantity: i.quantity,
@@ -203,9 +233,11 @@ export default function VentasPage() {
       setCart([]);
       // El descuento es de esa venta: el próximo cliente arranca sin descuento.
       setDiscount({ kind: "none" });
+      setCustomerName("");
       setCartOpen(false);
       // Refrescamos productos para que el stock mostrado quede al día.
       refreshCatalog();
+      window.dispatchEvent(new Event(SALES_CHANGED));
     } catch (err) {
       setSaleError(
         err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.",
@@ -225,6 +257,7 @@ export default function VentasPage() {
     try {
       const result = await loadCatalogData();
       setCategories(result.categories);
+      setGroups(result.groups);
       setModels(result.models);
       setProducts(result.products);
       const priceById = new Map(
@@ -262,13 +295,15 @@ export default function VentasPage() {
       <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
         <div>
           <h1 className={ADMIN_PAGE_TITLE}>Nueva venta</h1>
-          <p className={`${ADMIN_PAGE_SUBTITLE} hidden md:block`}>Tocá un modelo para sumarlo a la venta.</p>
+          <p className={`${ADMIN_PAGE_SUBTITLE} hidden md:block`}>
+            Abrí un producto y tocá el modelo para sumarlo a la venta.
+          </p>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="relative">
             <label htmlFor="search" className="sr-only">
-              Buscar por producto o SKU
+              Buscar por producto, modelo de iPhone o SKU
             </label>
             <Search
               aria-hidden="true"
@@ -279,7 +314,7 @@ export default function VentasPage() {
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por producto o SKU…"
+              placeholder="Buscar por producto, modelo de iPhone o SKU…"
               className={`${adminInput({ prefix: "icon", suffix: search.length > 0 })} [&::-webkit-search-cancel-button]:hidden`}
             />
             {search.length > 0 && (
@@ -295,33 +330,13 @@ export default function VentasPage() {
             )}
           </div>
 
-          {categories.length > 0 && (
-            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
-              <button
-                type="button"
-                onClick={() => setSelectedCategory(null)}
-                aria-pressed={selectedCategory === null}
-                className={adminChip(selectedCategory === null)}
-              >
-                Todas
-              </button>
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(c.id)}
-                  aria-pressed={selectedCategory === c.id}
-                  className={adminChip(selectedCategory === c.id)}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          )}
+          <CategoryFilter groups={groups} value={selectedCategory} onChange={setSelectedCategory} />
         </div>
 
-        <ProductGrid
-          products={filteredProducts}
+        <ProductList
+          items={listedProducts}
+          expanded={expanded}
+          onToggle={toggleProduct}
           modelNamesById={modelNamesById}
           categoryNamesById={categoryNamesById}
           cartQuantities={cartQuantities}
@@ -337,6 +352,8 @@ export default function VentasPage() {
         onPaymentMethodChange={setPaymentMethod}
         discount={discount}
         onDiscountChange={setDiscount}
+        customerName={customerName}
+        onCustomerNameChange={setCustomerName}
         onUpdateQuantity={handleUpdateQuantity}
         onConfirm={handleConfirm}
         submitting={submitting}
@@ -360,6 +377,7 @@ export default function VentasPage() {
               {formatPrice(lastSale.total_amount)}
             </p>
             <p className="text-sm text-admin-muted">
+              {lastSale.customer_name && `${lastSale.customer_name} · `}
               {lastSale.payment_method === "efectivo" ? "Efectivo" : "Transferencia"}
               {lastSale.discount_percent > 0 &&
                 ` · ${lastSale.discount_percent}% de descuento (− ${formatPrice(lastSale.discount_amount)})`}

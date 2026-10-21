@@ -10,6 +10,8 @@ const PAYMENT_METHODS = ["efectivo", "transferencia"];
 const CHANNELS = ["feria", "whatsapp", "web"];
 const MAX_DISCOUNT_PERCENT = 100;
 const MAX_NOTES_LENGTH = 1000;
+const MAX_CUSTOMER_LENGTH = 120;
+const STATUSES = ["completada", "anulada"];
 
 const formatPrice = (value: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(value);
@@ -57,7 +59,7 @@ export async function POST(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const { payment_method, channel, notes, items, discount_percent } = await readJsonBody(request);
+  const { payment_method, channel, notes, items, discount_percent, customer_name } = await readJsonBody(request);
 
   if (typeof payment_method !== "string" || !PAYMENT_METHODS.includes(payment_method)) {
     return jsonError(400, `payment_method debe ser uno de: ${PAYMENT_METHODS.join(", ")}`);
@@ -73,6 +75,10 @@ export async function POST(request: NextRequest) {
 
   if (!isOptionalText(notes, MAX_NOTES_LENGTH)) {
     return jsonError(400, `notes debe ser texto de hasta ${MAX_NOTES_LENGTH} caracteres (o no enviarse)`);
+  }
+
+  if (!isOptionalText(customer_name, MAX_CUSTOMER_LENGTH)) {
+    return jsonError(400, `customer_name debe ser texto de hasta ${MAX_CUSTOMER_LENGTH} caracteres (o no enviarse)`);
   }
 
   if (!validateItems(items)) {
@@ -104,6 +110,7 @@ export async function POST(request: NextRequest) {
     p_notes: notes ?? null,
     p_discount_percent: discountPercent,
     p_items: items.map(({ variant_id, quantity, unit_price }) => ({ variant_id, quantity, unit_price })),
+    p_customer_name: customer_name?.trim() || null,
   });
 
   if (error) return saleError(error);
@@ -119,6 +126,11 @@ export async function GET(request: NextRequest) {
   const range = parseRange(searchParams);
   if ("error" in range) return jsonError(400, range.error);
 
+  const status = searchParams.get("status");
+  if (status !== null && !STATUSES.includes(status)) {
+    return jsonError(400, `status debe ser uno de: ${STATUSES.join(", ")} (o no enviarse)`);
+  }
+
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("page_size")) || 20));
   const offset = (page - 1) * pageSize;
@@ -131,6 +143,7 @@ export async function GET(request: NextRequest) {
 
   if (range.from) query = query.gte("sale_date", range.from);
   if (range.to) query = query.lt("sale_date", range.to);
+  if (status) query = query.eq("status", status);
 
   const { data, error, count } = await query;
 

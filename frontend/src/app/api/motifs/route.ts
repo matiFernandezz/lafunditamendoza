@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     .select(MOTIF_SELECT)
     .single();
 
-  if (error?.code === "23505") return jsonError(409, `Ya existe un motivo llamado "${name.trim()}"`);
-  if (error || !data) return jsonError(500, error?.message ?? "No se pudo crear el motivo");
+  if (error?.code === "23505") return jsonError(409, `Ya existe un diseño llamado "${name.trim()}"`);
+  if (error || !data) return jsonError(500, error?.message ?? "No se pudo crear el diseño");
   return jsonData({ ...data, variant_count: 0 }, 201);
 }

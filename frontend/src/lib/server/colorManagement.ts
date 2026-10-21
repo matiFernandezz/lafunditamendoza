@@ -46,7 +46,7 @@ export async function deleteUnusedAttribute(kind: "color" | "motif", id: string,
   const supabase = supabaseAdmin();
   const table = kind === "color" ? "colors" : "motifs";
   const column = kind === "color" ? "color_id" : "motif_id";
-  const noun = kind === "color" ? "color" : "motivo";
+  const noun = kind === "color" ? "color" : "diseño";
 
   if (!queryFlag(request, "keep_text")) {
     const { count, error } = await supabase

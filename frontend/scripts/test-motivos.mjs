@@ -509,7 +509,7 @@ async function main() {
   const pPage = await page(pPath);
   eq("GET ficha -> 200", pPage.status, 200);
   const opts = motifOptions(pPage.html);
-  check('hay una lista "Motivo" (un <select>, no círculos)', opts !== null && /<label[^>]*for="motivo-detalle"[^>]*>Motivo<\/label>/.test(pPage.html));
+  check('hay una lista "Diseño" (un <select>, no círculos)', opts !== null && /<label[^>]*for="motivo-detalle"[^>]*>Diseño<\/label>/.test(pPage.html));
   eq("…solo con los motivos que tienen stock (el agotado no se muestra)", opts?.map((o) => o.value), [mA.id, mB.id]);
   check("…sin opciones deshabilitadas ni avisos de falta", opts?.every((o) => !o.disabled) && !pPage.html.includes("(sin stock)"));
   eq("por defecto, el primero con stock", opts?.find((o) => o.selected)?.value, mA.id);

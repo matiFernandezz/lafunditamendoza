@@ -43,7 +43,16 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
  * motivo". Los cambios de nombre y tono se guardan todos juntos; unir,
  * eliminar y pasar a motivo se aplican al confirmar.
  */
-export default function AttributeManager({ kind, onClose }: { kind: AttributeKind; onClose: () => void }) {
+export default function AttributeManager({
+  kind,
+  onClose,
+  inline = false,
+}: {
+  kind: AttributeKind;
+  onClose?: () => void;
+  /** En la página (Stock › Colores y diseños) en vez de una ventana. */
+  inline?: boolean;
+}) {
   const library = useAttributeLibrary();
   const text = KIND_TEXT[kind];
   const items: Item[] = kind === "color" ? library.colors : library.motifs;
@@ -58,9 +67,9 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
+    if (!inline && dialog && !dialog.open) dialog.showModal();
     void reloadLibrary();
-  }, []);
+  }, [inline]);
 
   function setDraft(id: string, patch: Draft) {
     setDrafts((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }));
@@ -151,14 +160,14 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
       }`;
       const photos = preview.images > 0 ? ` y ${preview.images === 1 ? "1 foto" : `${preview.images} fotos`}` : "";
       const ok = window.confirm(
-        `¿Pasar “${item.name}” a motivo?\n\n${count}${photos} dejan de tener ese color y pasan al motivo “${item.name}”${
+        `¿Pasar “${item.name}” a motivo?\n\n${count}${photos} dejan de tener ese color y pasan al diseño “${item.name}”${
           preview.motif_existed ? ", que ya existe" : ", que se crea"
         }. Conservan stock (${preview.units} u.), precio y SKU.\n\nEl color queda en la lista, sin uso.`,
       );
       if (!ok) return;
       const { data } = await colorToMotif(item.id);
       setNotice(
-        `“${data.name}” pasó a motivo: ${data.variants === 1 ? "1 variante" : `${data.variants} variantes`}. El color quedó sin uso.`,
+        `“${data.name}” pasó a diseño: ${data.variants === 1 ? "1 variante" : `${data.variants} variantes`}. El color quedó sin uso.`,
       );
       await refresh(true);
     } catch (err) {
@@ -171,27 +180,8 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
   const term = fold(search.trim());
   const visible = term === "" ? items : items.filter((i) => fold(i.name).includes(term));
 
-  return (
-    <dialog
-      ref={dialogRef}
-      onClose={onClose}
-      aria-labelledby="editar-atributos"
-      className="fixed inset-0 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[640px] flex-col overflow-hidden rounded-lg bg-admin-surface p-0 backdrop:bg-black/45"
-    >
-      <div className="flex items-center justify-between gap-3 border-b border-admin-border py-3 pl-5 pr-2.5">
-        <h2 id="editar-atributos" className={ADMIN_SECTION_TITLE}>
-          {text.edit}
-        </h2>
-        <button
-          type="button"
-          onClick={() => dialogRef.current?.close()}
-          aria-label="Cerrar"
-          className={adminIconButton("plain")}
-        >
-          <X aria-hidden="true" className="size-5" />
-        </button>
-      </div>
-
+  const content = (
+    <>
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4 lg:p-5">
         <div className="relative">
           <Search
@@ -279,7 +269,7 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
                           disabled={busy}
                           className={adminButton("ghost", "sm")}
                         >
-                          Pasar a motivo
+                          Pasar a diseño
                         </button>
                       )}
                       {item.variant_count === 0 ? (
@@ -380,6 +370,39 @@ export default function AttributeManager({ kind, onClose }: { kind: AttributeKin
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (inline) {
+    return (
+      <section aria-label={text.edit} className="flex flex-col overflow-hidden rounded-lg border border-admin-border bg-admin-surface">
+        {content}
+      </section>
+    );
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClose={onClose}
+      aria-labelledby="editar-atributos"
+      className="fixed inset-0 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[640px] flex-col overflow-hidden rounded-lg bg-admin-surface p-0 backdrop:bg-black/45"
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-admin-border py-3 pl-5 pr-2.5">
+        <h2 id="editar-atributos" className={ADMIN_SECTION_TITLE}>
+          {text.edit}
+        </h2>
+        <button
+          type="button"
+          onClick={() => dialogRef.current?.close()}
+          aria-label="Cerrar"
+          className={adminIconButton("plain")}
+        >
+          <X aria-hidden="true" className="size-5" />
+        </button>
+      </div>
+
+      {content}
     </dialog>
   );
 }

@@ -103,7 +103,8 @@ export function adminSegment(active: boolean, size: "md" | "lg" = "md") {
 
 // Píldora de 44px (filtros de Ventas).
 export function adminChip(active: boolean) {
-  return `h-11 shrink-0 whitespace-nowrap rounded-full border px-4 text-[15px] font-semibold transition-colors duration-200 ${
+  // 44px táctil en mobile; en desktop más compacta para que entren varias por renglón.
+  return `h-11 shrink-0 whitespace-nowrap rounded-full border px-4 text-[15px] font-semibold transition-colors duration-200 lg:h-9 lg:px-3.5 lg:text-sm ${
     active
       ? "border-admin-ink bg-admin-ink text-white"
       : "border-admin-border-strong bg-admin-surface text-admin-text hover:bg-admin-bg"

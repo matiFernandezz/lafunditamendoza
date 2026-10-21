@@ -125,3 +125,15 @@ p {
     opacity: 1;
   }
 }
+
+/* Segundo sidebar del panel (Ventas) al abrirse junto al principal. */
+@keyframes lf-subnav-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

@@ -1,26 +1,42 @@
 // Ruta completa de una categoría para el panel: "Fundas › Diseño",
 // "Accesorios › Straps". El nombre del tipo suelto ("Diseño") es ambiguo.
 
+import type { VariantKind } from "@/lib/adminApi";
+
 export const CATEGORY_SEPARATOR = " › ";
 
 type CategoryLike = { id: string; name: string; parent_id: string | null };
 
-/** Slug de la categoría de tope donde los colores por modelo no aplican. */
-export const ACCESSORIES_SLUG = "accesorios";
+type SettingsLike = CategoryLike & { variant_kind: VariantKind | null; by_model: boolean | null };
+
+export type CategorySettings = { kind: VariantKind; byModel: boolean };
 
 /**
- * ¿La categoría es Accesorios o cuelga de Accesorios? Ahí la variante no es
- * un color por modelo (un cable "tipo C a C") y no se ofrecen los controles
- * de colores. El servidor lo vuelve a comprobar (category_is_accessory).
+ * Configuración efectiva de cada categoría: la propia o, si no la tiene, la de
+ * la primera de arriba que sí (igual que category_settings en la base). Sin
+ * nada en toda la rama: color y por modelo (como antes de esta configuración).
  */
-export function isAccessoryCategory(categories: (CategoryLike & { slug: string })[]): (id: string) => boolean {
+export function resolveCategorySettings(categories: SettingsLike[]): (id: string) => CategorySettings {
   const byId = new Map(categories.map((c) => [c.id, c]));
   return (id) => {
+    let kind: VariantKind | null = null;
+    let byModel: boolean | null = null;
     for (let c = byId.get(id), hops = 0; c && hops < 10; c = c.parent_id ? byId.get(c.parent_id) : undefined, hops += 1) {
-      if (c.slug === ACCESSORIES_SLUG) return true;
+      kind ??= c.variant_kind;
+      byModel ??= c.by_model;
     }
-    return false;
+    return { kind: kind ?? "color", byModel: byModel ?? true };
   };
+}
+
+/**
+ * ¿La categoría NO usa colores? Ahí no se ofrecen los controles de colores.
+ * Sale de la configuración de la categoría; el servidor lo vuelve a
+ * comprobar (category_is_accessory).
+ */
+export function isAccessoryCategory(categories: SettingsLike[]): (id: string) => boolean {
+  const settings = resolveCategorySettings(categories);
+  return (id) => settings(id).kind !== "color";
 }
 
 /** La categoría y todos sus tipos (ids). */

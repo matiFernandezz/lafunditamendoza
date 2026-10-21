@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/server/auth";
 import { jsonData, jsonError, readJsonBody } from "@/lib/server/http";
+import { PURCHASE_LIST_SELECT } from "@/lib/server/selects";
 import { isOptionalText, isPositiveInt, isPositiveNumber, isUuid } from "@/lib/server/validate";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { MAX_DESCRIPTION_LENGTH, MAX_NAME_LENGTH } from "../products/limits";
@@ -9,6 +10,7 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_NOTES_LENGTH = 1000;
 const MAX_COLOR_LENGTH = 60;
 const MAX_SKU_LENGTH = 64;
+const PURCHASE_STATUSES = ["armando", "pagado", "en_camino", "recibida"];
 
 type PurchaseItemInput = { variant_id: string; quantity: number; unit_cost: number };
 
@@ -145,7 +147,7 @@ export async function POST(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const { supplier_id, purchase_date, notes, items, products } = await readJsonBody(request);
+  const { supplier_id, purchase_date, notes, items, products, status, shipping_cost } = await readJsonBody(request);
 
   if (!isUuid(supplier_id)) {
     return jsonError(400, "supplier_id debe ser un uuid valido");
@@ -153,6 +155,17 @@ export async function POST(request: NextRequest) {
 
   if (purchase_date !== undefined && !isRealDate(purchase_date)) {
     return jsonError(400, "purchase_date debe tener formato YYYY-MM-DD (o no enviarse)");
+  }
+
+  if (status !== undefined && (typeof status !== "string" || !PURCHASE_STATUSES.includes(status))) {
+    return jsonError(400, `status debe ser uno de: ${PURCHASE_STATUSES.join(", ")} (o no enviarse)`);
+  }
+
+  if (
+    shipping_cost !== undefined &&
+    (typeof shipping_cost !== "number" || !Number.isFinite(shipping_cost) || shipping_cost < 0)
+  ) {
+    return jsonError(400, "shipping_cost debe ser un numero mayor o igual a 0 (o no enviarse)");
   }
 
   if (!isOptionalText(notes, MAX_NOTES_LENGTH)) {
@@ -170,10 +183,17 @@ export async function POST(request: NextRequest) {
       p_purchase_date: purchase_date ?? null,
       p_notes: notes ?? null,
       p_products: parsed.blocks,
+      p_status: status ?? "recibida",
+      p_shipping_cost: shipping_cost ?? 0,
     });
 
     if (error) return jsonError(statusFor(error.code), error.message);
     return jsonData(data, 201);
+  }
+
+  // Estado y envío: solo con el formato grilla (create_purchase la da por recibida y sin envío).
+  if ((status !== undefined && status !== "recibida") || shipping_cost !== undefined) {
+    return jsonError(400, "El estado y el envío del pedido van con el formato de productos");
   }
 
   if (!validateItems(items)) {
@@ -196,4 +216,23 @@ export async function POST(request: NextRequest) {
   }
 
   return jsonData(data, 201);
+}
+
+/** Todos los pedidos, del más nuevo al más viejo, con proveedor y unidades. */
+export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  const { data, error } = await supabaseAdmin()
+    .from("purchases")
+    .select(PURCHASE_LIST_SELECT)
+    .order("created_at", { ascending: false });
+
+  if (error) return jsonError(500, error.message);
+  return jsonData(
+    (data ?? []).map(({ purchase_items, ...purchase }) => ({
+      ...purchase,
+      units: purchase_items.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0),
+    })),
+  );
 }

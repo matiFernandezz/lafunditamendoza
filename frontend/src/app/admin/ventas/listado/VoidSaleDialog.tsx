@@ -3,15 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { AdminApiError, voidSale, type Sale } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
-import AdminNotice from "../AdminNotice";
+import AdminNotice from "../../AdminNotice";
 import {
   ADMIN_BUTTON_DANGER,
   ADMIN_BUTTON_SECONDARY,
   ADMIN_LABEL,
   ADMIN_SECTION_TITLE,
   ADMIN_TEXTAREA,
-} from "../adminStyles";
-import { formatTime, paymentLabel, unitCount } from "./SaleRow";
+} from "../../adminStyles";
+import { formatTime, paymentLabel, unitCount } from "./SalesTable";
 
 /**
  * Se monta con key = id de la venta: cada apertura arranca con el motivo

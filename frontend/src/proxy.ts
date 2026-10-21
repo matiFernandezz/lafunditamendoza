@@ -42,7 +42,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isPublicAdminPath && isAuthenticated) {
-    return NextResponse.redirect(new URL("/admin/ventas", request.url));
+    return NextResponse.redirect(new URL("/admin", request.url));
   }
 
   return response;

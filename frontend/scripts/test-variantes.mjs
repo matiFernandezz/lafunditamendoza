@@ -270,21 +270,21 @@ async function main() {
   // ------------------------------------------------------------------------
   group("2. La ventana según el tipo de producto");
   const fundaAdmin = await adminProduct(funda.id);
-  eq("funda con colores: siempre 'Un iPhone' y pide Color", variantRules(fundaAdmin.product_variants, false), { fixedTarget: "iphone", kind: "color", firstAttribute: null });
+  eq("funda con colores: siempre 'Un iPhone' y pide Color", variantRules(fundaAdmin.product_variants, { kind: "color", byModel: true }), { fixedTarget: "iphone", kind: "color", firstAttribute: null });
   const cable = await newProduct("Cable", cables.id, [{ iphone_model_id: null, color: "Tipo C a C", price: 3000, stock_quantity: 5 }]);
   const cableAdmin = await adminProduct(cable.id);
-  eq("cable (accesorio sin motivos): siempre 'Universal' y pide Descripción", variantRules(cableAdmin.product_variants, true), { fixedTarget: "universal", kind: "text", firstAttribute: null });
+  eq("cable (accesorio sin motivos): siempre 'Universal' y pide Descripción", variantRules(cableAdmin.product_variants, { kind: "none", byModel: false }), { fixedTarget: "universal", kind: "text", firstAttribute: null });
   const protector = await newProduct("Protector", cables.id, [{ iphone_model_id: null, price: 6500, stock_quantity: 3 }]);
   await add(protector.id, { kind: "motif", attr_id: motif.id, models: [null] });
-  eq("protector con motivos: 'Universal' y pide Motivo", variantRules((await adminProduct(protector.id)).product_variants, true), { fixedTarget: "universal", kind: "motif", firstAttribute: null });
+  eq("protector con motivos: 'Universal' y pide Motivo", variantRules((await adminProduct(protector.id)).product_variants, { kind: "none", byModel: false }), { fixedTarget: "universal", kind: "motif", firstAttribute: null });
   const empty = await newProduct("Vacío", fundas.id, []);
-  eq("funda sin variantes: hay que preguntar 'Para' y pide Color", variantRules([], false), { fixedTarget: null, kind: "color", firstAttribute: null });
-  eq("accesorio sin variantes: hay que preguntar 'Para' y pide Descripción", variantRules([], true), { fixedTarget: null, kind: "text", firstAttribute: null });
+  eq("funda sin variantes: va por modelo (su categoría) y pide Color", variantRules([], { kind: "color", byModel: true }), { fixedTarget: "iphone", kind: "color", firstAttribute: null });
+  eq("accesorio sin variantes: universal (su categoría) y pide Descripción", variantRules([], { kind: "none", byModel: false }), { fixedTarget: "universal", kind: "text", firstAttribute: null });
   const plain = await newProduct("Lisa", fundas.id, [
     { iphone_model_id: m13.id, price: 8000, stock_quantity: 3 },
     { iphone_model_id: m15.id, price: 8000, stock_quantity: 2 },
   ]);
-  eq("funda sin color: el primer color va a sus variantes actuales (aviso con cantidad y stock)", variantRules((await adminProduct(plain.id)).product_variants, false), { fixedTarget: "iphone", kind: "color", firstAttribute: { variants: 2, units: 5 } });
+  eq("funda sin color: el primer color va a sus variantes actuales (aviso con cantidad y stock)", variantRules((await adminProduct(plain.id)).product_variants, { kind: "color", byModel: true }), { fixedTarget: "iphone", kind: "color", firstAttribute: { variants: 2, units: 5 } });
 
   eq("precio sugerido: el de otra variante del mismo modelo", suggestedPrice(fundaAdmin.product_variants, [m13.id]), 12345);
   eq("…con varios modelos, el más frecuente del producto", suggestedPrice([{ iphone_model_id: "a", price: 100 }, { iphone_model_id: "b", price: 200 }, { iphone_model_id: "c", price: 200 }], ["a", "b"]), 200);
@@ -297,7 +297,7 @@ async function main() {
   eq("botón: sin modelos", missingToAdd({ ...form, modelCount: 0 }), "Elegí al menos un modelo.");
   eq("botón: universal no pide modelos", missingToAdd({ ...form, target: "universal", modelCount: 0 }), null);
   eq("botón: sin color en un producto que usa colores", missingToAdd({ ...form, attributeChosen: false }), "Elegí el color.");
-  eq("botón: sin motivo en uno que usa motivos", missingToAdd({ ...form, kind: "motif", attributeChosen: false }), "Elegí el motivo.");
+  eq("botón: sin diseño en uno que usa diseños", missingToAdd({ ...form, kind: "motif", attributeChosen: false }), "Elegí el diseño.");
   eq("botón: el color es opcional si el producto todavía no usa colores", missingToAdd({ ...form, attributeChosen: false, usesAttribute: false }), null);
   eq("botón: sin precio", missingToAdd({ ...form, price: "" }), "Poné el precio (mayor a 0).");
   eq("botón: stock inválido", missingToAdd({ ...form, stock: "1.5" }), "El stock tiene que ser un entero mayor o igual a 0.");
@@ -479,6 +479,27 @@ async function main() {
     const { data } = await admin.rpc("suggest_sku", { p_product: product, p_model: modelName, p_color: colorName });
     eq(`el SKU en SQL es el del panel: "${product}" + "${modelName}" + "${colorName}"`, data, suggestSku(product, modelName, colorName));
   }
+
+  // ------------------------------------------------------------------------
+  group("10. Configuración por categoría (variante y por modelo)");
+  eq("PATCH /api/categories/:id sin sesión -> 401", (await api("PATCH", `/api/categories/${fundas.id}`, { variant_kind: "color" }, { auth: false })).status, 401);
+  eq("variante inválida -> 400", (await api("PATCH", `/api/categories/${fundas.id}`, { variant_kind: "tela" })).status, 400);
+  eq("por modelo inválido -> 400", (await api("PATCH", `/api/categories/${fundas.id}`, { by_model: "si" })).status, 400);
+  const settingsOf = async (id) => (await admin.rpc("category_settings", { p_category_id: id })).data?.[0];
+  eq("sin configurar: color y por modelo (como antes)", await settingsOf(fundasTipo.id), { variant_kind: "color", by_model: true });
+  const patched = await api("PATCH", `/api/categories/${fundas.id}`, { variant_kind: "motif", by_model: false });
+  eq("configurar la de arriba -> 200", [patched.status, patched.body?.data?.variant_kind, patched.body?.data?.by_model], [200, "motif", false]);
+  eq("el tipo hereda de la de arriba", await settingsOf(fundasTipo.id), { variant_kind: "motif", by_model: false });
+  const tipoProduct = await newProduct("Config", fundasTipo.id, [{ iphone_model_id: m15.id, price: 3000 }]);
+  const colorBlocked = await add(tipoProduct.id, { kind: "color", attr_id: rojo.id, models: [m15.id], stock: 0, price: 3000 });
+  check("donde la variante es diseño, no se pueden agregar colores", colorBlocked.status >= 400 && colorBlocked.status < 500, `vino ${colorBlocked.status}`);
+  eq("el tipo puede pisar lo heredado", (await api("PATCH", `/api/categories/${fundasTipo.id}`, { variant_kind: "color" })).status, 200);
+  eq("…y queda con lo suyo", (await settingsOf(fundasTipo.id))?.variant_kind, "color");
+  eq("null vuelve a heredar", (await api("PATCH", `/api/categories/${fundasTipo.id}`, { variant_kind: null })).body?.data?.variant_kind, null);
+  eq("…y hereda otra vez de la de arriba", (await settingsOf(fundasTipo.id))?.variant_kind, "motif");
+  const categoriesList = (await api("GET", "/api/categories")).body?.data ?? [];
+  eq("GET /api/categories trae la configuración", categoriesList.find((c) => c.id === fundas.id)?.variant_kind, "motif");
+  eq("una categoría que no existe -> 404", (await api("PATCH", `/api/categories/${FAKE_ID}`, { by_model: true })).status, 404);
 }
 
 let crashed = null;

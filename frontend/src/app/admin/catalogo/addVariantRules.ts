@@ -16,8 +16,8 @@ export type Target = "iphone" | "universal";
 export type AttributeKind = "color" | "motif" | "text";
 
 export type VariantRules = {
-  /** El producto ya define si va por modelo o es universal; null = hay que preguntarlo. */
-  fixedTarget: Target | null;
+  /** Por modelo o universal: lo define el producto o, si no tiene variantes, su categoría. */
+  fixedTarget: Target;
   /** Color (fundas), Motivo (productos con motivos) o Descripción libre. */
   kind: AttributeKind;
   /**
@@ -32,23 +32,32 @@ const hasText = (v: VariantLike) => {
   return text !== "" && text !== "único" && text !== "unico";
 };
 
+/** Configuración de la categoría del producto (ver resolveCategorySettings). */
+export type CategoryRules = { kind: "color" | "motif" | "none"; byModel: boolean };
+
 /**
- * - Una funda (sus variantes tienen modelo) siempre es "Un iPhone"; un producto
- *   sin modelos (protector de cargador, cable) siempre es "Universal". Solo se
- *   pregunta si todavía no tiene variantes.
- * - El atributo: Motivo si el producto usa motivos; Color si usa colores o es
- *   una funda; Descripción libre en Accesorios sin motivos y en productos cuyas
- *   variantes ya se distinguen por una descripción.
+ * - Por modelo o universal: lo que ya usan sus variantes (una funda con
+ *   modelos sigue por modelo); sin variantes, lo que dice su categoría.
+ * - El atributo: el que ya usa el producto (diseño, color o una descripción
+ *   libre); si todavía no usa ninguno, el de su categoría (sin variante =
+ *   descripción libre).
  */
-export function variantRules(variants: VariantLike[], accessory: boolean): VariantRules {
+export function variantRules(variants: VariantLike[], category: CategoryRules): VariantRules {
   const usesMotifs = variants.some((v) => v.motif_id !== null);
   const usesColors = variants.some((v) => v.color_id !== null);
   const usesText = !usesMotifs && !usesColors && variants.some(hasText);
 
-  const fixedTarget: Target | null =
-    variants.length === 0 ? null : variants.some((v) => v.iphone_model_id !== null) ? "iphone" : "universal";
+  const fixedTarget: Target =
+    variants.length === 0
+      ? category.byModel
+        ? "iphone"
+        : "universal"
+      : variants.some((v) => v.iphone_model_id !== null)
+        ? "iphone"
+        : "universal";
 
-  const kind: AttributeKind = usesMotifs ? "motif" : usesColors ? "color" : usesText || accessory ? "text" : "color";
+  const fromCategory: AttributeKind = category.kind === "none" ? "text" : category.kind;
+  const kind: AttributeKind = usesMotifs ? "motif" : usesColors ? "color" : usesText ? "text" : fromCategory;
 
   const firstAttribute =
     kind !== "text" && variants.length > 0 && !usesMotifs && !usesColors
@@ -97,7 +106,7 @@ export function missingToAdd(form: {
   if (form.target === null) return "Elegí si es para un iPhone o universal.";
   if (form.target === "iphone" && form.modelCount === 0) return "Elegí al menos un modelo.";
   // En un producto que ya usa colores o motivos, toda variante lleva el suyo.
-  if (form.usesAttribute && !form.attributeChosen) return form.kind === "motif" ? "Elegí el motivo." : "Elegí el color.";
+  if (form.usesAttribute && !form.attributeChosen) return form.kind === "motif" ? "Elegí el diseño." : "Elegí el color.";
   const stock = form.stock.trim() === "" ? 0 : Number(form.stock);
   if (!Number.isInteger(stock) || stock < 0) return "El stock tiene que ser un entero mayor o igual a 0.";
   const price = Number(form.price);

@@ -19,18 +19,17 @@ import {
   adminButton,
   adminIconButton,
   adminInput,
-  adminSegment,
 } from "../adminStyles";
 import { useAttributeLibrary } from "../attributeLibrary";
 import ModelMultiSelect from "./ModelMultiSelect";
-import { missingToAdd, suggestedPrice, variantRules, type Target } from "./addVariantRules";
+import { missingToAdd, suggestedPrice, variantRules, type CategoryRules, type Target } from "./addVariantRules";
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 
 /**
  * Ventana "Agregar variante". Lo que pregunta depende del producto:
- *  - "Para: Un iPhone / Universal" solo si el producto todavía no lo define
- *    (una funda siempre va por modelo; un protector o un cable, universal).
+ *  - Por modelo o universal: lo que ya usa el producto o, si no tiene
+ *    variantes, lo que dice su categoría (no se pregunta).
  *  - Modelos: uno o varios, escribiendo. Se crea una variante por modelo.
  *  - Color (fundas), Motivo (productos con motivos) o Descripción libre
  *    (accesorios sin motivos).
@@ -40,7 +39,7 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` :
 export default function AddVariantDialog({
   products,
   models,
-  isAccessory,
+  settingsOf,
   categoryPath,
   presetProductId,
   onClose,
@@ -49,7 +48,8 @@ export default function AddVariantDialog({
   products: AdminProduct[];
   /** Todos los modelos de iPhone, en orden. */
   models: AdminIphoneModel[];
-  isAccessory: (categoryId: string) => boolean;
+  /** Configuración de la categoría del producto: color, diseño o nada; por modelo o universal. */
+  settingsOf: (categoryId: string) => CategoryRules;
   categoryPath: (categoryId: string) => string;
   /** Producto desde el que se abrió ("" = se elige adentro). */
   presetProductId: string;
@@ -60,7 +60,6 @@ export default function AddVariantDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [productId, setProductId] = useState(presetProductId);
   const [productSearch, setProductSearch] = useState("");
-  const [targetChoice, setTargetChoice] = useState<Target | null>(null);
   const [modelIds, setModelIds] = useState<string[]>([]);
   const [attribute, setAttribute] = useState(""); // nombre del color o motivo, o la descripción
   const [stock, setStock] = useState("");
@@ -77,8 +76,8 @@ export default function AddVariantDialog({
 
   const product = products.find((p) => p.id === productId);
   const variants = product?.product_variants ?? [];
-  const rules = variantRules(variants, product ? isAccessory(product.category_id) : false);
-  const target: Target | null = rules.fixedTarget ?? targetChoice;
+  const rules = variantRules(variants, product ? settingsOf(product.category_id) : { kind: "color", byModel: true });
+  const target: Target = rules.fixedTarget;
   const targetModels: (string | null)[] = target === "universal" ? [null] : modelIds;
 
   const suggested = suggestedPrice(variants, targetModels);
@@ -108,12 +107,11 @@ export default function AddVariantDialog({
     price: assignsFirst ? "1" : price,
   });
 
-  const kindLabel = rules.kind === "color" ? "Color" : rules.kind === "motif" ? "Motivo" : "Descripción";
+  const kindLabel = rules.kind === "color" ? "Color" : rules.kind === "motif" ? "Diseño" : "Descripción";
 
   function pickProduct(id: string) {
     setProductId(id);
     setProductSearch("");
-    setTargetChoice(null);
     setModelIds([]);
     setAttribute("");
     setPriceText(null);
@@ -260,32 +258,6 @@ export default function AddVariantDialog({
 
         {product && (
           <>
-            {/* Solo se pregunta si el producto todavía no tiene variantes que lo definan. */}
-            {rules.fixedTarget === null && (
-              <div>
-                <span className={ADMIN_LABEL}>Para</span>
-                <div role="radiogroup" aria-label="Para" className="grid grid-cols-2 gap-2">
-                  {(
-                    [
-                      ["iphone", "Un iPhone"],
-                      ["universal", "Universal"],
-                    ] as const
-                  ).map(([value, text]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={targetChoice === value}
-                      onClick={() => setTargetChoice(value)}
-                      className={adminSegment(targetChoice === value)}
-                    >
-                      {text}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {target === "iphone" && (
               <ModelMultiSelect
                 models={models}
@@ -343,7 +315,7 @@ export default function AddVariantDialog({
 
             {assignsFirst && rules.firstAttribute ? (
               <AdminNotice kind="ink">
-                Este producto todavía no tiene {rules.kind === "color" ? "colores" : "motivos"}:{" "}
+                Este producto todavía no tiene {rules.kind === "color" ? "colores" : "diseños"}:{" "}
                 {rules.firstAttribute.variants === 1
                   ? "su variante actual pasa"
                   : `sus ${rules.firstAttribute.variants} variantes actuales pasan`}{" "}

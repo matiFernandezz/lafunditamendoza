@@ -88,6 +88,8 @@ export type CreateSalePayload = {
   items: SaleItemInput[];
   /** Entero 0-99 sobre el total. El monto lo calcula el backend. */
   discount_percent?: number;
+  /** Nombre del cliente, opcional. */
+  customer_name?: string | null;
 };
 
 export type CreatedSale = {
@@ -102,6 +104,7 @@ export type CreatedSale = {
   discount_percent: number;
   discount_amount: number;
   notes: string | null;
+  customer_name: string | null;
 };
 
 export function createSale(payload: CreateSalePayload): Promise<{ data: CreatedSale }> {
@@ -118,6 +121,8 @@ export type SaleLine = {
   variant_id: string;
   quantity: number;
   unit_price: number;
+  /** Costo de la variante al momento de la venta (para la ganancia). */
+  unit_cost: number;
   variant: {
     id: string;
     sku: string;
@@ -145,8 +150,10 @@ export function getSales(
   range: DateRange,
   page = 1,
   pageSize = 50,
+  status?: SaleStatus,
 ): Promise<{ data: Sale[]; pagination: Pagination }> {
   const query = new URLSearchParams({ ...range, page: String(page), page_size: String(pageSize) });
+  if (status) query.set("status", status);
   return adminFetch(`/api/sales?${query}`);
 }
 
@@ -155,6 +162,8 @@ export type SalesSummary = {
   discount_total: number;
   sales_count: number;
   average_ticket: number;
+  /** Lo cobrado menos el costo de lo vendido. */
+  gross_profit: number;
   by_payment_method: { payment_method: string; total_amount: number; sales_count: number }[];
   top_products: { product_id: string; product_name: string; units: number; revenue: number }[];
 };
@@ -174,16 +183,38 @@ export type Supplier = {
   id: string;
   name: string;
   contact_info: string | null;
+  /** Cómo se le paga ("Transferencia", "USDT"…). */
+  payment_method: string | null;
+  /** Envío estimado de un pedido: se propone al cargar uno nuevo. */
+  shipping_cost: number;
+  notes: string | null;
 };
 
-export function getSuppliers(): Promise<{ data: Supplier[] }> {
+/** Proveedor con lo que se le compró (lista de Proveedores). */
+export type SupplierWithStats = Supplier & {
+  purchases_count: number;
+  /** Mercadería + envío de los pedidos ya pagados. */
+  total_paid: number;
+  last_purchase_date: string | null;
+};
+
+export type SupplierInput = {
+  name: string;
+  contact_info?: string | null;
+  payment_method?: string | null;
+  shipping_cost?: number;
+  notes?: string | null;
+};
+
+export function updateSupplier(id: string, patch: Partial<SupplierInput>): Promise<{ data: Supplier }> {
+  return adminFetch(`/api/suppliers/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export function getSuppliers(): Promise<{ data: SupplierWithStats[] }> {
   return adminFetch("/api/suppliers");
 }
 
-export function createSupplier(payload: {
-  name: string;
-  contact_info?: string;
-}): Promise<{ data: Supplier }> {
+export function createSupplier(payload: SupplierInput): Promise<{ data: Supplier }> {
   return adminFetch("/api/suppliers", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -204,6 +235,7 @@ export type CreatePurchasePayload = {
 
 export type CreatedPurchase = {
   id: string;
+  number: number;
   supplier_id: string;
   purchase_date: string;
   total_amount: number;
@@ -233,6 +265,8 @@ export function createPurchaseGrid(payload: {
   supplier_id: string;
   purchase_date: string;
   products: unknown[];
+  status?: PurchaseStatus;
+  shipping_cost?: number;
 }): Promise<{ data: CreatedPurchaseGrid }> {
   return adminFetch("/api/purchases", {
     method: "POST",
@@ -252,12 +286,27 @@ export function getLastPurchaseCosts(): Promise<{ data: LastPurchaseCost[] }> {
   return adminFetch("/api/purchases/last-costs");
 }
 
+/** Qué distingue a las variantes de una categoría: color, diseño (motif) o nada. */
+export type VariantKind = "color" | "motif" | "none";
+
 export type AdminCategory = {
   id: string;
   name: string;
   slug: string;
   parent_id: string | null;
+  sort_order: number;
+  /** null = hereda de la categoría de arriba (ver resolveCategorySettings). */
+  variant_kind: VariantKind | null;
+  /** true = una variante por modelo de iPhone; false = universal; null = hereda. */
+  by_model: boolean | null;
 };
+
+export function updateCategory(
+  id: string,
+  patch: { variant_kind?: VariantKind | null; by_model?: boolean | null },
+): Promise<{ data: AdminCategory }> {
+  return adminFetch(`/api/categories/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
 
 export function getAdminCategories(): Promise<{ data: AdminCategory[] }> {
   return adminFetch("/api/categories");
@@ -643,4 +692,110 @@ export function cancelWebOrder(id: string, reason: string | null): Promise<{ dat
     method: "POST",
     body: JSON.stringify({ reason }),
   });
+}
+
+/** El stock entra recién en "recibida". */
+export type PurchaseStatus = "armando" | "pagado" | "en_camino" | "recibida";
+
+type PurchaseBase = {
+  id: string;
+  /** Pedido 1, 2, 3… */
+  number: number;
+  purchase_date: string;
+  created_at: string;
+  status: PurchaseStatus;
+  /** Mercadería, sin el envío. */
+  total_amount: number;
+  shipping_cost: number;
+  paid_at: string | null;
+  shipped_at: string | null;
+  received_at: string | null;
+  notes: string | null;
+};
+
+export type PurchaseSummary = PurchaseBase & { supplier: { id: string; name: string } | null; units: number };
+
+export type PurchaseLine = {
+  id: string;
+  quantity: number;
+  unit_cost: number;
+  variant: {
+    id: string;
+    sku: string;
+    color: string | null;
+    /** Precio de venta actual. */
+    price: number;
+    stock_quantity: number;
+    product: { id: string; name: string } | null;
+    iphone_model: { id: string; name: string } | null;
+  } | null;
+};
+
+export type Purchase = PurchaseBase & { supplier: Supplier | null; purchase_items: PurchaseLine[] };
+
+export function getPurchases(): Promise<{ data: PurchaseSummary[] }> {
+  return adminFetch("/api/purchases");
+}
+
+export function getPurchase(id: string): Promise<{ data: Purchase }> {
+  return adminFetch(`/api/purchases/${id}`);
+}
+
+/** Estado, envío o notas. Pasar a "recibida" suma el stock. */
+export function updatePurchase(
+  id: string,
+  patch: { status?: PurchaseStatus; shipping_cost?: number; notes?: string | null },
+): Promise<{ data: Purchase }> {
+  return adminFetch(`/api/purchases/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+/** Solo pedidos que todavía no llegaron. */
+export async function deletePurchase(id: string): Promise<void> {
+  await adminFetch(`/api/purchases/${id}`, { method: "DELETE" });
+}
+
+export type StockAlert = {
+  id: string;
+  name: string;
+  stock: number;
+  variants: number;
+  empty_variants: number;
+  kind: "sin_stock" | "poco_stock" | "modelos";
+};
+
+export type DashboardPurchase = {
+  id: string;
+  number: number;
+  purchase_date: string;
+  created_at: string;
+  total_amount: number;
+  shipping_cost: number;
+  status: PurchaseStatus;
+  received_at: string | null;
+  supplier_name: string;
+  units: number;
+};
+
+export type Dashboard = {
+  sales: { total_amount: number; sales_count: number; gross_profit: number; prev_total_amount: number };
+  /** bucket: hora local "2026-10-20T15:00" (si el período es un día) o día "2026-10-20T00:00". */
+  series: { unit: "hour" | "day"; points: { bucket: string; total_amount: number; sales_count: number }[] };
+  /** Histórico: lo cobrado por medio de pago y lo pagado en pedidos. */
+  cash: { efectivo: number; transferencia: number; purchases: number };
+  stock: { cost_value: number; retail_value: number; units: number; without_cost: number };
+  alerts: {
+    out_of_stock: number;
+    low_stock: number;
+    missing_models: number;
+    products: StockAlert[];
+    web_pending: number;
+    purchases_on_the_way: number;
+  };
+  purchases: DashboardPurchase[];
+};
+
+export function getDashboard(params: DateRange & { prev_from: string; prev_to: string; tz: string }): Promise<{
+  data: Dashboard;
+}> {
+  return adminFetch(`/api/dashboard?${new URLSearchParams(params)}`);
 }

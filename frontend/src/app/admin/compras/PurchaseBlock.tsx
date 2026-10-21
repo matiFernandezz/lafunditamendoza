@@ -172,7 +172,7 @@ export default function PurchaseBlock({
 
       <div>
         <div className={`hidden pb-2 text-xs text-admin-muted md:grid ${ROW_GRID}`}>
-          <span>Modelo · {block.attrKind === "motif" ? "motivo" : "color"}</span>
+          <span>Modelo · {block.attrKind === "motif" ? "diseño" : "color"}</span>
           <span className="text-right">Stock</span>
           <span className="text-right">Cantidad</span>
           <span className="text-right">Costo unitario</span>
@@ -211,7 +211,7 @@ export default function PurchaseBlock({
                     </select>
                     <ColorField
                       kind={block.attrKind ?? "color"}
-                      label={`${block.attrKind === "motif" ? "Motivo" : "Color"} de la variante nueva`}
+                      label={`${block.attrKind === "motif" ? "Diseño" : "Color"} de la variante nueva`}
                       value={row.color}
                       disabled={disabled}
                       onChange={(value) => updateRow(row.key, { color: value })}

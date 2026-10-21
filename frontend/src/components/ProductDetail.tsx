@@ -268,7 +268,7 @@ export default function ProductDetail({
         ) : motifSelect ? (
           <div>
             <label htmlFor="motivo-detalle" className="mb-2 block font-medium">
-              Motivo
+              Diseño
             </label>
             {/* Lista, no círculos: mismo estilo que "Elegí tu modelo". */}
             <select
@@ -290,7 +290,7 @@ export default function ProductDetail({
           optionLabels.length > 0 && (
             <div>
               <span className="mb-2 block font-medium">
-                {motifList.length === 1 ? "Motivo" : "Elegí una opción"}
+                {motifList.length === 1 ? "Diseño" : "Elegí una opción"}
               </span>
               <div className="flex flex-wrap gap-2">
                 {optionLabels.map((label) => {

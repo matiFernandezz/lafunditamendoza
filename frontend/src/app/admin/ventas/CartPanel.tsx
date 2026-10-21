@@ -5,6 +5,7 @@ import { formatPrice } from "@/lib/format";
 import AdminNotice from "../AdminNotice";
 import {
   ADMIN_CAP,
+  ADMIN_INPUT,
   ADMIN_INPUT_ADORNMENT,
   ADMIN_INSET,
   ADMIN_LABEL,
@@ -86,6 +87,8 @@ export default function CartPanel({
   onPaymentMethodChange,
   discount,
   onDiscountChange,
+  customerName,
+  onCustomerNameChange,
   onUpdateQuantity,
   onConfirm,
   submitting,
@@ -98,6 +101,8 @@ export default function CartPanel({
   onPaymentMethodChange: (method: PaymentMethod) => void;
   discount: DiscountChoice;
   onDiscountChange: (discount: DiscountChoice) => void;
+  customerName: string;
+  onCustomerNameChange: (name: string) => void;
   onUpdateQuantity: (variantId: string, quantity: number) => void;
   onConfirm: () => void;
   submitting: boolean;
@@ -138,7 +143,7 @@ export default function CartPanel({
         aria-label="Venta actual"
         className={`fixed inset-x-0 bottom-0 z-50 max-h-[92vh] overflow-y-auto rounded-t-[14px] bg-admin-surface px-4 pb-6 pt-2 transition-transform duration-200 ease-out ${
           open ? "translate-y-0" : "translate-y-full"
-        } md:sticky md:top-[72px] md:z-auto md:max-h-[calc(100vh-6rem)] md:w-[360px] md:shrink-0 md:translate-y-0 md:rounded-md md:border md:border-admin-border md:p-5 lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:w-[400px]`}
+        } md:sticky md:top-[72px] md:z-auto md:max-h-[calc(100vh-6rem)] md:w-[320px] md:shrink-0 md:translate-y-0 md:rounded-lg md:border md:border-admin-border md:p-5 lg:top-6 lg:max-h-[calc(100vh-3rem)] xl:top-8 xl:max-h-[calc(100vh-4rem)] xl:w-[380px]`}
       >
         <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded bg-admin-border-strong md:hidden" />
 
@@ -288,6 +293,22 @@ export default function CartPanel({
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="venta-cliente" className={ADMIN_LABEL}>
+                Cliente <span className="font-normal text-admin-muted">(opcional)</span>
+              </label>
+              <input
+                id="venta-cliente"
+                type="text"
+                autoComplete="off"
+                maxLength={120}
+                value={customerName}
+                onChange={(e) => onCustomerNameChange(e.target.value)}
+                placeholder="Nombre de quien compra"
+                className={ADMIN_INPUT}
+              />
             </div>
 
             {error && <AdminNotice kind="danger">{error}</AdminNotice>}

@@ -2,13 +2,12 @@
 
 import {
   Globe,
+  House,
   LogOut,
   Menu,
   Package,
-  PackagePlus,
   PanelLeftClose,
   PanelLeftOpen,
-  ReceiptText,
   ShoppingCart,
   Truck,
   X,
@@ -20,18 +19,20 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { getWebOrderCounts } from "@/lib/adminApi";
 import { createClient } from "@/lib/supabase/client";
 import AdminLogo from "./AdminLogo";
+import ComprasSidebar from "./compras/ComprasSidebar";
+import StockSidebar from "./stock/StockSidebar";
+import VentasSidebar from "./ventas/VentasSidebar";
 import { ADMIN_CAP_BASE } from "./adminStyles";
 
 type Tab = { href: string; label: string; icon: LucideIcon };
 
-// "Nuevo producto" es la pantalla /admin/productos.
+// El historial de ventas vive en Ventas › Listado; Nuevo producto, en Stock.
 const TABS: Tab[] = [
+  { href: "/admin", label: "Inicio", icon: House },
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/admin/web", label: "Ventas web", icon: Globe },
-  { href: "/admin/historial", label: "Historial", icon: ReceiptText },
   { href: "/admin/compras", label: "Compras", icon: Truck },
-  { href: "/admin/productos", label: "Nuevo producto", icon: PackagePlus },
-  { href: "/admin/catalogo", label: "Catálogo", icon: Package },
+  { href: "/admin/stock", label: "Stock", icon: Package },
 ];
 
 /** Avisa al shell que cambiaron las reservas web (para refrescar el contador). */
@@ -82,7 +83,7 @@ function PendingDot({ count, className = "" }: { count: number; className?: stri
 }
 
 const NAV_ITEM =
-  "flex h-12 w-full items-center gap-3 rounded-md px-3 text-[15px] font-semibold transition-colors duration-200";
+  "flex h-12 w-full items-center gap-3 rounded-md px-3 text-[15px] font-semibold transition-colors duration-200 lg:h-10 lg:gap-2.5 lg:px-2.5 lg:text-sm";
 const NAV_ICON_BUTTON =
   "size-11 shrink-0 items-center justify-center rounded-md text-admin-on-ink/78 transition-colors duration-200 hover:bg-admin-on-ink/10 hover:text-admin-on-ink";
 
@@ -91,6 +92,9 @@ const NAV_ICON_BUTTON =
  * fijo a la izquierda y se pliega a una columna de íconos; en mobile y tablet
  * es un cajón que se abre con el botón de menú de la barra de arriba.
  * El login no lleva shell: arma su propia pantalla.
+ *
+ * Ventas, Compras y Stock abren un segundo sidebar pegado al principal; el principal se pliega
+ * solo para hacerle lugar (se puede volver a desplegar mientras se está ahí).
  */
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -98,7 +102,29 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const isLogin = pathname === "/admin/login";
   const [pendingWeb, setPendingWeb] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
+  const storedCollapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
+  // Secciones con segundo sidebar.
+  const subnav = pathname.startsWith("/admin/ventas")
+    ? "ventas"
+    : pathname.startsWith("/admin/compras")
+      ? "compras"
+      : pathname.startsWith("/admin/stock")
+        ? "stock"
+        : null;
+  const hasSubnav = subnav !== null;
+  // Desplegado a mano dentro de Ventas; se olvida al salir de la sección.
+  const [mainOpenInSubnav, setMainOpenInSubnav] = useState(false);
+  const [prevSubnav, setPrevSubnav] = useState(subnav);
+  if (prevSubnav !== subnav) {
+    setPrevSubnav(subnav);
+    setMainOpenInSubnav(false);
+  }
+  const collapsed = hasSubnav ? !mainOpenInSubnav : storedCollapsed;
+
+  function toggleCollapsed() {
+    if (hasSubnav) setMainOpenInSubnav((open) => !open);
+    else writeCollapsed(!storedCollapsed);
+  }
 
   // Se pide al entrar, al cambiar de pantalla y cuando la pestaña Web avisa
   // que marcó o canceló una reserva. Si falla, el contador no se muestra.
@@ -196,30 +222,36 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <aside
         id="admin-sidebar"
         className={`fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col bg-admin-ink transition-[transform,visibility,width] duration-200 ease-out motion-reduce:transition-none lg:visible lg:sticky lg:top-0 lg:z-30 lg:h-screen lg:shrink-0 lg:translate-x-0 ${
-          collapsed ? "lg:w-[72px]" : "lg:w-60"
+          collapsed ? "lg:w-16" : "lg:w-52"
         } ${drawerOpen ? "visible translate-x-0" : "invisible -translate-x-full"}`}
       >
+        {/* Plegado: el logo queda (más chico) con el botón de desplegar al lado. */}
         <div
           className={`flex h-16 shrink-0 items-center justify-between pl-4 pr-2.5 ${
-            collapsed ? "lg:justify-center lg:px-0" : ""
+            collapsed ? "lg:h-14 lg:justify-center lg:gap-0.5 lg:px-1" : "lg:h-14 lg:pl-3.5 lg:pr-2"
           }`}
         >
-          <div className={`flex items-center gap-3 ${labelClass}`}>
-            <AdminLogo size={44} />
-            <span className={`${ADMIN_CAP_BASE} text-admin-on-ink/60`}>Panel</span>
+          <div className="flex items-center gap-3">
+            <span className={collapsed ? "lg:hidden" : ""}>
+              <AdminLogo size={38} />
+            </span>
+            <span className={collapsed ? "hidden lg:block" : "hidden"}>
+              <AdminLogo size={26} />
+            </span>
+            <span className={`${ADMIN_CAP_BASE} text-admin-on-ink/60 ${labelClass}`}>Panel</span>
           </div>
           <button
             type="button"
-            onClick={() => writeCollapsed(!collapsed)}
+            onClick={toggleCollapsed}
             aria-label={collapsed ? "Desplegar menú" : "Plegar menú"}
             title={collapsed ? "Desplegar menú" : "Plegar menú"}
             aria-expanded={!collapsed}
-            className={`hidden lg:flex ${NAV_ICON_BUTTON}`}
+            className={`hidden lg:flex ${NAV_ICON_BUTTON} ${collapsed ? "lg:size-7" : "lg:size-9"}`}
           >
             {collapsed ? (
-              <PanelLeftOpen aria-hidden="true" className="size-5" />
+              <PanelLeftOpen aria-hidden="true" className="size-[18px]" />
             ) : (
-              <PanelLeftClose aria-hidden="true" className="size-5" />
+              <PanelLeftClose aria-hidden="true" className="size-[18px]" />
             )}
           </button>
           <button
@@ -232,9 +264,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </button>
         </div>
 
-        <nav aria-label="Panel" className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2">
+        <nav aria-label="Panel" className={`flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2 ${collapsed ? "lg:px-2" : "lg:px-2.5"}`}>
           {TABS.map((tab) => {
-            const current = pathname.startsWith(tab.href);
+            const current = tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
             const pending = tab.href === "/admin/web" ? pendingWeb : 0;
             return (
               <Link
@@ -248,7 +280,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 }`}
               >
                 <span className="relative flex shrink-0">
-                  <tab.icon aria-hidden="true" className="size-5" />
+                  <tab.icon aria-hidden="true" className="size-5 lg:size-[18px]" />
                   <PendingDot
                     count={pending}
                     className={`absolute -right-2.5 -top-2 hidden ${collapsed ? "lg:inline-flex" : ""}`}
@@ -261,20 +293,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        <div className="shrink-0 border-t border-admin-on-ink/15 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+        <div className={`shrink-0 border-t border-admin-on-ink/15 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] ${collapsed ? "lg:px-2" : "lg:px-2.5"}`}>
           <button
             type="button"
             onClick={handleLogout}
             title={collapsed ? "Salir" : undefined}
             className={`${NAV_ITEM} ${itemLayout} text-admin-on-ink/78 hover:bg-admin-on-ink/10 hover:text-admin-on-ink`}
           >
-            <LogOut aria-hidden="true" className="size-5 shrink-0" />
+            <LogOut aria-hidden="true" className="size-5 shrink-0 lg:size-[18px]" />
             <span className={labelClass}>Salir</span>
           </button>
         </div>
       </aside>
 
-      <main className="mx-auto w-full min-w-0 max-w-[1240px] flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 lg:px-8 lg:pb-18 lg:pt-8">
+      {subnav === "ventas" && <VentasSidebar />}
+      {subnav === "compras" && <ComprasSidebar />}
+      {subnav === "stock" && <StockSidebar />}
+
+      <main className="mx-auto w-full min-w-0 max-w-[1440px] flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 lg:px-6 lg:pb-18 lg:pt-6 xl:px-8 xl:pt-8">
         {children}
       </main>
     </div>

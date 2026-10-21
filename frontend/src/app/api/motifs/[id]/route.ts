@@ -27,9 +27,9 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/motifs
     .select(MOTIF_SELECT)
     .maybeSingle();
 
-  if (error?.code === "23505") return jsonError(409, "Ya existe un motivo con ese nombre");
+  if (error?.code === "23505") return jsonError(409, "Ya existe un diseño con ese nombre");
   if (error) return jsonError(500, error.message);
-  if (!data) return jsonError(404, "No existe un motivo con ese id");
+  if (!data) return jsonError(404, "No existe un diseño con ese id");
   return jsonData(data);
 }
 

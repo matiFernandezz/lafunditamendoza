@@ -229,8 +229,8 @@ export default function ProductImageGallery({
         <p className={ADMIN_TEXT_MUTED}>
           {!isGeneral
             ? sorted.length > 0
-              ? `Se muestran cuando el cliente elige este ${group.motifId ? "motivo" : "color"}. Tocá una foto para moverla o quitarla.`
-              : `Sin fotos de este ${group.motifId ? "motivo" : "color"}: en la web se usan las generales.`
+              ? `Se muestran cuando el cliente elige este ${group.motifId ? "diseño" : "color"}. Tocá una foto para moverla o quitarla.`
+              : `Sin fotos de este ${group.motifId ? "diseño" : "color"}: en la web se usan las generales.`
             : sorted.length > 0
               ? "La primera es la foto principal en la web. Tocá una foto para moverla o quitarla."
               : "Sin fotos: en la web se ve el recuadro vacío."}
