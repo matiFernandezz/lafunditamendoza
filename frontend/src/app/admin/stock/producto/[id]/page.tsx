@@ -204,7 +204,7 @@ export default function StockProductPage() {
           : "Agregar diseños"
         : rules.fixedTarget === "iphone"
           ? "Agregar modelos"
-          : "Agregar opción";
+          : "Agregar variante";
   const units = product.product_variants.reduce((sum, v) => sum + v.stock_quantity, 0);
   const thumb = [...product.product_images].sort((a, b) => a.sort_order - b.sort_order)[0]?.url;
 
@@ -234,8 +234,15 @@ export default function StockProductPage() {
                 {!product.active && <span className={adminBadge("neutral")}>Oculto en la web</span>}
               </div>
               <p className="mt-0.5 text-sm text-admin-muted">
-                {categoryPath(product.category_id)} · {settingsHint(settings.kind, rules.fixedTarget === "iphone")} ·{" "}
-                {product.product_variants.length === 1 ? "1 variante" : `${product.product_variants.length} variantes`} ·{" "}
+                {categoryPath(product.category_id)} ·{" "}
+                <Link
+                  href="/admin/stock/categorias"
+                  title="Lo define la categoría: cambialo en Stock › Categorías"
+                  className="underline decoration-dotted underline-offset-2 hover:text-admin-text"
+                >
+                  {settingsHint(settings.kind, rules.fixedTarget === "iphone")}
+                </Link>{" "}
+                · {product.product_variants.length === 1 ? "1 variante" : `${product.product_variants.length} variantes`} ·{" "}
                 {units} unidades
               </p>
             </div>

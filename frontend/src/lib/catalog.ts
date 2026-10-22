@@ -5,6 +5,8 @@ export type Category = {
   name: string;
   slug: string;
   parent_id: string | null;
+  /** Foto de su mosaico en la home (la elige el panel › Tienda). */
+  home_image_url?: string | null;
 };
 
 export type CategoryGroup = Category & { children: Category[] };
@@ -77,7 +79,7 @@ export const isUuid = (value: unknown): value is string =>
 export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   const { data, error } = await supabase
     .from("categories")
-    .select("id, name, slug, parent_id")
+    .select("id, name, slug, parent_id, home_image_url")
     .order("sort_order")
     .order("name")
     .overrideTypes<Category[], { merge: false }>();
@@ -227,7 +229,14 @@ export async function getFeaturedProducts(limit: number): Promise<Product[]> {
   return data;
 }
 
-export type CategoryTile = { id: string; name: string; slug: string; href: string; count: number };
+export type CategoryTile = {
+  id: string;
+  name: string;
+  slug: string;
+  href: string;
+  count: number;
+  imageUrl: string | null;
+};
 
 /** Link de una categoría: las de tope tienen página; un tipo es un filtro de su categoría. */
 export function categoryHref(category: { slug: string }, parent?: { slug: string } | null): string {
@@ -249,10 +258,13 @@ export async function getCategoryTiles(): Promise<CategoryTile[]> {
         slug: child.slug,
         href: categoryHref(child, group),
         count: counts[child.id] ?? 0,
+        imageUrl: child.home_image_url ?? null,
       }));
     }
     const count = [group, ...group.children].reduce((sum, c) => sum + (counts[c.id] ?? 0), 0);
-    return [{ id: group.id, name: group.name, slug: group.slug, href: categoryHref(group), count }];
+    return [
+      { id: group.id, name: group.name, slug: group.slug, href: categoryHref(group), count, imageUrl: group.home_image_url ?? null },
+    ];
   });
 }
 
@@ -286,4 +298,126 @@ export async function getProductCountsByCategory(): Promise<Record<string, numbe
   const counts: Record<string, number> = {};
   for (const row of data) counts[row.category_id] = (counts[row.category_id] ?? 0) + 1;
   return counts;
+}
+
+// ---------------------------------------------------------------------------
+// Contenido de la home que se edita en el panel › Tienda.
+// ---------------------------------------------------------------------------
+
+export type HomeSlideRow = {
+  id: string;
+  image_url: string;
+  /** Foto propia para el celular (vertical); null = se recorta la de computadora. */
+  mobile_image_url: string | null;
+  alt: string;
+  kind: "rango" | "titulo" | "logo" | "foto";
+  label: string | null;
+  title: string | null;
+  cta_label: string | null;
+  cta_href: string | null;
+  position: string | null;
+  dim: number | null;
+};
+
+/** Fotos del carrusel de la portada, en orden. */
+export async function getHomeSlides(): Promise<HomeSlideRow[]> {
+  const { data, error } = await supabase
+    .from("home_slides")
+    .select("id, image_url, mobile_image_url, alt, kind, label, title, cta_label, cta_href, position, dim")
+    .order("sort_order")
+    .order("created_at")
+    .overrideTypes<HomeSlideRow[], { merge: false }>();
+  if (error) throw new Error(`No se pudo cargar el carrusel: ${error.message}`);
+  return data;
+}
+
+export type NewArrivalItem = {
+  product: Product;
+  /** PNG sin fondo (el teléfono que gira). */
+  imageUrl: string;
+  /** Color del canto de la funda. */
+  edgeColor: string;
+};
+
+/**
+ * "Nuevos ingresos" en el orden del panel, con los datos de hoy de cada
+ * producto. Los que no están activos o no tienen stock no aparecen.
+ */
+export async function getHomeNewArrivals(): Promise<NewArrivalItem[]> {
+  const { data: rows, error } = await supabase
+    .from("home_new_arrivals")
+    .select("product_id, image_url, edge_color")
+    .order("sort_order")
+    .order("created_at")
+    .overrideTypes<{ product_id: string; image_url: string; edge_color: string }[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar los nuevos ingresos: ${error.message}`);
+  if (rows.length === 0) return [];
+
+  const { data: products, error: productsError } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .in("id", [...new Set(rows.map((r) => r.product_id))])
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .overrideTypes<Product[], { merge: false }>();
+  if (productsError) throw new Error(`No se pudieron cargar los nuevos ingresos: ${productsError.message}`);
+
+  const byId = new Map(products.map((p) => [p.id, p]));
+  return rows.flatMap((row) => {
+    const product = byId.get(row.product_id);
+    return product ? [{ product, imageUrl: row.image_url, edgeColor: row.edge_color }] : [];
+  });
+}
+
+export type HomeSectionRow = { key: "categorias" | "mas_vendidas" | "ultimos"; visible: boolean; title: string };
+
+/** Secciones de la home debajo de "Elegí tu iPhone", en el orden del panel. */
+export async function getHomeSections(): Promise<HomeSectionRow[]> {
+  const { data, error } = await supabase
+    .from("home_sections")
+    .select("key, visible, title")
+    .order("sort_order")
+    .overrideTypes<HomeSectionRow[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar las secciones: ${error.message}`);
+  return data;
+}
+
+/**
+ * Buscador del header: productos activos con stock cuyo nombre, descripción o
+ * categoría contienen lo buscado; también busca en sus modelos, colores y
+ * diseños ("13 pro", "rosa"). Sin tildes ni mayúsculas que importen.
+ */
+export async function searchProducts(query: string): Promise<Product[]> {
+  const term = query
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^\p{L}\p{N} ]/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (term.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .order("created_at", { ascending: false })
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
+    .overrideTypes<Product[], { merge: false }>();
+  if (error) throw new Error(`No se pudo buscar: ${error.message}`);
+
+  // Pocos productos (decenas): se filtra acá, con todas las palabras y sin tildes.
+  const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const words = fold(term).split(" ");
+  return data.filter((product) => {
+    const variants = product.product_variants
+      .map((v) => [v.iphone_models?.name, v.color, v.motif_ref?.name].filter(Boolean).join(" "))
+      .join(" ");
+    const haystack = fold(
+      [product.name, product.description ?? "", product.category?.name ?? "", variants].join(" "),
+    );
+    return words.every((word) => haystack.includes(word));
+  });
 }

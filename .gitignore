@@ -149,3 +149,6 @@ design/uploads/
 
 # Permisos y preferencias de Claude Code de cada máquina: no van al repo
 .claude/settings.local.json
+
+# Caché local de la herramienta de diseño
+frontend/.impeccable/hook.cache.json

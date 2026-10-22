@@ -13,6 +13,7 @@
     "test:variantes": "node scripts/test-variantes.mjs",
     "test:motivos": "node scripts/test-motivos.mjs",
     "test:pedidos": "node scripts/test-pedidos.mjs",
+    "test:tienda": "node scripts/test-tienda.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

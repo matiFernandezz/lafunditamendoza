@@ -9,6 +9,7 @@ import Logo from "./Logo";
 import SiteFooter from "./SiteFooter";
 import CartBar from "./store/CartBar";
 import HeaderCartLink from "./store/HeaderCartLink";
+import HeaderSearch, { SearchIcon } from "./store/HeaderSearch";
 
 const NAV_LINK =
   "text-sm font-semibold tracking-wide text-paper/85 transition-colors duration-200 hover:text-paper";
@@ -41,6 +42,7 @@ export default function AppShell({
   const isAdmin = pathname.startsWith("/admin");
   const width = `w-full ${PAGE_PADDING}`;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const navLinks = toNavLinks(categories);
 
   // Cerrar el menú móvil al cambiar de página: se ajusta durante el render
@@ -49,6 +51,7 @@ export default function AppShell({
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
     if (menuOpen) setMenuOpen(false);
+    if (searchOpen) setSearchOpen(false);
   }
 
   // El panel arma su propia barra, navegación y contenedor (app/admin/AdminShell).
@@ -56,7 +59,7 @@ export default function AppShell({
 
   return (
     <>
-      <header className="sticky top-0 z-20 bg-black text-paper">
+      <header className="sticky top-0 z-40 bg-black text-paper">
         {/* El header va más adentro que el contenido: page-pad + 12px en
             mobile y clamp(48px, 9vw, 180px) desde md, como en el diseño. */}
         <div className="flex h-20 w-full items-center justify-between gap-4 px-8 md:px-[clamp(48px,9vw,180px)]">
@@ -81,12 +84,31 @@ export default function AppShell({
             ))}
           </nav>
 
-          {/* Carrito siempre a mano; en mobile, al lado del menú. */}
-          <div className="flex items-center gap-1">
+          {/* Buscador y carrito siempre a mano; en mobile, la lupa abre el buscador abajo. */}
+          <div className="flex items-center gap-1 md:gap-3">
+            <div className="hidden md:block">
+              <HeaderSearch variant="bar" />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchOpen((o) => !o);
+                setMenuOpen(false);
+              }}
+              aria-expanded={searchOpen}
+              aria-controls="buscador-movil"
+              aria-label={searchOpen ? "Cerrar buscador" : "Buscar"}
+              className="flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-paper md:hidden"
+            >
+              <SearchIcon className="size-6" />
+            </button>
             <HeaderCartLink />
             <button
               type="button"
-              onClick={() => setMenuOpen((o) => !o)}
+              onClick={() => {
+                setMenuOpen((o) => !o);
+                setSearchOpen(false);
+              }}
               aria-expanded={menuOpen}
               aria-controls="menu-movil"
               className="flex h-11 w-11 shrink-0 items-center justify-center focus-visible:outline-paper md:hidden"
@@ -106,6 +128,12 @@ export default function AppShell({
             </button>
           </div>
         </div>
+
+        {searchOpen && (
+          <div id="buscador-movil" className="border-t border-paper/15 px-5 py-3 md:hidden">
+            <HeaderSearch variant="row" autoFocus onSearched={() => setSearchOpen(false)} />
+          </div>
+        )}
 
         {menuOpen && (
           <nav

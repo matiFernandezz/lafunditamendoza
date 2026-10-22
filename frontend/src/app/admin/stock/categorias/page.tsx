@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   AdminApiError,
@@ -92,7 +93,13 @@ export default function CategoriasPage() {
         <div className="min-w-0">
           <p className={`text-[15px] text-admin-text ${child ? "" : "font-semibold"}`}>{category.name}</p>
           <p className="text-[13px] text-admin-muted">
-            {count === 1 ? "1 producto" : `${count} productos`} · {KIND_HELP[effective.kind]}
+            <Link
+              href={child ? `/admin/stock/${byId.get(category.parent_id!)?.slug}?tipo=${category.id}` : `/admin/stock/${category.slug}`}
+              className="font-semibold text-admin-text underline-offset-2 hover:underline"
+            >
+              {count === 1 ? "1 producto" : `${count} productos`}
+            </Link>{" "}
+            · {KIND_HELP[effective.kind]}
           </p>
         </div>
         <label className="flex flex-col gap-1">

@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShoppingCart,
+  Store,
   Truck,
   X,
   type LucideIcon,
@@ -21,6 +22,7 @@ import { createClient } from "@/lib/supabase/client";
 import AdminLogo from "./AdminLogo";
 import ComprasSidebar from "./compras/ComprasSidebar";
 import StockSidebar from "./stock/StockSidebar";
+import TiendaSidebar from "./tienda/TiendaSidebar";
 import VentasSidebar from "./ventas/VentasSidebar";
 import { ADMIN_CAP_BASE } from "./adminStyles";
 
@@ -33,6 +35,7 @@ const TABS: Tab[] = [
   { href: "/admin/web", label: "Ventas web", icon: Globe },
   { href: "/admin/compras", label: "Compras", icon: Truck },
   { href: "/admin/stock", label: "Stock", icon: Package },
+  { href: "/admin/tienda", label: "Tienda", icon: Store },
 ];
 
 /** Avisa al shell que cambiaron las reservas web (para refrescar el contador). */
@@ -93,7 +96,7 @@ const NAV_ICON_BUTTON =
  * es un cajón que se abre con el botón de menú de la barra de arriba.
  * El login no lleva shell: arma su propia pantalla.
  *
- * Ventas, Compras y Stock abren un segundo sidebar pegado al principal; el principal se pliega
+ * Ventas, Compras, Stock y Tienda abren un segundo sidebar pegado al principal; el principal se pliega
  * solo para hacerle lugar (se puede volver a desplegar mientras se está ahí).
  */
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -110,7 +113,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       ? "compras"
       : pathname.startsWith("/admin/stock")
         ? "stock"
-        : null;
+        : pathname.startsWith("/admin/tienda")
+          ? "tienda"
+          : null;
   const hasSubnav = subnav !== null;
   // Desplegado a mano dentro de Ventas; se olvida al salir de la sección.
   const [mainOpenInSubnav, setMainOpenInSubnav] = useState(false);
@@ -309,6 +314,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {subnav === "ventas" && <VentasSidebar />}
       {subnav === "compras" && <ComprasSidebar />}
       {subnav === "stock" && <StockSidebar />}
+      {subnav === "tienda" && <TiendaSidebar />}
 
       <main className="mx-auto w-full min-w-0 max-w-[1440px] flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 lg:px-6 lg:pb-18 lg:pt-6 xl:px-8 xl:pt-8">
         {children}

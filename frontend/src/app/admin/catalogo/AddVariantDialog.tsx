@@ -1,6 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   AdminApiError,
@@ -290,6 +291,22 @@ export default function AddVariantDialog({
                     placeholder="Ej.: tipo C a C, 20W"
                     className={adminInput()}
                   />
+                  {/* Por qué no pide color: lo decide la categoría del producto. */}
+                  <p className={`mt-1.5 ${ADMIN_TEXT_MUTED}`}>
+                    {settingsOf(product.category_id).kind === "none" ? (
+                      <>
+                        Pide una descripción porque la categoría <strong>{categoryPath(product.category_id)}</strong>{" "}
+                        está configurada sin color ni diseño.
+                      </>
+                    ) : (
+                      <>Pide una descripción porque las variantes de este producto ya se distinguen así.</>
+                    )}{" "}
+                    Si viene en colores o diseños, cambialo en{" "}
+                    <Link href="/admin/stock/categorias" className="font-semibold text-admin-text underline underline-offset-2">
+                      Stock › Categorías
+                    </Link>
+                    .
+                  </p>
                 </>
               ) : (
                 <>

@@ -2,8 +2,8 @@
 
 import { ChevronRight, ImageOff, Plus, Search } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import {
   getAdminIphoneModels,
   getAdminProducts,
@@ -45,8 +45,19 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
  * producto con su stock; tocarlo abre el producto. Filtros por tipo, por
  * modelo de iPhone (si la categoría va por modelo) y por stock.
  */
+// useSearchParams necesita un Suspense alrededor para el render del servidor.
 export default function StockCategoryPage() {
+  return (
+    <Suspense fallback={<p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>}>
+      <StockCategory />
+    </Suspense>
+  );
+}
+
+function StockCategory() {
   const { slug } = useParams<{ slug: string }>();
+  // ?tipo=<id>: llega desde Categorías con un tipo ya elegido.
+  const tipo = useSearchParams().get("tipo") ?? "";
   const categories = useStockCategories();
   const [products, setProducts] = useState<AdminProduct[] | null>(null);
   const [models, setModels] = useState<AdminIphoneModel[]>([]);
@@ -54,7 +65,7 @@ export default function StockCategoryPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
 
-  const [childId, setChildId] = useState("");
+  const [childId, setChildId] = useState(tipo);
   const [modelId, setModelId] = useState("");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [search, setSearch] = useState("");
@@ -97,10 +108,10 @@ export default function StockCategoryPage() {
   const modelNameById = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
 
   // Cambiar de categoría de tope (otra entrada del menú) limpia los filtros.
-  const [prevSlug, setPrevSlug] = useState(slug);
-  if (prevSlug !== slug) {
-    setPrevSlug(slug);
-    setChildId("");
+  const [prevKey, setPrevKey] = useState(`${slug}|${tipo}`);
+  if (prevKey !== `${slug}|${tipo}`) {
+    setPrevKey(`${slug}|${tipo}`);
+    setChildId(tipo);
     setModelId("");
     setStockFilter("all");
     setSearch("");

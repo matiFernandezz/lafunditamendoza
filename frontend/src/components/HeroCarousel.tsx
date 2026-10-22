@@ -1,11 +1,13 @@
 "use client";
 
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import { useEffect, useState } from "react";
 
 export type HeroSlide = {
   id: string;
   src: string;
+  /** Foto para el celular (vertical); sin ella, el celular recorta src. */
+  mobileSrc?: string;
   alt: string;
   /** object-position de la foto (por defecto "center"). */
   position?: string;
@@ -16,6 +18,34 @@ export type HeroSlide = {
 };
 
 const AUTO_ADVANCE_MS = 6000;
+
+/**
+ * La foto del slide. Con foto de celular va en un <picture>: desde md (donde
+ * la portada pasa a ser apaisada) la de computadora y abajo la vertical; el
+ * navegador baja solo la que corresponde.
+ */
+function SlidePhoto({ slide, priority }: { slide: HeroSlide; priority: boolean }) {
+  const style = {
+    objectPosition: slide.position ?? "center",
+    filter: slide.dim ? `brightness(${slide.dim})` : undefined,
+  };
+  if (!slide.mobileSrc) {
+    return (
+      <Image src={slide.src} alt={slide.alt} fill priority={priority} sizes="100vw" className="object-cover" style={style} />
+    );
+  }
+  const common = { alt: slide.alt, fill: true, sizes: "100vw", priority };
+  const {
+    props: { srcSet: desktop },
+  } = getImageProps({ ...common, src: slide.src });
+  const { props: mobile } = getImageProps({ ...common, src: slide.mobileSrc });
+  return (
+    <picture>
+      <source media="(min-width: 768px)" srcSet={desktop} sizes="100vw" />
+      <img {...mobile} alt={slide.alt} className="object-cover" style={{ ...mobile.style, ...style }} />
+    </picture>
+  );
+}
 
 /**
  * Hero carrusel a sangre del diseño: crossfade de 700ms cada 6s, flechas
@@ -50,18 +80,7 @@ export default function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             i === index ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
         >
-          <Image
-            src={slide.src}
-            alt={slide.alt}
-            fill
-            priority={i === 0}
-            sizes="100vw"
-            className="object-cover"
-            style={{
-              objectPosition: slide.position ?? "center",
-              filter: slide.dim ? `brightness(${slide.dim})` : undefined,
-            }}
-          />
+          <SlidePhoto slide={slide} priority={i === 0} />
           {slide.content && <div className="absolute inset-0">{slide.content}</div>}
         </div>
       ))}

@@ -299,11 +299,13 @@ export type AdminCategory = {
   variant_kind: VariantKind | null;
   /** true = una variante por modelo de iPhone; false = universal; null = hereda. */
   by_model: boolean | null;
+  /** Foto de su mosaico en la home (null = sin foto). */
+  home_image_url: string | null;
 };
 
 export function updateCategory(
   id: string,
-  patch: { variant_kind?: VariantKind | null; by_model?: boolean | null },
+  patch: { variant_kind?: VariantKind | null; by_model?: boolean | null; home_image_url?: string | null },
 ): Promise<{ data: AdminCategory }> {
   return adminFetch(`/api/categories/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
 }
@@ -798,4 +800,119 @@ export function getDashboard(params: DateRange & { prev_from: string; prev_to: s
   data: Dashboard;
 }> {
   return adminFetch(`/api/dashboard?${new URLSearchParams(params)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Tienda: carrusel, fotos de categorías y "Nuevos ingresos" de la home.
+// ---------------------------------------------------------------------------
+
+/** Sube una foto de la tienda directo a Storage y devuelve su URL pública. */
+export async function uploadStoreImage(file: Blob, contentType: string): Promise<string> {
+  const signed = await adminFetch<{ data: { path: string; token: string; public_url: string } }>(
+    "/api/store/upload-url",
+    { method: "POST", body: JSON.stringify({ content_type: contentType, size: file.size }) },
+  );
+  const { error } = await createClient()
+    .storage.from(PRODUCT_IMAGE_BUCKET)
+    .uploadToSignedUrl(signed.data.path, signed.data.token, file, { contentType });
+  if (error) throw new AdminApiError(500, "No se pudo subir la imagen. Probá de nuevo.");
+  return signed.data.public_url;
+}
+
+export type HomeSlideKind = "rango" | "titulo" | "logo" | "foto";
+
+export type HomeSlide = {
+  id: string;
+  sort_order: number;
+  image_url: string;
+  /** Foto propia para el celular (vertical 4:5); null = recorta la de computadora. */
+  mobile_image_url: string | null;
+  alt: string;
+  kind: HomeSlideKind;
+  label: string | null;
+  title: string | null;
+  cta_label: string | null;
+  cta_href: string | null;
+  position: string | null;
+  dim: number | null;
+};
+
+export type HomeSlideInput = Partial<Omit<HomeSlide, "id" | "sort_order">>;
+
+export function getHomeSlides(): Promise<{ data: HomeSlide[] }> {
+  return adminFetch("/api/store/slides");
+}
+
+export function createHomeSlide(input: HomeSlideInput & { image_url: string }): Promise<{ data: HomeSlide }> {
+  return adminFetch("/api/store/slides", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateHomeSlide(id: string, patch: HomeSlideInput): Promise<{ data: HomeSlide }> {
+  return adminFetch(`/api/store/slides/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export async function deleteHomeSlide(id: string): Promise<void> {
+  await adminFetch(`/api/store/slides/${id}`, { method: "DELETE" });
+}
+
+export async function reorderHomeSlides(ids: string[]): Promise<void> {
+  await adminFetch("/api/store/slides/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+export type NewArrival = {
+  id: string;
+  sort_order: number;
+  image_url: string;
+  edge_color: string;
+  product_id: string;
+  product: { id: string; name: string; active: boolean } | null;
+  /** Precio más bajo con stock (null = sin stock: no se ve en la home). */
+  price: number | null;
+  units: number;
+};
+
+export function getNewArrivals(): Promise<{ data: NewArrival[] }> {
+  return adminFetch("/api/store/new-arrivals");
+}
+
+export function createNewArrival(input: {
+  product_id: string;
+  image_url: string;
+  edge_color: string;
+}): Promise<{ data: NewArrival }> {
+  return adminFetch("/api/store/new-arrivals", { method: "POST", body: JSON.stringify(input) });
+}
+
+export function updateNewArrival(
+  id: string,
+  patch: { image_url?: string; edge_color?: string },
+): Promise<{ data: NewArrival }> {
+  return adminFetch(`/api/store/new-arrivals/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export async function deleteNewArrival(id: string): Promise<void> {
+  await adminFetch(`/api/store/new-arrivals/${id}`, { method: "DELETE" });
+}
+
+export async function reorderNewArrivals(ids: string[]): Promise<void> {
+  await adminFetch("/api/store/new-arrivals/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+export type HomeSectionKey = "categorias" | "mas_vendidas" | "ultimos";
+
+export type HomeSection = { key: HomeSectionKey; sort_order: number; visible: boolean; title: string };
+
+export function getHomeSections(): Promise<{ data: HomeSection[] }> {
+  return adminFetch("/api/store/sections");
+}
+
+export function updateHomeSection(
+  key: HomeSectionKey,
+  patch: { title?: string; visible?: boolean },
+): Promise<{ data: HomeSection }> {
+  return adminFetch(`/api/store/sections/${key}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export async function reorderHomeSections(keys: HomeSectionKey[]): Promise<void> {
+  await adminFetch("/api/store/sections/reorder", { method: "POST", body: JSON.stringify({ keys }) });
 }
