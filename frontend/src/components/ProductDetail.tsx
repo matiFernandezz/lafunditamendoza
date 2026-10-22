@@ -52,11 +52,13 @@ export default function ProductDetail({
     return [...byId.entries()].map(([id, name]) => ({ id, name }));
   }, [product.product_variants]);
 
+  // Sin ?modelo= en el link, la página abre sin modelo elegido (aunque haya
+  // uno solo): se ven todos los colores del producto y, al elegir el modelo,
+  // solo los que hay para él.
   const [modelId, setModelId] = useState<string>(
-    initialModelId && modelOptions.some((m) => m.id === initialModelId)
-      ? initialModelId
-      : (modelOptions[0]?.id ?? ""),
+    initialModelId && modelOptions.some((m) => m.id === initialModelId) ? initialModelId : "",
   );
+  const needsModel = modelOptions.length > 0 && !modelId;
 
   // Variantes válidas para el modelo elegido (o todas, si el producto es universal).
   const availableVariants = useMemo(
@@ -114,6 +116,16 @@ export default function ProductDetail({
       : (availableVariants.find((v) => (option ? v.color === option : true)) ?? availableVariants[0]);
 
   const selectedModelName = modelOptions.find((m) => m.id === modelId)?.name;
+
+  // Sin modelo elegido, el precio es el más bajo del color u opción que se ve
+  // (con "desde" si cambia según el modelo).
+  const priceVariants = needsModel
+    ? availableVariants.filter((v) =>
+        swatches ? v.color_ref?.id === colorId : motifSelect ? v.motif_ref?.id === motifId : true,
+      )
+    : [];
+  const fromPrice = priceVariants.length > 0 ? Math.min(...priceVariants.map((v) => v.price)) : null;
+  const pricesVary = priceVariants.some((v) => v.price !== fromPrice);
 
   // Fotos del color elegido; sin fotos propias, las generales. Un producto de
   // un solo color también usa las suyas si las tiene.
@@ -180,7 +192,7 @@ export default function ProductDetail({
   }
 
   function handleAdd() {
-    if (!selectedVariant || stock <= 0 || atLimit) return;
+    if (needsModel || !selectedVariant || stock <= 0 || atLimit) return;
     cart.add({
       variantId: selectedVariant.id,
       productId: product.id,
@@ -225,6 +237,11 @@ export default function ProductDetail({
               onChange={(e) => handleModelChange(e.target.value)}
               className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
             >
+              {needsModel && (
+                <option value="" disabled>
+                  Elegí tu modelo
+                </option>
+              )}
               {modelOptions.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -314,7 +331,17 @@ export default function ProductDetail({
           )
         )}
 
-        {selectedVariant && (
+        {selectedVariant && needsModel && fromPrice !== null && (
+          <div className="space-y-1 border-t border-rule pt-6">
+            <p className="font-mono text-3xl font-medium tabular-nums">
+              {pricesVary && <span className="text-xl">desde </span>}
+              {formatPrice(fromPrice)}
+            </p>
+            <p className="text-sm text-graphite">Elegí tu modelo para ver el stock.</p>
+          </div>
+        )}
+
+        {selectedVariant && !needsModel && (
           <div className="space-y-1 border-t border-rule pt-6">
             <p className="font-mono text-3xl font-medium tabular-nums">
               {formatPrice(selectedVariant.price)}
@@ -336,10 +363,10 @@ export default function ProductDetail({
             <button
               type="button"
               onClick={handleAdd}
-              disabled={stock <= 0 || atLimit}
+              disabled={needsModel || stock <= 0 || atLimit}
               className={`${STORE_BUTTON} w-full`}
             >
-              {stock <= 0 ? "Sin stock" : atLimit ? "Ya tenés todo el stock en el carrito" : "Agregar al carrito"}
+              {needsModel ? "Elegí tu modelo" : stock <= 0 ? "Sin stock" : atLimit ? "Ya tenés todo el stock en el carrito" : "Agregar al carrito"}
             </button>
             {addedVariantId === selectedVariant.id && (
               <div role="status" className="flex items-center justify-between gap-3 text-[15px] text-ink">

@@ -4,9 +4,58 @@ import Image from "next/image";
 import { useRef, useState } from "react";
 import type { ProductImage } from "@/lib/catalog";
 
-// Marco de la foto: cuadrado con esquinas apenas redondeadas (12px) y
-// object-cover adentro. El ancho lo da la columna (ver ProductDetail).
-const FRAME = "relative aspect-square w-full overflow-hidden rounded-xl bg-rule/40";
+// Marco de la foto: cuadrado con esquinas apenas redondeadas (12px). Una foto
+// de fondo liso va entera (object-scale-down: sin recortar y nunca más grande
+// que su tamaño real, así no se estira y se pixela) sobre el color de ese
+// fondo (ver edgeColor), así no se ve un rectángulo de otro color adentro.
+// Una foto con escena (mesa, mano) llena el marco (object-cover). El ancho lo
+// da la columna (ver ProductDetail).
+const FRAME = "relative aspect-square w-full overflow-hidden rounded-xl transition-colors duration-200";
+
+/**
+ * Fondo de una foto: la mediana de los píxeles del borde (la mediana, no el
+ * promedio, para que algo que toca el borde no lo ensucie); "transparent" si
+ * el borde es transparente (PNG sin fondo). Si el borde no es liso (una foto
+ * con mesa, mano, etc.) no hay fondo que continuar: null, y la foto llena el
+ * marco. También null si no se puede leer.
+ */
+function edgeColor(img: HTMLImageElement): string | null {
+  try {
+    const size = 64;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(img, 0, 0, size, size);
+    const data = ctx.getImageData(0, 0, size, size).data;
+    const r: number[] = [];
+    const g: number[] = [];
+    const b: number[] = [];
+    let clear = 0;
+    for (let i = 0; i < size; i++) {
+      for (const [x, y] of [[i, 0], [i, size - 1], [0, i], [size - 1, i]]) {
+        const k = (y * size + x) * 4;
+        if (data[k + 3] < 128) {
+          clear++;
+          continue;
+        }
+        r.push(data[k]);
+        g.push(data[k + 1]);
+        b.push(data[k + 2]);
+      }
+    }
+    if (clear > r.length) return "transparent";
+    const median = (list: number[]) => [...list].sort((p, q) => p - q)[list.length >> 1];
+    const [mr, mg, mb] = [median(r), median(g), median(b)];
+    // Liso: casi todo el borde cerca del color mediano.
+    const off = r.filter((_, k) => Math.abs(r[k] - mr) + Math.abs(g[k] - mg) + Math.abs(b[k] - mb) > 36).length;
+    if (off > r.length * 0.15) return null;
+    return `rgb(${mr} ${mg} ${mb})`;
+  } catch {
+    return null;
+  }
+}
 const WITH_THUMBS = "grid grid-cols-[56px_minmax(0,1fr)] items-start gap-2 md:grid-cols-[64px_minmax(0,1fr)] md:gap-3";
 
 const ARROW =
@@ -58,6 +107,12 @@ export default function ProductGallery({
   // demás no se piden hasta que se eligen (son los originales, pueden pesar).
   const [visited, setVisited] = useState<Set<string>>(() => new Set());
   const touchStartX = useRef<number | null>(null);
+  // Fondo de cada foto, leído al cargarla.
+  const [backdrops, setBackdrops] = useState<Record<string, string>>({});
+  function readBackdrop(id: string, img: HTMLImageElement) {
+    const color = edgeColor(img);
+    if (color) setBackdrops((prev) => (prev[id] === color ? prev : { ...prev, [id]: color }));
+  }
 
   // Otro juego de fotos: vuelve a empezar. Se ajusta durante el render, no en un efecto.
   const setKey = sorted.map((img) => img.id).join(",");
@@ -80,19 +135,21 @@ export default function ProductGallery({
   }
 
   if (sorted.length === 0) {
-    return <div className={`${FRAME} flex items-center justify-center text-graphite`}>Sin foto</div>;
+    return <div className={`${FRAME} flex items-center justify-center bg-rule/40 text-graphite`}>Sin foto</div>;
   }
 
   if (sorted.length === 1) {
     return (
-      <div className={FRAME}>
+      <div className={FRAME} style={{ backgroundColor: backdrops[sorted[0].id] }}>
         <Image
           key={sorted[0].id}
           src={sorted[0].url}
           alt={alt}
           fill
           unoptimized
-          className="object-cover motion-safe:animate-[lf-fade-in_200ms_ease-out]"
+          crossOrigin="anonymous"
+          onLoad={(e) => readBackdrop(sorted[0].id, e.currentTarget)}
+          className={`${backdrops[sorted[0].id] ? "object-scale-down" : "object-cover"} motion-safe:animate-[lf-fade-in_200ms_ease-out]`}
           priority
         />
       </div>
@@ -136,6 +193,7 @@ export default function ProductGallery({
 
       <div
         className={FRAME}
+        style={{ backgroundColor: backdrops[sorted[active].id] }}
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0].clientX;
         }}
@@ -155,8 +213,10 @@ export default function ProductGallery({
               aria-hidden={i === active ? undefined : true}
               fill
               unoptimized
+              crossOrigin="anonymous"
+              onLoad={(e) => readBackdrop(img.id, e.currentTarget)}
               priority={i === firstShown}
-              className={`object-cover transition-opacity duration-200 motion-safe:animate-[lf-fade-in_200ms_ease-out] motion-reduce:transition-none ${
+              className={`${backdrops[img.id] ? "object-scale-down" : "object-cover"} transition-opacity duration-200 motion-safe:animate-[lf-fade-in_200ms_ease-out] motion-reduce:transition-none ${
                 i === active ? "opacity-100" : "opacity-0"
               }`}
             />
