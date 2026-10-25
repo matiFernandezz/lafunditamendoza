@@ -35,7 +35,7 @@ export default function ProductModelPicker({
   const line = lines.find((l) => l.key === lineKey);
 
   const number = (isActive: boolean) =>
-    `flex size-10 shrink-0 items-center justify-center rounded-full font-display text-lg font-semibold leading-none tracking-tight text-ink transition-colors duration-200 ${
+    `flex size-12 shrink-0 items-center justify-center rounded-full font-display text-xl font-semibold leading-none tracking-tight text-ink transition-colors duration-200 ${
       isActive ? "bg-ink/10" : "hover:bg-ink/5"
     }`;
 
@@ -64,7 +64,14 @@ export default function ProductModelPicker({
       >
         {(close) => (
           <>
-            <div className="flex h-11 min-w-0 items-center gap-1.5 overflow-x-auto">
+            {/* Con muchos números se reparten de punta a punta (la fila ocupa el ancho
+                de la tarjeta, igual que los modelos); con pocos (14 y 15) van juntos a
+                la izquierda, para que no queden separados por un hueco. */}
+            <div
+              className={`flex h-12 min-w-0 items-center gap-2 overflow-x-auto ${
+                lines.length >= 6 ? "justify-between" : "justify-start"
+              }`}
+            >
               {lines.map((l) => (
                 <button
                   key={l.key}
@@ -89,10 +96,13 @@ export default function ProductModelPicker({
               <div
                 key={line.key}
                 className="flex animate-[lf-fade-in_200ms_ease-out] flex-wrap gap-2 border-t border-rule/60 pt-3 motion-reduce:animate-none md:grid"
-                // Columnas iguales que nunca bajan del ancho del nombre: con pocos
-                // números la tarjeta crece para que cada modelo entre en un renglón;
-                // con muchos, las columnas se estiran al ancho de la fila.
-                style={{ gridTemplateColumns: `repeat(${line.models.length}, minmax(max-content, 1fr))` }}
+                // Columnas iguales: la tarjeta toma el ancho que necesitan los nombres
+                // en un renglón, hasta su máximo (el de los 8 números); si no entran,
+                // las columnas se achican parejas y el nombre baja a dos renglones.
+                // Con 4 modelos (17, 18) van de a 2 por renglón.
+                style={{
+                  gridTemplateColumns: `repeat(${line.models.length > 3 ? 2 : line.models.length}, minmax(0, 1fr))`,
+                }}
               >
                 {line.models.map((m) => (
                   <button
@@ -103,7 +113,7 @@ export default function ProductModelPicker({
                       close();
                     }}
                     aria-pressed={m.id === value}
-                    className={optionPill(m.id === value)}
+                    className={optionPill(m.id === value, { cell: true })}
                   >
                     {m.name}
                   </button>

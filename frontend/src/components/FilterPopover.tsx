@@ -22,7 +22,8 @@ export default function FilterPopover({
   onOpen?: () => void;
   /** "end": para una píldora pegada a la derecha; en compu la tarjeta abre a su izquierda. En mobile
       las píldoras van una debajo de la otra contra el margen izquierdo, así que siempre abre debajo, hacia la derecha.
-      "below": siempre debajo de la píldora (la ficha de producto). */
+      "below": siempre debajo de la píldora (la ficha de producto), hasta 466px de ancho: el de la tarjeta con
+      los 8 números del selector de modelo (8 × 48px + 7 × 8px entre ellos + el borde interno). */
   align?: "start" | "end" | "below";
   children: (close: () => void) => React.ReactNode;
 }) {
@@ -90,7 +91,7 @@ export default function FilterPopover({
           id={id}
           className={`absolute top-[calc(100%+8px)] flex w-[calc(100vw-3rem)] animate-[lf-subnav-in_200ms_ease-out] flex-col gap-3 rounded-2xl border border-rule bg-paper p-3 shadow-[0_16px_40px_rgb(18_18_18/0.18)] motion-reduce:animate-none md:w-max ${
             align === "below"
-              ? "left-0"
+              ? "left-0 md:max-w-[min(466px,calc(100vw-4rem))]"
               : align === "end"
                 ? "left-0 md:left-auto md:right-[calc(100%+12px)] md:top-[-12px]"
                 : "left-0 md:left-[calc(100%+12px)] md:top-[-12px]"
