@@ -1,7 +1,29 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductDetail from "@/components/ProductDetail";
-import { categoryHref, getCategoryGroups, getProduct, isUuid } from "@/lib/catalog";
+import { categoryHref, getCategoryGroups, getFeaturedProducts, getProduct, isUuid, type Product } from "@/lib/catalog";
+
+/** Cuántos candidatos se le pasan a "Completá tu compra" (después se filtran por modelo y se muestran 4). */
+const RELATED_CANDIDATES = 16;
+
+/**
+ * Candidatos para "Completá tu compra", en orden: primero lo que complementa (de
+ * la otra categoría de tope: accesorios para una funda, fundas para un
+ * accesorio), con lo que sirve para los mismos modelos adelante; después lo
+ * parecido (misma categoría, mismo tipo primero). Solo productos con stock.
+ */
+function relatedFor(product: Product, pool: Product[]): Product[] {
+  const top = (p: Product) => p.category?.parent_id ?? p.category?.id;
+  const models = new Set(product.product_variants.map((v) => v.iphone_model_id).filter((id) => id !== null));
+  const fits = (p: Product) =>
+    p.product_variants.some((v) => v.iphone_model_id === null || models.has(v.iphone_model_id)) ? 0 : 1;
+  const others = pool.filter((p) => p.id !== product.id);
+  const complements = others.filter((p) => top(p) !== top(product)).sort((a, b) => fits(a) - fits(b));
+  const similar = others
+    .filter((p) => top(p) === top(product))
+    .sort((a, b) => Number(a.category?.id !== product.category?.id) - Number(b.category?.id !== product.category?.id));
+  return [...complements, ...similar].slice(0, RELATED_CANDIDATES);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +37,7 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   const initialColorSlug = typeof color === "string" ? color : undefined;
   const initialMotifSlug = typeof motivo === "string" ? motivo : undefined;
 
-  const [product, groups] = await Promise.all([getProduct(id), getCategoryGroups()]);
+  const [product, groups, pool] = await Promise.all([getProduct(id), getCategoryGroups(), getFeaturedProducts(80)]);
   if (!product) notFound();
 
   // Migas: Inicio / Fundas / Diseño / Producto. El tipo lleva al listado de su
@@ -49,6 +71,7 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
         initialModelId={initialModelId}
         initialColorSlug={initialColorSlug}
         initialMotifSlug={initialMotifSlug}
+        related={relatedFor(product, pool)}
       />
     </div>
   );

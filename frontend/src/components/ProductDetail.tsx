@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
 import ProductModelPicker, { type PickerModel } from "@/components/ProductModelPicker";
+import RelatedProducts from "@/components/RelatedProducts";
 import { useCart } from "@/lib/cart";
 import { coverImage, type Product, type ProductImage } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
@@ -38,8 +39,11 @@ export default function ProductDetail({
   initialModelId,
   initialColorSlug,
   initialMotifSlug,
+  related = [],
 }: {
   product: Product;
+  /** Candidatos para "Completá tu compra", ya ordenados (los arma la página). */
+  related?: Product[];
   initialModelId?: string;
   initialColorSlug?: string;
   initialMotifSlug?: string;
@@ -161,7 +165,11 @@ export default function ProductDetail({
     setModelId(nextModelId);
     setOption("");
     if (swatches) {
-      const next = resolveColor(colors, availableColorIds(product.product_variants, nextModelId || null), wantedColorId);
+      const next = resolveColor(
+        colors,
+        availableColorIds(product.product_variants, nextModelId || null),
+        wantedColorId,
+      );
       writeToUrl("color", colors.find((c) => c.id === next)?.slug);
     }
     if (motifSelect) {
@@ -224,177 +232,182 @@ export default function ProductDetail({
     // Bloque centrado de 960px (lo pone la página): galería de hasta 520px
     // (miniaturas + foto) y la columna de compra al lado, así el selector y el
     // botón no se estiran a todo el ancho de la pantalla.
-    <div className="grid gap-8 md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:gap-10">
-      <ProductGallery
-        images={multi ? product.product_images : galleryImages}
-        alt={product.name}
-        activeGroupId={multi ? activeGroupId : undefined}
-        onImageShown={multi ? handleImageShown : undefined}
-      />
+    <div className="space-y-16 md:space-y-20">
+      <div className="grid gap-8 md:grid-cols-[minmax(0,520px)_minmax(0,1fr)] md:gap-10">
+        <ProductGallery
+          images={multi ? product.product_images : galleryImages}
+          alt={product.name}
+          activeGroupId={multi ? activeGroupId : undefined}
+          onImageShown={multi ? handleImageShown : undefined}
+        />
 
-      <div className="space-y-6">
-        <h1 className="font-display text-section font-semibold leading-heading tracking-tight text-pretty">
-          {product.name}
-        </h1>
+        <div className="space-y-6">
+          <h1 className="font-display text-section font-semibold leading-heading tracking-tight text-pretty">
+            {product.name}
+          </h1>
 
-        {modelOptions.length > 0 && (
-          <ProductModelPicker models={modelOptions} value={modelId} onChange={handleModelChange} />
-        )}
+          {modelOptions.length > 0 && (
+            <ProductModelPicker models={modelOptions} value={modelId} onChange={handleModelChange} />
+          )}
 
-        {swatches ? (
-          <fieldset>
-            <legend className="mb-1 block font-medium">
-              Color{selectedColor && <span className="font-normal text-graphite"> — {selectedColor.name}</span>}
-            </legend>
-            {/* Radios nativos: Tab entra al grupo y las flechas cambian de
+          {swatches ? (
+            <fieldset>
+              <legend className="mb-1 block font-medium">
+                Color{selectedColor && <span className="font-normal text-graphite"> — {selectedColor.name}</span>}
+              </legend>
+              {/* Radios nativos: Tab entra al grupo y las flechas cambian de
                 color. Solo los colores con stock para el modelo elegido.
                 flex-wrap: varias líneas en el celular, sin scroll horizontal. */}
-            <div role="radiogroup" aria-label="Color" className="-ml-1.5 flex flex-wrap">
-              {colors
-                .filter((c) => available.has(c.id))
-                .map((c) => (
-                  <label key={c.id} title={c.name} className="relative flex size-11 cursor-pointer items-center justify-center">
-                    <input
-                      type="radio"
-                      name={`color-${product.id}`}
-                      value={c.slug}
-                      checked={c.id === colorId}
-                      onChange={() => handleColorChange(c.id)}
-                      aria-label={c.name}
-                      className="peer sr-only"
-                    />
-                    <span
-                      aria-hidden="true"
-                      style={{ backgroundColor: c.hex }}
-                      className="block size-8 rounded-full border border-ink/25 ring-ink ring-offset-2 ring-offset-paper transition-shadow duration-200 peer-checked:ring-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-4"
-                    />
-                  </label>
-                ))}
-            </div>
-          </fieldset>
-        ) : motifSelect ? (
-          <div>
-            <label htmlFor="motivo-detalle" className="mb-2 block font-medium">
-              Diseño
-            </label>
-            {/* Lista, no círculos: mismo estilo que "Elegí tu modelo". */}
-            <select
-              id="motivo-detalle"
-              value={motifId ?? ""}
-              onChange={(e) => handleMotifChange(e.target.value)}
-              className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
-            >
-              {motifList
-                .filter((m) => availableMotifs.has(m.id))
-                .map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-        ) : (
-          optionLabels.length > 0 && (
-            <div>
-              <span className="mb-2 block font-medium">
-                {motifList.length === 1 ? "Diseño" : "Elegí una opción"}
-              </span>
-              <div className="flex flex-wrap gap-2">
-                {optionLabels.map((label) => {
-                  const pressed = (option || optionLabels[0]) === label;
-                  return (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => setOption(label)}
-                      aria-pressed={pressed}
-                      className={`h-11 rounded-full border px-4 text-sm font-medium first-letter:uppercase transition-colors duration-200 ${
-                        pressed ? "border-ink bg-ink text-paper" : "border-graphite hover:border-ink"
-                      }`}
+              <div role="radiogroup" aria-label="Color" className="-ml-1.5 flex flex-wrap">
+                {colors
+                  .filter((c) => available.has(c.id))
+                  .map((c) => (
+                    <label
+                      key={c.id}
+                      title={c.name}
+                      className="relative flex size-11 cursor-pointer items-center justify-center"
                     >
-                      {label}
-                    </button>
-                  );
-                })}
+                      <input
+                        type="radio"
+                        name={`color-${product.id}`}
+                        value={c.slug}
+                        checked={c.id === colorId}
+                        onChange={() => handleColorChange(c.id)}
+                        aria-label={c.name}
+                        className="peer sr-only"
+                      />
+                      <span
+                        aria-hidden="true"
+                        style={{ backgroundColor: c.hex }}
+                        className="block size-8 rounded-full border border-ink/25 ring-ink ring-offset-2 ring-offset-paper transition-shadow duration-200 peer-checked:ring-2 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-4"
+                      />
+                    </label>
+                  ))}
               </div>
+            </fieldset>
+          ) : motifSelect ? (
+            <div>
+              <label htmlFor="motivo-detalle" className="mb-2 block font-medium">
+                Diseño
+              </label>
+              {/* Lista, no círculos: mismo estilo que "Elegí tu modelo". */}
+              <select
+                id="motivo-detalle"
+                value={motifId ?? ""}
+                onChange={(e) => handleMotifChange(e.target.value)}
+                className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
+              >
+                {motifList
+                  .filter((m) => availableMotifs.has(m.id))
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+              </select>
             </div>
-          )
-        )}
-
-        {selectedVariant && needsModel && fromPrice !== null && (
-          <div className="space-y-1 border-t border-rule pt-6">
-            <p className="font-mono text-3xl font-medium tabular-nums">
-              {pricesVary && <span className="text-xl">desde </span>}
-              {formatPrice(fromPrice)}
-            </p>
-            <p className="text-sm text-graphite">Elegí tu modelo para ver el stock.</p>
-          </div>
-        )}
-
-        {selectedVariant && !needsModel && (
-          <div className="space-y-1 border-t border-rule pt-6">
-            <p className="font-mono text-3xl font-medium tabular-nums">
-              {formatPrice(selectedVariant.price)}
-            </p>
-            <p className="text-sm text-graphite">
-              {selectedVariant.stock_quantity <= LOW_STOCK
-                ? selectedVariant.stock_quantity === 1
-                  ? "Última unidad"
-                  : `Quedan ${selectedVariant.stock_quantity}`
-                : "En stock"}
-              <span aria-hidden="true"> · </span>
-              <span className="font-mono text-xs">{selectedVariant.sku}</span>
-            </p>
-          </div>
-        )}
-
-        {selectedVariant && (
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={handleAdd}
-              disabled={needsModel || stock <= 0 || atLimit}
-              className={`${STORE_BUTTON} w-full`}
-            >
-              {needsModel ? (
-                "Elegí tu modelo"
-              ) : stock <= 0 ? (
-                "Sin stock"
-              ) : justAdded ? (
-                <>
-                  <Check aria-hidden="true" className="size-5" strokeWidth={2.25} />
-                  ¡Agregado!
-                </>
-              ) : atLimit ? (
-                "Ya tenés todo el stock en el carrito"
-              ) : (
-                <>
-                  <Plus aria-hidden="true" className="size-5" strokeWidth={2.25} />
-                  Agregar al carrito
-                </>
-              )}
-            </button>
-            {addedVariantId === selectedVariant.id && (
-              <div role="status" className="flex items-center justify-between gap-3 text-[15px] text-ink">
-                <span>Agregado al carrito.</span>
-                <Link href="/carrito" className={`${STORE_TEXT_LINK} font-medium`}>
-                  Ver carrito
-                </Link>
+          ) : (
+            optionLabels.length > 0 && (
+              <div>
+                <span className="mb-2 block font-medium">{motifList.length === 1 ? "Diseño" : "Elegí una opción"}</span>
+                <div className="flex flex-wrap gap-2">
+                  {optionLabels.map((label) => {
+                    const pressed = (option || optionLabels[0]) === label;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setOption(label)}
+                        aria-pressed={pressed}
+                        className={`h-11 rounded-full border px-4 text-sm font-medium first-letter:uppercase transition-colors duration-200 ${
+                          pressed ? "border-ink bg-ink text-paper" : "border-graphite hover:border-ink"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
-          </div>
-        )}
+            )
+          )}
 
-        {/* Después del precio y no debajo del nombre (como en el diseño): una
+          {selectedVariant && needsModel && fromPrice !== null && (
+            <div className="space-y-1 border-t border-rule pt-6">
+              <p className="font-mono text-3xl font-medium tabular-nums">
+                {pricesVary && <span className="text-xl">desde </span>}
+                {formatPrice(fromPrice)}
+              </p>
+              <p className="text-sm text-graphite">Elegí tu modelo para ver el stock.</p>
+            </div>
+          )}
+
+          {selectedVariant && !needsModel && (
+            <div className="space-y-1 border-t border-rule pt-6">
+              <p className="font-mono text-3xl font-medium tabular-nums">{formatPrice(selectedVariant.price)}</p>
+              <p className="text-sm text-graphite">
+                {selectedVariant.stock_quantity <= LOW_STOCK
+                  ? selectedVariant.stock_quantity === 1
+                    ? "Última unidad"
+                    : `Quedan ${selectedVariant.stock_quantity}`
+                  : "En stock"}
+                <span aria-hidden="true"> · </span>
+                <span className="font-mono text-xs">{selectedVariant.sku}</span>
+              </p>
+            </div>
+          )}
+
+          {selectedVariant && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleAdd}
+                disabled={needsModel || stock <= 0 || atLimit}
+                className={`${STORE_BUTTON} w-full`}
+              >
+                {needsModel ? (
+                  "Elegí tu modelo"
+                ) : stock <= 0 ? (
+                  "Sin stock"
+                ) : justAdded ? (
+                  <>
+                    <Check aria-hidden="true" className="size-5" strokeWidth={2.25} />
+                    ¡Agregado!
+                  </>
+                ) : atLimit ? (
+                  "Ya tenés todo el stock en el carrito"
+                ) : (
+                  <>
+                    <Plus aria-hidden="true" className="size-5" strokeWidth={2.25} />
+                    Agregar al carrito
+                  </>
+                )}
+              </button>
+              {addedVariantId === selectedVariant.id && (
+                <div role="status" className="flex items-center justify-between gap-3 text-[15px] text-ink">
+                  <span>Agregado al carrito.</span>
+                  <Link href="/carrito" className={`${STORE_TEXT_LINK} font-medium`}>
+                    Ver carrito
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Después del precio y no debajo del nombre (como en el diseño): una
             descripción larga empujaría el precio fuera de la pantalla. */}
-        {product.description && (
-          <div className="space-y-2 border-t border-rule pt-6">
-            <h2 className="text-[13px] font-medium uppercase tracking-[0.08em] text-graphite">Descripción</h2>
-            {/* pre-line: respeta los saltos de línea que se escriben en el panel. */}
-            <p className="whitespace-pre-line text-pretty text-ink">{product.description}</p>
-          </div>
-        )}
+          {product.description && (
+            <div className="space-y-2 border-t border-rule pt-6">
+              <h2 className="text-[13px] font-medium uppercase tracking-[0.08em] text-graphite">Descripción</h2>
+              {/* pre-line: respeta los saltos de línea que se escriben en el panel. */}
+              <p className="whitespace-pre-line text-pretty text-ink">{product.description}</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Al pie, abajo de la descripción: lo que va con este producto, para el modelo elegido. */}
+      <RelatedProducts products={related} modelId={modelId || null} />
     </div>
   );
 }
