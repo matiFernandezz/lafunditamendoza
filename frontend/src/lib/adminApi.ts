@@ -1029,7 +1029,18 @@ export async function deleteSocialPost(id: string): Promise<void> {
   await adminFetch(`/api/store/social/${id}`, { method: "DELETE" });
 }
 
-export type InstagramStatus = { connected: false } | { connected: true; username: string | null; expiresAt: string };
+export type InstagramStatus =
+  | { connected: false }
+  | {
+      connected: true;
+      username: string | null;
+      expiresAt: string;
+      /** Lo último que respondió Instagram cuando falló (null = anda bien). */
+      lastError: string | null;
+      lastErrorAt: string | null;
+      /** Cuándo se guardaron los posts del respaldo. */
+      cachedAt: string | null;
+    };
 
 export function getInstagramStatus(): Promise<{ data: InstagramStatus }> {
   return adminFetch("/api/store/instagram");

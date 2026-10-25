@@ -8,9 +8,23 @@ import {
   getInstagramStatus,
   type InstagramStatus,
 } from "@/lib/adminApi";
-import { ADMIN_CARD, ADMIN_INPUT, ADMIN_SECTION_TITLE, ADMIN_TEXT_MUTED, adminBadge, adminButton } from "../../adminStyles";
+import AdminNotice from "../../AdminNotice";
+import {
+  ADMIN_CARD,
+  ADMIN_INPUT,
+  ADMIN_SECTION_TITLE,
+  ADMIN_TEXT_MUTED,
+  adminBadge,
+  adminButton,
+} from "../../adminStyles";
 
 const dateFormat = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long", year: "numeric" });
+const dateTimeFormat = new Intl.DateTimeFormat("es-AR", {
+  day: "numeric",
+  month: "long",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 
 /**
  * Conexión con Instagram: con la clave de acceso de la cuenta, Nosotros muestra
@@ -56,13 +70,34 @@ export default function InstagramConnection({
     <section className={`${ADMIN_CARD} flex flex-col gap-3`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className={ADMIN_SECTION_TITLE}>Instagram automático</h2>
-        {status?.connected && <span className={adminBadge("ok")}>Conectado</span>}
+        {status?.connected &&
+          (status.lastError ? (
+            <span className={adminBadge("danger")}>Con problemas</span>
+          ) : (
+            <span className={adminBadge("ok")}>Conectado</span>
+          ))}
       </div>
 
       {status === null ? (
         <p className={ADMIN_TEXT_MUTED}>Cargando…</p>
       ) : status.connected ? (
         <>
+          {/* Instagram respondió con un error al consultarlo ahora: se avisa con lo
+              que dijo y qué se está mostrando mientras tanto. */}
+          {status.lastError && (
+            <AdminNotice kind="danger">
+              <span className="block font-semibold">Instagram está rechazando la conexión: “{status.lastError}”</span>
+              <span className="mt-1 block">
+                {status.cachedAt
+                  ? `Mientras tanto, Nosotros y la home muestran los últimos posts guardados (del ${dateTimeFormat.format(new Date(status.cachedAt))}), hasta 3 días.`
+                  : "Mientras tanto, Nosotros muestra un link a tu perfil."}{" "}
+                Para arreglarlo: developers.facebook.com › Mis apps › La Fundita Web › mirá el aviso de arriba o
+                “Acciones necesarias”.
+                {status.lastError.toLowerCase().includes("blocked") &&
+                  " Suele ser que falta la URL de política de privacidad o la revisión del uso de datos."}
+              </span>
+            </AdminNotice>
+          )}
           <p className={ADMIN_TEXT_MUTED}>
             Conectado con <strong className="text-admin-text">@{status.username}</strong>: Nosotros muestra solos tus
             últimos posts y reels (se actualizan cada media hora). La clave se renueva sola; vence el{" "}
