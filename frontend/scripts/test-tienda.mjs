@@ -220,12 +220,12 @@ async function main() {
   group("6. Secciones de la home");
   eq("GET /api/store/sections sin sesión -> 401", (await api("GET", "/api/store/sections", undefined, { auth: false })).status, 401);
   const secs = await api("GET", "/api/store/sections");
-  eq("lista las 3 en orden", secs.body?.data?.map((s) => s.key), [...saved.sections].sort((a, b) => a.sort_order - b.sort_order).map((s) => s.key));
+  eq("lista las secciones en orden", secs.body?.data?.map((s) => s.key), [...saved.sections].sort((a, b) => a.sort_order - b.sort_order).map((s) => s.key));
   eq("título vacío -> 400", (await api("PATCH", "/api/store/sections/categorias", { title: "  " })).status, 400);
   eq("sección que no existe -> 404", (await api("PATCH", "/api/store/sections/otra", { title: "x" })).status, 404);
   eq("cambiar el título -> 200", (await api("PATCH", "/api/store/sections/categorias", { title: " Probando títulos " })).body?.data?.title, "Probando títulos");
   eq("ocultar -> 200", (await api("PATCH", "/api/store/sections/ultimos", { visible: false })).body?.data?.visible, false);
-  eq("reordenar -> 200", (await api("POST", "/api/store/sections/reorder", { keys: ["ultimos", "mas_vendidas", "categorias"] })).status, 200);
+  eq("reordenar -> 200", (await api("POST", "/api/store/sections/reorder", { keys: ["ultimos", "mas_vendidas", "categorias", "instagram"] })).status, 200);
   eq("reordenar con una de menos -> 400", (await api("POST", "/api/store/sections/reorder", { keys: ["ultimos", "categorias"] })).status, 400);
   const html = await (await fetch(BASE_URL)).text();
   check("la home usa el título nuevo", html.includes('aria-label="Probando títulos"'));

@@ -18,6 +18,8 @@ const ABOUT: Record<HomeSectionKey, string> = {
   categorias: "Los mosaicos de categorías (Silicona, Diseño…). Las fotos se cambian en Tienda › Categorías.",
   mas_vendidas: "Las fundas que giran al scrollear. Se eligen en Tienda › Funditas más vendidas.",
   ultimos: "Los 10 productos cargados más recientemente, en una tira que se desliza sola. Se arma sola.",
+  instagram:
+    "Los últimos posts de Instagram en un carrusel, como en Nosotros. Se arma sola con la cuenta conectada en Tienda › Nosotros; sin conectar, no aparece.",
 };
 
 function errorMessage(err: unknown) {

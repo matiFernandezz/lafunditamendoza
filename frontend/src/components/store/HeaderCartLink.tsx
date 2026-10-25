@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 
@@ -14,7 +14,7 @@ export default function HeaderCartLink() {
       aria-label={count > 0 ? `Carrito, ${count} ${count === 1 ? "producto" : "productos"}` : "Carrito vacío"}
       className="relative flex size-11 shrink-0 items-center justify-center text-paper/85 transition-colors duration-200 hover:text-paper focus-visible:outline-paper"
     >
-      <ShoppingBag aria-hidden="true" className="size-6" strokeWidth={1.75} />
+      <ShoppingCart aria-hidden="true" className="size-6" strokeWidth={1.75} />
       {count > 0 && (
         <span
           aria-hidden="true"

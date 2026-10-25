@@ -4,12 +4,12 @@ import { ExternalLink } from "lucide-react";
 import SubnavSidebar from "../SubnavSidebar";
 import { TIENDA_SECTIONS } from "./sections";
 
-/** Segundo sidebar de Tienda: las partes de la home que se editan, y un link para verla. */
+/** Segundo sidebar de Tienda: las partes de la home (y Nosotros) que se editan, y un link para verla. */
 export default function TiendaSidebar() {
   return (
     <SubnavSidebar
       title="Tienda"
-      subtitle="Lo que se ve en la home"
+      subtitle="Lo que se ve en la tienda"
       sections={TIENDA_SECTIONS}
       footer={
         <a

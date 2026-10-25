@@ -1,5 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import InstagramFeed from "@/components/about/InstagramFeed";
+import SocialHeader from "@/components/about/SocialHeader";
+import AnnouncementBar from "@/components/AnnouncementBar";
 import ArrowMark from "@/components/ArrowMark";
 import CategoryTile from "@/components/CategoryTile";
 import HeroCarousel, { type HeroSlide } from "@/components/HeroCarousel";
@@ -9,6 +12,7 @@ import { buildNuevosIngresos } from "@/components/home/nuevosIngresos";
 import UltimosIngresos from "@/components/home/UltimosIngresos";
 import ModelStrip from "@/components/ModelStrip";
 import RangeHero from "@/components/RangeHero";
+import { InstagramIcon } from "@/components/SocialIcons";
 import {
   getCategoryGroups,
   getCategoryTiles,
@@ -22,10 +26,20 @@ import {
   type HomeSlideRow,
 } from "@/lib/catalog";
 import { FULL_BLEED, PAGE_PADDING } from "@/lib/layout";
+import { getInstagramPosts } from "@/lib/server/instagram";
+import { INSTAGRAM } from "@/lib/storeConfig";
 
 // Las categorías, productos y fotos de la home vienen de la base (se editan en
 // el panel › Tienda): sin esto Next pre-renderiza la home en el build y queda congelada.
 export const dynamic = "force-dynamic";
+
+// Avisos de la barra que se desplaza arriba de la portada.
+const ANNOUNCEMENTS = [
+  "Envíos flash durante el día",
+  "Envíos gratis a partir de $50.000",
+  "Retirá tu fundita en punto de encuentro",
+  "Fundas del iPhone 11 al 18 Pro Max",
+];
 
 // Velo de tinta arriba, para los titulares.
 const TOP_SCRIM = "bg-[linear-gradient(to_bottom,rgb(18_18_18/0.6),transparent_50%)]";
@@ -37,10 +51,7 @@ function SlideCta({ href, children }: { href: string; children: React.ReactNode 
       className="group inline-flex min-h-11 items-center gap-2 self-start text-xs font-semibold uppercase tracking-label text-paper"
     >
       {children}
-      <ArrowMark
-        className="h-2.5 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
-        strokeWidth={5}
-      />
+      <ArrowMark className="h-2.5 w-4 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={5} />
     </Link>
   );
 }
@@ -112,7 +123,7 @@ function slideContent(slide: HomeSlideRow): React.ReactNode {
 }
 
 export default async function Home() {
-  const [categoryGroups, tiles, models, latest, homeSlides, arrivals, sections] = await Promise.all([
+  const [categoryGroups, tiles, models, latest, homeSlides, arrivals, sections, instagramPosts] = await Promise.all([
     getCategoryGroups(),
     getCategoryTiles(),
     getIphoneModels(),
@@ -120,6 +131,7 @@ export default async function Home() {
     getHomeSlides(),
     getHomeNewArrivals(),
     getHomeSections(),
+    getInstagramPosts(),
   ]);
   const nuevos = buildNuevosIngresos(arrivals);
 
@@ -168,6 +180,17 @@ export default async function Home() {
       if (nuevos.length === 0) return null;
       return <NuevosIngresosApilado key={section.key} items={nuevos} allHref={fundasHref} title={section.title} />;
     }
+    if (section.key === "instagram") {
+      // Los últimos posts, como en Nosotros. Sin la cuenta conectada (o sin posts), no se muestra.
+      if (!instagramPosts || instagramPosts.length === 0) return null;
+      return (
+        <section key={section.key} aria-label={section.title} className="space-y-5 lg:space-y-7">
+          <HomeSectionTitle>{section.title}</HomeSectionTitle>
+          <SocialHeader icon={InstagramIcon} name="Instagram" handle={INSTAGRAM.handle} url={INSTAGRAM.url} />
+          <InstagramFeed posts={instagramPosts} />
+        </section>
+      );
+    }
     return <UltimosIngresos key={section.key} products={latest} title={section.title} allHref={fundasHref} />;
   }
 
@@ -175,15 +198,20 @@ export default async function Home() {
     <div className="space-y-16 md:space-y-24">
       {/* A sangre y pegado al header: cancela el padding lateral y el de arriba del <main>.
           Alto: vertical en el celular (4:5), más bajo en tablet y apaisado en la
-          compu, pero nunca más alto que la pantalla (sin la barra de arriba). */}
-      {slides.length > 0 && (
-        <section
-          aria-label="Destacado"
-          className={`relative -mt-8 h-[min(125vw,calc(100svh-80px))] overflow-hidden bg-ink sm:h-[min(78vw,calc(100svh-80px))] md:-mt-14 md:h-[min(45.6vw,calc(100svh-80px))] ${FULL_BLEED}`}
-        >
-          <HeroCarousel slides={slides} />
-        </section>
-      )}
+          compu, pero nunca más alto que la pantalla (sin la barra de arriba). En la
+          compu (lg) llena justo lo que queda de pantalla debajo del header (80px)
+          y la barra de avisos (28px + 1px de borde). */}
+      <div className={`-mt-8 md:-mt-14 ${FULL_BLEED}`}>
+        <AnnouncementBar items={ANNOUNCEMENTS} />
+        {slides.length > 0 && (
+          <section
+            aria-label="Destacado"
+            className="relative h-[min(125vw,calc(100svh-80px))] overflow-hidden bg-ink sm:h-[min(78vw,calc(100svh-80px))] md:h-[min(45.6vw,calc(100svh-80px))] lg:h-[calc(100svh-109px)]"
+          >
+            <HeroCarousel slides={slides} />
+          </section>
+        )}
+      </div>
 
       {modelLines.length > 0 && (
         <div className={FULL_BLEED}>

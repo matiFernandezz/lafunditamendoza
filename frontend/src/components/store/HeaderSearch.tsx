@@ -114,7 +114,7 @@ export default function HeaderSearch({
           goToAll();
         }
       }}
-      className={variant === "bar" ? "relative w-[clamp(180px,18vw,280px)]" : "relative w-full"}
+      className={variant === "bar" ? "relative w-[clamp(160px,14vw,230px)]" : "relative w-full"}
     >
       <label htmlFor={id} className="sr-only">
         Buscar productos

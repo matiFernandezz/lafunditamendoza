@@ -152,3 +152,6 @@ design/uploads/
 
 # Caché local de la herramienta de diseño
 frontend/.impeccable/hook.cache.json
+
+.vercel
+.env*

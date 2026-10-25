@@ -898,7 +898,61 @@ export async function reorderNewArrivals(ids: string[]): Promise<void> {
   await adminFetch("/api/store/new-arrivals/reorder", { method: "POST", body: JSON.stringify({ ids }) });
 }
 
-export type HomeSectionKey = "categorias" | "mas_vendidas" | "ultimos";
+// ---------------------------------------------------------------------------
+// Tienda › Nosotros: el texto, las fotos de al lado y las publicaciones.
+// ---------------------------------------------------------------------------
+
+export type AboutPage = { title: string; body: string };
+export type AboutPhoto = { id: string; sort_order: number; image_url: string };
+export type SocialPost = { id: string; network: "instagram" | "tiktok"; url: string; sort_order: number };
+
+export function getAbout(): Promise<{ data: { page: AboutPage; photos: AboutPhoto[]; posts: SocialPost[] } }> {
+  return adminFetch("/api/store/about");
+}
+
+export function updateAbout(patch: Partial<AboutPage>): Promise<{ data: AboutPage }> {
+  return adminFetch("/api/store/about", { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export function createAboutPhoto(image_url: string): Promise<{ data: AboutPhoto }> {
+  return adminFetch("/api/store/about/photos", { method: "POST", body: JSON.stringify({ image_url }) });
+}
+
+export async function deleteAboutPhoto(id: string): Promise<void> {
+  await adminFetch(`/api/store/about/photos/${id}`, { method: "DELETE" });
+}
+
+export async function reorderAboutPhotos(ids: string[]): Promise<void> {
+  await adminFetch("/api/store/about/photos/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+export function createSocialPost(url: string): Promise<{ data: SocialPost }> {
+  return adminFetch("/api/store/social", { method: "POST", body: JSON.stringify({ url }) });
+}
+
+export async function deleteSocialPost(id: string): Promise<void> {
+  await adminFetch(`/api/store/social/${id}`, { method: "DELETE" });
+}
+
+export type InstagramStatus = { connected: false } | { connected: true; username: string | null; expiresAt: string };
+
+export function getInstagramStatus(): Promise<{ data: InstagramStatus }> {
+  return adminFetch("/api/store/instagram");
+}
+
+export function connectInstagram(token: string): Promise<{ data: InstagramStatus }> {
+  return adminFetch("/api/store/instagram", { method: "PUT", body: JSON.stringify({ token }) });
+}
+
+export async function disconnectInstagram(): Promise<void> {
+  await adminFetch("/api/store/instagram", { method: "DELETE" });
+}
+
+export async function reorderSocialPosts(ids: string[]): Promise<void> {
+  await adminFetch("/api/store/social/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+export type HomeSectionKey = "categorias" | "mas_vendidas" | "ultimos" | "instagram";
 
 export type HomeSection = { key: HomeSectionKey; sort_order: number; visible: boolean; title: string };
 

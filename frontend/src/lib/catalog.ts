@@ -370,7 +370,39 @@ export async function getHomeNewArrivals(): Promise<NewArrivalItem[]> {
   });
 }
 
-export type HomeSectionRow = { key: "categorias" | "mas_vendidas" | "ultimos"; visible: boolean; title: string };
+export type AboutContent = {
+  title: string;
+  /** Párrafos del texto (en la base van separados por una línea en blanco). */
+  paragraphs: string[];
+  photos: string[];
+  posts: { network: "instagram" | "tiktok"; url: string }[];
+};
+
+/** Página Nosotros: texto, fotos y publicaciones, como las dejó el panel › Tienda › Nosotros. */
+export async function getAboutContent(): Promise<AboutContent> {
+  const [page, photos, posts] = await Promise.all([
+    supabase.from("about_page").select("title, body").eq("id", 1).single(),
+    supabase.from("about_photos").select("image_url").order("sort_order").order("created_at"),
+    supabase.from("social_posts").select("network, url").order("sort_order").order("created_at"),
+  ]);
+  const error = page.error ?? photos.error ?? posts.error;
+  if (error || !page.data) throw new Error(`No se pudo cargar Nosotros: ${error?.message ?? "sin texto"}`);
+  return {
+    title: page.data.title,
+    paragraphs: page.data.body
+      .split(/\n\s*\n/)
+      .map((p: string) => p.trim())
+      .filter(Boolean),
+    photos: (photos.data ?? []).map((p) => p.image_url as string),
+    posts: (posts.data ?? []) as AboutContent["posts"],
+  };
+}
+
+export type HomeSectionRow = {
+  key: "categorias" | "mas_vendidas" | "ultimos" | "instagram";
+  visible: boolean;
+  title: string;
+};
 
 /** Secciones de la home debajo de "Elegí tu iPhone", en el orden del panel. */
 export async function getHomeSections(): Promise<HomeSectionRow[]> {

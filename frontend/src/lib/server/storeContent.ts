@@ -29,7 +29,10 @@ export async function removeStoreImage(url: string | null | undefined) {
 }
 
 /** Guarda el orden de una lista: ids en el orden nuevo (todos los de la tabla). */
-export async function reorderRows(table: "home_slides" | "home_new_arrivals", ids: unknown) {
+export async function reorderRows(
+  table: "home_slides" | "home_new_arrivals" | "about_photos" | "social_posts",
+  ids: unknown,
+) {
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every(isUuid) || new Set(ids).size !== ids.length) {
     return jsonError(400, "ids debe ser la lista de ids en el orden nuevo, sin repetir");
   }

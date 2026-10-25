@@ -126,6 +126,16 @@ p {
   }
 }
 
+/* Barra de avisos de la home (AnnouncementBar): la pista va duplicada. */
+@keyframes lf-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 /* Segundo sidebar del panel (Ventas) al abrirse junto al principal. */
 @keyframes lf-subnav-in {
   from {

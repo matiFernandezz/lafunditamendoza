@@ -61,8 +61,11 @@ export default function AppShell({
     <>
       <header className="sticky top-0 z-40 bg-black text-paper">
         {/* El header va más adentro que el contenido: page-pad + 12px en
-            mobile y clamp(48px, 9vw, 180px) desde md, como en el diseño. */}
-        <div className="flex h-20 w-full items-center justify-between gap-4 px-8 md:px-[clamp(48px,9vw,180px)]">
+            mobile y clamp(48px, 9vw, 180px) a la izquierda desde md, como en el
+            diseño; a la derecha, el buscador y el carrito van pegados al borde.
+            Como los márgenes no son iguales, el menú va centrado con absolute
+            sobre el ancho de la pantalla, no entre el logo y el buscador. */}
+        <div className="relative flex h-20 w-full items-center justify-between gap-4 px-8 md:pl-[clamp(48px,9vw,180px)] md:pr-6 lg:pr-10 xl:pr-16">
           <Link
             href="/"
             aria-label="La Fundita — inicio"
@@ -76,7 +79,7 @@ export default function AppShell({
             </span>
           </Link>
 
-          <nav aria-label="Categorías" className="hidden md:flex md:items-center md:gap-8">
+          <nav aria-label="Categorías" className="hidden md:absolute md:left-1/2 md:flex md:-translate-x-1/2 md:items-center md:gap-6 lg:gap-8">
             {navLinks.map((link) => (
               <Link key={link.key} href={link.href} className={NAV_LINK}>
                 {link.label}

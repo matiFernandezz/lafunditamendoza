@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import EmptyState from "@/components/EmptyState";
-import FilterSelect from "@/components/FilterSelect";
+import ModelPicker from "@/components/ModelPicker";
 import PageHeader from "@/components/PageHeader";
 import ProductGrid from "@/components/ProductGrid";
-import { getCategoryGroups, getIphoneModels, getProductsInCategory } from "@/lib/catalog";
+import SortPicker from "@/components/SortPicker";
+import TypePicker from "@/components/TypePicker";
+import { getCategoryGroups, getIphoneModels, getProductsInCategory, groupModelsByLine } from "@/lib/catalog";
 import {
   buildListing,
   LEGACY_CATEGORY_SLUGS,
@@ -17,8 +19,6 @@ export const dynamic = "force-dynamic";
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-const CHIP =
-  "inline-flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors duration-200";
 const EMPTY_LINK = "font-medium text-ink underline underline-offset-[3px]";
 
 export default async function CategoryPage(props: PageProps<"/categoria/[slug]">) {
@@ -28,6 +28,8 @@ export default async function CategoryPage(props: PageProps<"/categoria/[slug]">
     tipo: first(search.tipo),
     modelo: first(search.modelo),
     orden: first(search.orden),
+    desde: first(search.desde),
+    hasta: first(search.hasta),
   };
 
   const slug = LEGACY_CATEGORY_SLUGS[rawSlug] ?? rawSlug;
@@ -51,74 +53,52 @@ export default async function CategoryPage(props: PageProps<"/categoria/[slug]">
   const listing = buildListing(group, allProducts, models, params);
   const { type, model, products } = listing;
   const what = (type?.name ?? group.name).toLowerCase();
+  const hasPrice = listing.price.desde !== undefined || listing.price.hasta !== undefined;
 
   return (
     <div className="space-y-8 md:space-y-10">
-      <PageHeader
-        parent={type ? group.name : undefined}
-        title={type?.name ?? group.name}
-        count={products.length}
-        countSuffix={model ? `para ${model.name}` : undefined}
-        back={type ? { href: listing.hrefWith({ tipo: undefined }), label: group.name } : { href: "/", label: "Inicio" }}
-      />
+      <div>
+        <PageHeader
+          parent={type ? group.name : undefined}
+          title={type?.name ?? group.name}
+          back={
+            type ? { href: listing.hrefWith({ tipo: undefined }), label: group.name } : { href: "/", label: "Inicio" }
+          }
+        />
 
-      <div className="space-y-6">
-        {listing.showModelSelector && (
-          <div className="md:max-w-[420px]">
-            <FilterSelect
-              id="modelo"
-              label="Elegí tu iPhone"
-              value={model?.slug ?? ""}
-              options={[
-                { value: "", label: "Todos los modelos", href: listing.hrefWith({ modelo: undefined }) },
-                ...listing.modelOptions.map((m) => ({
-                  value: m.slug,
-                  label: m.name,
-                  href: listing.hrefWith({ modelo: m.slug }),
-                })),
-              ]}
-            />
-          </div>
-        )}
-
-        {(listing.chips.length > 0 || products.length > 1) && (
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            {listing.chips.length > 0 ? (
-              // En mobile los chips se deslizan dentro de su fila (a sangre): la
-              // página nunca gana scroll horizontal.
-              <nav
-                aria-label="Tipo"
-                className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-6 sm:px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0"
-              >
-                {listing.chips.map((chip) => (
-                  <Link
-                    key={chip.slug ?? "todos"}
-                    href={chip.href}
-                    scroll={false}
-                    aria-current={chip.selected ? "true" : undefined}
-                    className={`${CHIP} ${
-                      chip.selected
-                        ? "border-ink bg-ink text-paper"
-                        : "border-graphite text-ink hover:border-ink"
-                    }`}
-                  >
-                    {chip.label}
-                    <span className={`font-mono text-xs tabular-nums ${chip.selected ? "text-paper/70" : "text-graphite"}`}>
-                      {chip.count}
-                    </span>
-                  </Link>
-                ))}
-              </nav>
-            ) : (
-              <span />
-            )}
-
-            {products.length > 1 && (
-              <FilterSelect
-                id="orden"
-                label="Ordenar"
-                variant="inline"
-                value={listing.sort}
+        {/* Debajo de la línea del encabezado: tipo (Accesorios) y modelo a la izquierda,
+            el orden a la derecha. */}
+        {(listing.showTypePicker || listing.showModelSelector || products.length > 1 || hasPrice) && (
+          // En mobile, una píldora debajo de la otra contra el margen (los popups abren hacia la derecha).
+          <div className="mt-5 flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
+            <div className="flex flex-col items-start gap-3 md:flex-row md:flex-wrap md:items-center">
+              {listing.showTypePicker && (
+                <TypePicker chips={listing.chips} allLabel={`Todos los ${group.name.toLowerCase()}`} />
+              )}
+              {listing.showModelSelector && (
+                <ModelPicker
+                  selected={model ? { slug: model.slug, name: model.name } : null}
+                  allHref={listing.hrefWith({ modelo: undefined })}
+                  // Todos los modelos (también los que no tienen nada acá, atenuados):
+                  // así la línea entera, del 11 al 18, siempre está.
+                  lines={groupModelsByLine(models).map((line) => ({
+                    key: line.key,
+                    models: line.models.map((m) => ({
+                      slug: m.slug,
+                      name: m.name,
+                      href: listing.hrefWith({ modelo: m.slug }),
+                      available: listing.modelOptions.some((o) => o.id === m.id),
+                    })),
+                  }))}
+                />
+              )}
+            </div>
+            {/* Con un rango de precio puesto queda aunque no haya resultados, para poder sacarlo. */}
+            {(products.length > 1 || hasPrice) && (
+              <SortPicker
+                sort={listing.sort}
+                price={listing.price}
+                priceHref={listing.hrefWith({ desde: undefined, hasta: undefined })}
                 options={SORT_OPTIONS.map((o) => ({
                   value: o.value,
                   label: o.label,
@@ -132,7 +112,15 @@ export default async function CategoryPage(props: PageProps<"/categoria/[slug]">
 
       {products.length === 0 ? (
         <EmptyState>
-          {model && type ? (
+          {hasPrice ? (
+            <>
+              No hay {what} en ese rango de precio.{" "}
+              <Link href={listing.hrefWith({ desde: undefined, hasta: undefined })} className={EMPTY_LINK}>
+                Ver todos los precios
+              </Link>
+              .
+            </>
+          ) : model && type ? (
             <>
               No hay {what} para {model.name} por ahora.{" "}
               <Link href={listing.hrefWith({ tipo: undefined })} className={EMPTY_LINK}>

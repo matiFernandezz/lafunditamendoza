@@ -3,7 +3,7 @@ import { isUuid } from "./catalog";
 
 // Filtros de las páginas de categoría (Fundas, Accesorios). El estado vive en
 // la URL para poder compartirla:
-//   /categoria/fundas?modelo=<slug>&tipo=<slug>&orden=<valor>
+//   /categoria/fundas?modelo=<slug>&tipo=<slug>&orden=<valor>&desde=<pesos>&hasta=<pesos>
 // Todo es lógica pura sobre los productos ya traídos (con stock), sin consultas.
 
 /** Slugs que ya se compartieron por WhatsApp y cambiaron de nombre. */
@@ -21,7 +21,14 @@ export const SORT_OPTIONS = [
 export type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 const DEFAULT_SORT: SortValue = "nuevos";
 
-export type ListingParams = { tipo?: string; modelo?: string; orden?: string };
+/** desde / hasta: rango de precio en pesos (enteros). */
+export type ListingParams = { tipo?: string; modelo?: string; orden?: string; desde?: string; hasta?: string };
+
+/** Precio de la URL: un entero positivo, o undefined si no hay o no sirve. */
+export function parsePrice(value: string | undefined): number | undefined {
+  const n = value ? Number(value) : NaN;
+  return Number.isInteger(n) && n > 0 ? n : undefined;
+}
 
 /** URL de un listado; no escribe los valores por defecto. */
 export function listingHref(groupSlug: string, params: ListingParams): string {
@@ -29,6 +36,10 @@ export function listingHref(groupSlug: string, params: ListingParams): string {
   if (params.modelo) query.set("modelo", params.modelo);
   if (params.tipo) query.set("tipo", params.tipo);
   if (params.orden && params.orden !== DEFAULT_SORT) query.set("orden", params.orden);
+  const desde = parsePrice(params.desde);
+  const hasta = parsePrice(params.hasta);
+  if (desde) query.set("desde", String(desde));
+  if (hasta) query.set("hasta", String(hasta));
   const qs = query.toString();
   return `/categoria/${groupSlug}${qs ? `?${qs}` : ""}`;
 }
@@ -73,7 +84,11 @@ export type Listing = {
   /** Modelos que tienen algo en esta vista (más el elegido). */
   modelOptions: IphoneModel[];
   chips: TypeChip[];
+  /** Si va el selector de tipo: categorías que no se eligen por modelo (Accesorios). */
+  showTypePicker: boolean;
   sort: SortValue;
+  /** Rango de precio aplicado (en pesos), si hay. */
+  price: { desde?: number; hasta?: number };
   products: Product[];
   /** URL de esta misma vista cambiando algún filtro. */
   hrefWith: (changes: ListingParams) => string;
@@ -107,18 +122,30 @@ export function buildListing(
   const showModelSelector = modelApplies(type?.id ?? null);
   const model = showModelSelector ? requested : null;
 
+  // Rango de precio: compara contra el precio más bajo del producto (el "desde"
+  // que muestra la card). Si vienen invertidos, se dan vuelta.
+  let desde = parsePrice(params.desde);
+  let hasta = parsePrice(params.hasta);
+  if (desde && hasta && desde > hasta) [desde, hasta] = [hasta, desde];
+  const inRange = (p: Product) => {
+    const price = minPrice(p);
+    return (!desde || price >= desde) && (!hasta || price <= hasta);
+  };
+
   const base = model ? filterByModel(allProducts, model.id) : allProducts;
-  const products = sortProducts(ofType(base, type?.id ?? null), sort);
+  const products = sortProducts(ofType(base, type?.id ?? null).filter(inRange), sort);
 
   const scope = ofType(allProducts, type?.id ?? null);
   const modelOptions = models.filter((m) => m.id === model?.id || filterByModel(scope, m.id).length > 0);
 
-  const hrefFor = (next: { type: Category | null; modelo?: string; orden?: string }) =>
+  const hrefFor = (next: { type: Category | null; modelo?: string; orden?: string; desde?: number; hasta?: number }) =>
     listingHref(group.slug, {
       tipo: next.type?.slug,
       // El modelo solo viaja a las vistas donde se usa.
       modelo: modelApplies(next.type?.id ?? null) ? next.modelo : undefined,
       orden: next.orden,
+      desde: next.desde?.toString(),
+      hasta: next.hasta?.toString(),
     });
 
   // Chips: solo tipos con productos para el modelo elegido (más el elegido,
@@ -134,7 +161,7 @@ export function buildListing(
             label: group.name.toLowerCase().endsWith("as") ? "Todas" : "Todos",
             count: base.length,
             selected: type === null,
-            href: hrefFor({ type: null, modelo: requested?.slug, orden: sort }),
+            href: hrefFor({ type: null, modelo: requested?.slug, orden: sort, desde, hasta }),
           },
           ...group.children
             .map((c) => ({
@@ -142,7 +169,7 @@ export function buildListing(
               label: c.name,
               count: ofType(base, c.id).length,
               selected: c.id === type?.id,
-              href: hrefFor({ type: c, modelo: requested?.slug, orden: sort }),
+              href: hrefFor({ type: c, modelo: requested?.slug, orden: sort, desde, hasta }),
             }))
             .filter((chip) => chip.count > 0 || chip.selected),
         ];
@@ -153,13 +180,17 @@ export function buildListing(
     showModelSelector,
     modelOptions,
     chips,
+    showTypePicker: chips.length > 0 && !modelApplies(null),
     sort,
+    price: { desde, hasta },
     products,
     hrefWith: (changes) =>
       hrefFor({
         type: "tipo" in changes ? (group.children.find((c) => c.slug === changes.tipo) ?? null) : type,
         modelo: "modelo" in changes ? changes.modelo : model?.slug,
         orden: "orden" in changes ? changes.orden : sort,
+        desde: "desde" in changes ? parsePrice(changes.desde) : desde,
+        hasta: "hasta" in changes ? parsePrice(changes.hasta) : hasta,
       }),
   };
 }
