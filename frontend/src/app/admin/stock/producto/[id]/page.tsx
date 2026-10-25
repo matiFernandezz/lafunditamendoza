@@ -361,7 +361,7 @@ export default function StockProductPage() {
           onDeleted={() => {
             // El producto ya no está: se vuelve a su categoría y se refrescan las listas.
             window.dispatchEvent(new Event(STOCK_CHANGED));
-            startNavigationProgress();
+            startNavigationProgress({ toTop: true });
             router.push(top ? `/admin/stock/${top.slug}` : "/admin/stock");
           }}
         />

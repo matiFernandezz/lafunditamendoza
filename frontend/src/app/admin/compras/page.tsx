@@ -222,7 +222,7 @@ function PedidosList() {
                       <tr
                         key={p.id}
                         onClick={() => {
-                          startNavigationProgress();
+                          startNavigationProgress({ toTop: true });
                           router.push(href);
                         }}
                         className="cursor-pointer transition-colors duration-150 hover:bg-admin-bg"

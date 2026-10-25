@@ -45,7 +45,7 @@ export default function CheckoutView() {
         setSubmitting(false);
         return;
       }
-      startNavigationProgress();
+      startNavigationProgress({ toTop: true });
       router.push(`/reserva/${json.data.public_token}`);
       cart.clear();
     } catch {

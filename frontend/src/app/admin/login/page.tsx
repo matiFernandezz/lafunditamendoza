@@ -39,7 +39,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    startNavigationProgress();
+    startNavigationProgress({ toTop: true });
     router.push("/admin");
     router.refresh();
   }

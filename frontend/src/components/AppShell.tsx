@@ -70,6 +70,15 @@ export default function AppShell({
           <Link
             href="/"
             aria-label="La Fundita — inicio"
+            // Ya en la home, el link no haría nada (es la misma página): la recarga
+            // desde arriba. Se sube antes de recargar, así el navegador no vuelve
+            // a la posición donde estaba.
+            onClick={(event) => {
+              if (pathname !== "/") return;
+              event.preventDefault();
+              window.scrollTo({ top: 0, behavior: "instant" });
+              window.location.reload();
+            }}
             className="flex shrink-0 items-center focus-visible:outline-paper"
           >
             <span className="md:hidden">

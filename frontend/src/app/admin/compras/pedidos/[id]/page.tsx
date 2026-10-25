@@ -116,7 +116,7 @@ export default function PedidoPage() {
     try {
       await deletePurchase(id);
       window.dispatchEvent(new Event(PURCHASES_CHANGED));
-      startNavigationProgress();
+      startNavigationProgress({ toTop: true });
       router.push("/admin/compras");
     } catch (err) {
       setActionError(err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.");

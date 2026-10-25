@@ -303,7 +303,7 @@ export default function ComprasPage() {
       // Todo bien: al detalle del pedido nuevo. Si alguna foto falló, se queda
       // acá para avisarlo.
       if (photoFailures.length === 0) {
-        startNavigationProgress();
+        startNavigationProgress({ toTop: true });
         router.push(`/admin/compras/pedidos/${res.data.id}`);
         return;
       }
