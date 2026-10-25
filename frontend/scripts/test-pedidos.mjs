@@ -250,6 +250,11 @@ async function main() {
   eq("proveedor: pedidos y total pagado (mercadería + envío)", [stats?.purchases_count, stats?.total_paid], [2, 12000 + 2200 + 12000]);
 }
 
+// La regla de stock compartido (Stock › Stock compartido) crea y sincroniza
+// variantes solas: se apaga mientras corren las pruebas y se restaura al final.
+const { data: savedStockRule } = await admin.from("stock_share_rule").select("iphone_model_id, group_no");
+await admin.from("stock_share_rule").delete().gte("group_no", 0);
+
 let crashed = null;
 try {
   await main();
@@ -257,6 +262,7 @@ try {
   crashed = err;
 } finally {
   await cleanup().catch((err) => console.error(`\nNo se pudo limpiar todo: ${err.message}`));
+  if (savedStockRule?.length) await admin.from("stock_share_rule").insert(savedStockRule);
 }
 
 const failed = results.filter((r) => !r.ok);
