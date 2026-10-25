@@ -9,9 +9,9 @@ const lineOf = (name: string) => name.match(/^iPhone (\d+)/i)?.[1] ?? name;
 
 /**
  * "Elegí tu modelo" de la ficha de producto, como el selector de Fundas: un
- * número por línea (11…18) y, al tocarlo, sus modelos debajo, en orden. Una
- * línea con un solo modelo lo elige directo. Solo muestra los modelos que el
- * producto tiene.
+ * número por línea (11…18) y, al tocarlo, sus modelos debajo, en orden. Si la
+ * línea tiene un solo modelo, se elige solo, pero igual se muestra abajo. Solo
+ * muestra los modelos que el producto tiene.
  */
 export default function ProductModelPicker({
   models,
@@ -42,7 +42,7 @@ export default function ProductModelPicker({
       <div role="group" aria-labelledby="modelo-detalle" className="flex flex-wrap gap-1.5">
         {lines.map((l) => {
           const single = l.models.length === 1;
-          const active = single ? l.models[0].id === value : lineKey === l.key;
+          const active = lineKey === l.key;
           return (
             <button
               key={l.key}
@@ -52,9 +52,9 @@ export default function ProductModelPicker({
                 if (single) onChange(l.models[0].id);
               }}
               aria-pressed={active}
-              aria-label={single ? l.models[0].name : `iPhone ${l.key}`}
+              aria-label={`iPhone ${l.key}`}
               className={`flex h-12 min-w-12 items-center justify-center rounded-full px-3 font-display text-xl font-semibold leading-none tracking-tight transition-colors duration-200 ${
-                active ? (single ? "bg-ink text-paper" : "bg-ink/10 text-ink") : "text-ink hover:bg-ink/5"
+                active ? "bg-ink/10 text-ink" : "text-ink hover:bg-ink/5"
               }`}
             >
               {l.key}
@@ -63,8 +63,9 @@ export default function ProductModelPicker({
         })}
       </div>
 
-      {/* Los modelos de la línea elegida, separados por una línea suave. */}
-      {line && line.models.length > 1 && (
+      {/* Los modelos de la línea elegida, separados por una línea suave. Se abre
+          siempre, aunque la línea tenga uno solo: así se ve qué modelo quedó. */}
+      {line && (
         <div
           key={line.key}
           className="mt-3 flex animate-[lf-fade-in_200ms_ease-out] flex-wrap gap-2 border-t border-rule pt-3 motion-reduce:animate-none"

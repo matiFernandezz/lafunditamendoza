@@ -266,14 +266,19 @@ export default function BundleEditor({
                     className={`${ADMIN_INPUT} col-start-1 row-start-2 sm:col-start-2 sm:row-start-1`}
                   >
                     {/* Con un solo color o diseño va ese; con varios hay que elegir cuál. */}
-                    <option value={ANY} disabled={attrs.length > 1}>
+                    <option
+                      value={attrs.length === 1 && part.attr === attrs[0][0] ? attrs[0][0] : ANY}
+                      disabled={attrs.length > 1}
+                    >
                       {attrs.length === 0 ? "Única" : attrs.length === 1 ? attrs[0][1] : "Elegí cuál…"}
                     </option>
-                    {attrs.map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
+                    {/* Con uno solo ya se muestra arriba: listarlo de nuevo lo repetía. */}
+                    {attrs.length > 1 &&
+                      attrs.map(([key, label]) => (
+                        <option key={key} value={key}>
+                          {label}
+                        </option>
+                      ))}
                   </select>
                   <button
                     type="button"
