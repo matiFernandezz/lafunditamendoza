@@ -1,6 +1,6 @@
 // Columnas que devuelven los endpoints del panel (las mismas que devolvía Express).
 
-export const PRODUCT_SELECT = "id, name, description, active, category_id, image_url, created_at";
+export const PRODUCT_SELECT = "id, name, description, active, category_id, image_url, created_at, stock_groups_custom";
 
 export const VARIANT_SELECT =
   "id, product_id, iphone_model_id, color, color_id, motif_id, sku, price, cost_price, stock_quantity, active";

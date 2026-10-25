@@ -70,10 +70,54 @@ export type AdminProduct = {
   created_at: string;
   product_variants: AdminVariant[];
   product_images: AdminProductImage[];
+  /** Modelos que comparten stock: mismo group_no = las variantes del mismo color van juntas. */
+  product_stock_links: { iphone_model_id: string; group_no: number }[];
+  /** true: sus grupos se pusieron a mano (excepción); false: sigue la regla general. */
+  stock_groups_custom: boolean;
 };
 
 export function getAdminProducts(): Promise<{ data: AdminProduct[] }> {
   return adminFetch("/api/products");
+}
+
+export type StockGroupsResult = {
+  groups: number;
+  /** Variantes cuyo stock cambia al armar los grupos (todas al más alto de su color). */
+  changes: { id: string; sku: string; from: number; to: number }[];
+  /** Variantes que se crean porque a un modelo del grupo le faltaba ese color o diseño. */
+  created: { model: string; label: string; stock: number }[];
+  dry_run: boolean;
+};
+
+/** La regla general de stock compartido guardada (grupos de ids de modelo). */
+export function getStockRule(): Promise<{ data: string[][] }> {
+  return adminFetch("/api/stock-groups");
+}
+
+/** Guarda la regla general y la aplica a todos los productos que no son excepción. */
+export function setAllStockGroups(
+  groups: string[][],
+  dryRun = false,
+): Promise<{ data: { products: number; changes: number; created: number; dry_run: boolean } }> {
+  return adminFetch(`/api/stock-groups${dryRun ? "?dry_run=1" : ""}`, {
+    method: "PUT",
+    body: JSON.stringify({ groups }),
+  });
+}
+
+/**
+ * Grupos de un producto puestos a mano (queda como excepción a la regla; []
+ * = ningún modelo comparte). null lo vuelve a la regla general.
+ */
+export function setProductStockGroups(
+  productId: string,
+  groups: string[][] | null,
+  dryRun = false,
+): Promise<{ data: StockGroupsResult }> {
+  return adminFetch(`/api/products/${productId}/stock-groups${dryRun ? "?dry_run=1" : ""}`, {
+    method: "PUT",
+    body: JSON.stringify({ groups }),
+  });
 }
 
 export type SaleItemInput = {

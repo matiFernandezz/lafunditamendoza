@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Link2, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AdminApiError, deleteVariant, type AdminProduct, type AdminVariant } from "@/lib/adminApi";
 import { UNIVERSAL_LABEL, filterBySearch, variantHaystack } from "@/lib/variantSearch";
@@ -38,6 +38,7 @@ export default function VariantList({
   onAddVariant,
   addLabel = "Agregar variante",
   onChanged,
+  synced,
 }: {
   product: AdminProduct;
   /** Las variantes que pasan los filtros de la pantalla (modelo, stock). */
@@ -54,6 +55,8 @@ export default function VariantList({
   addLabel?: string;
   /** Se eliminó una variante: `message` dice qué pasó, para mostrar y refrescar. */
   onChanged: (message: string) => void;
+  /** Variantes con stock compartido: por cada una, las otras (ids y modelos). */
+  synced?: Map<string, { ids: string[]; models: string[] }>;
 }) {
   const [search, setSearch] = useState("");
   // Variante con stock esperando confirmación para eliminarla.
@@ -154,6 +157,16 @@ export default function VariantList({
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-[15px] font-semibold text-admin-text">{detail}</span>
                   {v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
+                  {synced?.has(v.id) && (
+                    // Corto para que entre en la columna: "Sinc. 14" (el detalle, en el title).
+                    <span
+                      className={`${adminBadge("ink")} inline-flex max-w-full items-center gap-1 truncate`}
+                      title={`Stock sincronizado con ${synced.get(v.id)?.models.join(", ")}: vender, reservar o cargar stock en una mueve a las otras`}
+                    >
+                      <Link2 aria-hidden="true" className="size-3.5 shrink-0" />
+                      Sinc. {synced.get(v.id)?.models.map((m) => m.replace(/^iPhone\s*/i, "")).join(" · ")}
+                    </span>
+                  )}
                 </span>
                 <span className="mt-0.5 block font-mono text-xs text-admin-muted">{v.sku}</span>
               </div>
@@ -174,7 +187,14 @@ export default function VariantList({
                 disabled={saving}
                 invalid={changes.invalid.has(`${v.id}:stock`)}
                 dirty={patch?.stock_quantity !== undefined}
-                onChange={(value) => onDraftChange((d) => ({ ...d, stock: { ...d.stock, [v.id]: value } }))}
+                // Con stock compartido, las otras variantes del grupo muestran el mismo número.
+                onChange={(value) =>
+                  onDraftChange((d) => {
+                    const stock = { ...d.stock, [v.id]: value };
+                    for (const sibling of synced?.get(v.id)?.ids ?? []) stock[sibling] = value;
+                    return { ...d, stock };
+                  })
+                }
               />
               <MoneyInput
                 className="col-span-2 lg:col-span-1"

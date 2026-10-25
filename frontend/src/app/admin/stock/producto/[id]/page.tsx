@@ -8,6 +8,7 @@ import {
   AdminApiError,
   getAdminIphoneModels,
   getAdminProducts,
+  setProductStockGroups,
   updateProduct,
   updateVariant,
   type AdminIphoneModel,
@@ -15,7 +16,14 @@ import {
   type AdminVariant,
 } from "@/lib/adminApi";
 import AdminNotice from "../../../AdminNotice";
-import { ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminBadge, adminButton } from "../../../adminStyles";
+import {
+  ADMIN_CARD,
+  ADMIN_PAGE_TITLE,
+  ADMIN_SECTION_TITLE,
+  ADMIN_TEXT_MUTED,
+  adminBadge,
+  adminButton,
+} from "../../../adminStyles";
 import { LIBRARY_TOUCHED_PRODUCTS } from "../../../attributeLibrary";
 import AddVariantDialog from "../../../catalogo/AddVariantDialog";
 import { variantRules } from "../../../catalogo/addVariantRules";
@@ -23,6 +31,7 @@ import { EMPTY_DRAFT, draftChanges, type CatalogDraft } from "../../../catalogo/
 import ProductEditor from "../../../catalogo/ProductEditor";
 import { categoryPathById, resolveCategorySettings } from "../../../categoryPath";
 import { STOCK_CHANGED, settingsHint, useStockCategories } from "../../stockData";
+import StockGroupsEditor from "../../StockGroupsEditor";
 import DeleteProductDialog from "./DeleteProductDialog";
 
 function errorMessage(err: unknown) {
@@ -92,6 +101,46 @@ export default function StockProductPage() {
     });
   }, [product, modelOrder]);
 
+  // Modelos del producto (en el orden de la lista) y sus grupos de stock compartido.
+  const productModels = useMemo(() => {
+    const ids = new Set(product?.product_variants.map((v) => v.iphone_model_id).filter((id) => id !== null));
+    return models.filter((m) => ids.has(m.id)).map((m) => ({ id: m.id, name: m.name }));
+  }, [product, models]);
+  const productGroups = useMemo(() => {
+    const byGroup = new Map<number, string[]>();
+    for (const link of product?.product_stock_links ?? []) {
+      byGroup.set(link.group_no, [...(byGroup.get(link.group_no) ?? []), link.iphone_model_id]);
+    }
+    return [...byGroup.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, ids]) => [...ids].sort((a, b) => (modelOrder.get(a) ?? 0) - (modelOrder.get(b) ?? 0)));
+  }, [product, modelOrder]);
+
+  // Variantes con stock sincronizado: las del mismo color o diseño de los modelos
+  // de un mismo grupo. Por cada una, las otras (ids y modelos).
+  const synced = useMemo(() => {
+    const groupOf = new Map((product?.product_stock_links ?? []).map((l) => [l.iphone_model_id, l.group_no]));
+    const buckets = new Map<string, AdminVariant[]>();
+    for (const v of product?.product_variants ?? []) {
+      const group = v.iphone_model_id ? groupOf.get(v.iphone_model_id) : undefined;
+      if (group === undefined) continue;
+      const key = [group, v.color_id, v.motif_id, v.color].join("|");
+      buckets.set(key, [...(buckets.get(key) ?? []), v]);
+    }
+    const map = new Map<string, { ids: string[]; models: string[] }>();
+    for (const bucket of buckets.values()) {
+      if (bucket.length < 2) continue;
+      for (const v of bucket) {
+        const others = bucket.filter((o) => o.id !== v.id);
+        map.set(v.id, {
+          ids: others.map((o) => o.id),
+          models: others.map((o) => modelNameById.get(o.iphone_model_id ?? "") ?? "otro modelo"),
+        });
+      }
+    }
+    return map;
+  }, [product, modelNameById]);
+
   async function refreshProducts(message?: string) {
     if (message) setNotice(message);
     try {
@@ -118,16 +167,31 @@ export default function StockProductPage() {
     setSaving(true);
     setSaveError(null);
 
+    // De las variantes sincronizadas se manda el stock de una sola (la base
+    // mueve las otras); si a otra solo le cambiaba el stock, no se manda.
+    const stockSent = new Set<string>();
+    const variantPatches = changes.variants
+      .map(({ id: variantId, ...patch }) => {
+        const siblings = synced.get(variantId)?.ids ?? [];
+        if (patch.stock_quantity !== undefined) {
+          if (siblings.some((s) => stockSent.has(s))) delete patch.stock_quantity;
+          else stockSent.add(variantId);
+        }
+        return { variantId, patch };
+      })
+      .filter(({ patch }) => Object.keys(patch).length > 0);
+    const syncedStockChanged = [...stockSent].some((id) => synced.has(id));
+
     const hasProductPatch = Object.keys(changes.productPatch).length > 0;
     const [productResult, ...variantResults] = await Promise.allSettled([
       hasProductPatch ? updateProduct(product.id, changes.productPatch) : Promise.resolve(null),
-      ...changes.variants.map(({ id: variantId, ...patch }) => updateVariant(variantId, patch)),
+      ...variantPatches.map(({ variantId, patch }) => updateVariant(variantId, patch)),
     ]);
 
     const failures: unknown[] = [];
     const saved = new Map<string, AdminVariant>();
     variantResults.forEach((result, index) => {
-      if (result.status === "fulfilled" && result.value) saved.set(changes.variants[index].id, result.value.data);
+      if (result.status === "fulfilled" && result.value) saved.set(variantPatches[index].variantId, result.value.data);
       else if (result.status === "rejected") failures.push(result.reason);
     });
     const productSaved = productResult.status === "fulfilled" ? (productResult.value?.data ?? null) : null;
@@ -157,9 +221,13 @@ export default function StockProductPage() {
       for (const variantId of saved.keys()) {
         delete rest.stock[variantId];
         delete rest.price[variantId];
+        // Las sincronizadas con esta ya quedaron con el mismo stock.
+        if (stockSent.has(variantId)) for (const sibling of synced.get(variantId)?.ids ?? []) delete rest.stock[sibling];
       }
       return rest;
     });
+    // La base movió el stock de las otras variantes del grupo: se trae de nuevo.
+    if (syncedStockChanged) await refreshProducts();
 
     if (failures.length > 0) {
       setSaveError(
@@ -308,7 +376,76 @@ export default function StockProductPage() {
         }
         onAddVariant={() => setAdding(true)}
         addLabel={addLabel}
+        synced={synced}
       />
+
+      {/* Stock compartido: solo tiene sentido con 2 o más modelos. */}
+      {productModels.length >= 2 && (
+        <section className={`${ADMIN_CARD} flex flex-col gap-3`}>
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className={ADMIN_SECTION_TITLE}>Stock compartido</h2>
+              <span className={adminBadge(product.stock_groups_custom ? "warn" : "neutral")}>
+                {product.stock_groups_custom ? "Excepción" : "Sigue la regla general"}
+              </span>
+            </div>
+            <p className={ADMIN_TEXT_MUTED}>
+              Modelos que usan las mismas fundas (p. ej. 13 y 14): en cada color o diseño tienen siempre el mismo stock,
+              y vender, reservar o comprar uno mueve al otro.{" "}
+              {product.stock_groups_custom
+                ? "Este producto tiene sus propios grupos: la regla de Stock › Stock compartido no lo toca."
+                : "Sale de la regla de Stock › Stock compartido. Si lo cambiás acá, este producto queda como excepción."}
+            </p>
+            {product.stock_groups_custom && (
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await setProductStockGroups(product.id, null);
+                    void refreshProducts("Listo: el producto vuelve a seguir la regla general.");
+                  } catch (err) {
+                    setNotice(null);
+                    setSaveError(errorMessage(err));
+                  }
+                }}
+                className={`${adminButton("secondary", "sm")} self-start`}
+              >
+                Volver a la regla general
+              </button>
+            )}
+          </div>
+          <StockGroupsEditor
+            key={JSON.stringify(productGroups)}
+            models={productModels}
+            initialGroups={productGroups}
+            saveLabel="Guardar"
+            preview={async (groups) => {
+              const res = await setProductStockGroups(product.id, groups, true);
+              const { changes, created } = res.data;
+              const parts: string[] = [];
+              if (changes.length > 0) {
+                const list = changes.map((c) => `${c.sku} ${c.from} → ${c.to}`).join(", ");
+                parts.push(
+                  `Cada color queda con el stock más alto de sus modelos: ${changes.length === 1 ? "cambia 1 variante" : `cambian ${changes.length} variantes`} (${list}).`,
+                );
+              }
+              if (created.length > 0) {
+                const list = created.map((c) => `${c.label} ${c.model}`).join(", ");
+                parts.push(`Faltaban y se crean: ${list}.`);
+              }
+              if (parts.length === 0) return "El stock ya coincide: no cambia nada. ¿Guardamos los grupos?";
+              return `${parts.join(" ")} ¿Confirmás?`;
+            }}
+            apply={async (groups) => {
+              await setProductStockGroups(product.id, groups);
+              return groups.length === 0
+                ? "Listo: en este producto cada modelo tiene su propio stock (queda como excepción)."
+                : "Stock compartido guardado (este producto queda como excepción a la regla).";
+            }}
+            onSaved={(message) => void refreshProducts(message)}
+          />
+        </section>
+      )}
 
       {adding && (
         <AddVariantDialog

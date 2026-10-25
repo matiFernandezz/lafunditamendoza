@@ -41,6 +41,7 @@ export default function ProductEditor({
   onImagesChange,
   onAddVariant,
   addLabel,
+  synced,
 }: {
   product: AdminProduct;
   /** Las variantes del producto, ya ordenadas por modelo. */
@@ -58,6 +59,8 @@ export default function ProductEditor({
   onImagesChange: (images: AdminProductImage[]) => void;
   onAddVariant: () => void;
   addLabel?: string;
+  /** Variantes con stock compartido: por cada una, las otras (ids y modelos). */
+  synced?: Map<string, { ids: string[]; models: string[] }>;
 }) {
   const [bulkPrice, setBulkPrice] = useState("");
   const library = useAttributeLibrary();
@@ -233,6 +236,7 @@ export default function ProductEditor({
             onAddVariant={onAddVariant}
             addLabel={addLabel}
             onChanged={onVariantsChanged}
+            synced={synced}
           />
         </section>
       </div>

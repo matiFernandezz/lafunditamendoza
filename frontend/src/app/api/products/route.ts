@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     .select(
       `${PRODUCT_SELECT},
        product_variants ( id, sku, color, color_id, motif_id, price, cost_price, stock_quantity, active, iphone_model_id ),
-       product_images ( id, url, sort_order, color_id, motif_id )`,
+       product_images ( id, url, sort_order, color_id, motif_id ),
+       product_stock_links ( iphone_model_id, group_no )`,
     )
     // Una variante eliminada que tenía historial queda archivada (active =
     // false): no se muestra en ninguna pantalla del panel.

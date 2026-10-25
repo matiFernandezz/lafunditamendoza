@@ -80,6 +80,7 @@ export function stockSections(categories: AdminCategory[] | null): SubnavSection
     })),
     { href: "/admin/stock/nuevo", label: "Nuevo producto", hint: "Con sus modelos y fotos" },
     { href: "/admin/stock/colores", label: "Colores y diseños", hint: "Nombres, tonos y unir" },
+    { href: "/admin/stock/compartido", label: "Stock compartido", hint: "Modelos con las mismas fundas" },
     { href: "/admin/stock/categorias", label: "Categorías", hint: "Cómo son sus variantes" },
   ];
 }
