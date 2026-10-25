@@ -425,7 +425,9 @@ async function main() {
   const pSingle = await page(`/producto/${singleRes.body.data.id}`);
   eq("producto con un solo color -> 200", pSingle.status, 200);
   eq("…también se elige con un círculo (uno solo, ya elegido)", radios(pSingle.html).map((r) => [r.value, r.checked, r.disabled]), [[azul.slug, true, false]]);
-  check('…con la etiqueta "Color — <nombre>" y sin chip de texto', pSingle.html.replace(/<!-- -->/g, "").includes(` — ${azul.name}</span>`) && !pSingle.html.includes("aria-pressed"));
+  // Los chips de texto van bajo "Elegí una opción" (aria-pressed solo no sirve:
+  // también lo usan los botones del selector de modelo).
+  check('…con la etiqueta "Color — <nombre>" y sin chip de texto', pSingle.html.replace(/<!-- -->/g, "").includes(` — ${azul.name}</span>`) && !pSingle.html.includes("Elegí una opción"));
 
   group("7. Tarjetas del listado");
   const listPath = parentCategory ? `/categoria/${parentCategory.slug}?tipo=${category.slug}` : `/categoria/${category.slug}`;

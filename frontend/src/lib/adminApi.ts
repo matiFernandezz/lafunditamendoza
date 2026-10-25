@@ -89,6 +89,43 @@ export type StockGroupsResult = {
   dry_run: boolean;
 };
 
+/** Una parte de un combo: qué producto (y de qué color o diseño) va en cada diseño del combo. */
+export type BundleSpec = {
+  bundle_color_id: string | null;
+  bundle_motif_id: string | null;
+  component_product_id: string;
+  component_color_id: string | null;
+  component_motif_id: string | null;
+  quantity: number;
+};
+
+/** Cómo quedó armada una variante del combo. */
+export type BundleReportRow = {
+  id: string;
+  sku: string;
+  model: string | null;
+  label: string | null;
+  stock: number;
+  parts: {
+    product: string | null;
+    sku: string | null;
+    model: string | null;
+    label: string | null;
+    stock: number | null;
+    missing: boolean;
+    quantity: number;
+  }[];
+};
+
+export function getBundle(productId: string): Promise<{ data: { specs: BundleSpec[]; report: BundleReportRow[] } }> {
+  return adminFetch(`/api/products/${productId}/bundle`);
+}
+
+/** Guarda las partes del combo ([] = deja de ser combo) y devuelve cómo quedó cada variante. */
+export function setBundle(productId: string, specs: BundleSpec[]): Promise<{ data: BundleReportRow[] }> {
+  return adminFetch(`/api/products/${productId}/bundle`, { method: "PUT", body: JSON.stringify({ specs }) });
+}
+
 /** La regla general de stock compartido guardada (grupos de ids de modelo). */
 export function getStockRule(): Promise<{ data: string[][] }> {
   return adminFetch("/api/stock-groups");

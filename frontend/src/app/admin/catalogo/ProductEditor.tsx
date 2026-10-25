@@ -42,6 +42,7 @@ export default function ProductEditor({
   onAddVariant,
   addLabel,
   synced,
+  lockedStock,
 }: {
   product: AdminProduct;
   /** Las variantes del producto, ya ordenadas por modelo. */
@@ -61,6 +62,8 @@ export default function ProductEditor({
   addLabel?: string;
   /** Variantes con stock compartido: por cada una, las otras (ids y modelos). */
   synced?: Map<string, { ids: string[]; models: string[] }>;
+  /** Variantes de combo: su stock no se edita a mano. */
+  lockedStock?: Set<string>;
 }) {
   const [bulkPrice, setBulkPrice] = useState("");
   const library = useAttributeLibrary();
@@ -237,6 +240,7 @@ export default function ProductEditor({
             addLabel={addLabel}
             onChanged={onVariantsChanged}
             synced={synced}
+            lockedStock={lockedStock}
           />
         </section>
       </div>

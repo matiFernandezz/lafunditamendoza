@@ -280,6 +280,11 @@ async function main() {
   const empty = await newProduct("Vacío", fundas.id, []);
   eq("funda sin variantes: va por modelo (su categoría) y pide Color", variantRules([], { kind: "color", byModel: true }), { fixedTarget: "iphone", kind: "color", firstAttribute: null });
   eq("accesorio sin variantes: universal (su categoría) y pide Descripción", variantRules([], { kind: "none", byModel: false }), { fixedTarget: "universal", kind: "text", firstAttribute: null });
+  eq(
+    "combo con variantes universales en una categoría por modelo: pide modelo",
+    variantRules((await adminProduct(protector.id)).product_variants, { kind: "motif", byModel: true }),
+    { fixedTarget: "iphone", kind: "motif", firstAttribute: null },
+  );
   const plain = await newProduct("Lisa", fundas.id, [
     { iphone_model_id: m13.id, price: 8000, stock_quantity: 3 },
     { iphone_model_id: m15.id, price: 8000, stock_quantity: 2 },

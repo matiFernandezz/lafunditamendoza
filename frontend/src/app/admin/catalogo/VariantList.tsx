@@ -39,6 +39,7 @@ export default function VariantList({
   addLabel = "Agregar variante",
   onChanged,
   synced,
+  lockedStock,
 }: {
   product: AdminProduct;
   /** Las variantes que pasan los filtros de la pantalla (modelo, stock). */
@@ -57,6 +58,8 @@ export default function VariantList({
   onChanged: (message: string) => void;
   /** Variantes con stock compartido: por cada una, las otras (ids y modelos). */
   synced?: Map<string, { ids: string[]; models: string[] }>;
+  /** Variantes de combo: su stock sale de las partes y no se edita a mano. */
+  lockedStock?: Set<string>;
 }) {
   const [search, setSearch] = useState("");
   // Variante con stock esperando confirmación para eliminarla.
@@ -157,6 +160,11 @@ export default function VariantList({
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="text-[15px] font-semibold text-admin-text">{detail}</span>
                   {v.stock_quantity === 0 && <span className={adminBadge("danger")}>Sin stock</span>}
+                  {lockedStock?.has(v.id) && (
+                    <span className={adminBadge("ink")} title="Su stock es el menor de sus partes: se carga en ellas">
+                      Combo
+                    </span>
+                  )}
                   {synced?.has(v.id) && (
                     // Corto para que entre en la columna: "Sinc. 14" (el detalle, en el title).
                     <span
@@ -184,7 +192,7 @@ export default function VariantList({
               <UnitsInput
                 label={`Stock ${detail}`}
                 value={draft.stock[v.id] ?? String(v.stock_quantity)}
-                disabled={saving}
+                disabled={saving || lockedStock?.has(v.id)}
                 invalid={changes.invalid.has(`${v.id}:stock`)}
                 dirty={patch?.stock_quantity !== undefined}
                 // Con stock compartido, las otras variantes del grupo muestran el mismo número.

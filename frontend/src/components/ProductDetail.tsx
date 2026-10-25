@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
+import ProductModelPicker, { type PickerModel } from "@/components/ProductModelPicker";
 import { useCart } from "@/lib/cart";
 import { coverImage, type Product, type ProductImage } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
@@ -45,11 +46,13 @@ export default function ProductDetail({
   // Modelos puntuales que este producto realmente tiene (no los 22, solo los
   // que tienen variante propia). Si no hay ninguno, el producto es universal.
   const modelOptions = useMemo(() => {
-    const byId = new Map<string, string>();
+    const byId = new Map<string, PickerModel>();
     for (const v of product.product_variants) {
-      if (v.iphone_model_id && v.iphone_models) byId.set(v.iphone_model_id, v.iphone_models.name);
+      if (v.iphone_model_id && v.iphone_models) {
+        byId.set(v.iphone_model_id, { id: v.iphone_model_id, ...v.iphone_models });
+      }
     }
-    return [...byId.entries()].map(([id, name]) => ({ id, name }));
+    return [...byId.values()].sort((a, b) => a.sort_order - b.sort_order);
   }, [product.product_variants]);
 
   // Sin ?modelo= en el link, la página abre sin modelo elegido (aunque haya
@@ -227,28 +230,7 @@ export default function ProductDetail({
         </h1>
 
         {modelOptions.length > 0 && (
-          <div>
-            <label htmlFor="modelo-detalle" className="mb-2 block font-medium">
-              Elegí tu modelo
-            </label>
-            <select
-              id="modelo-detalle"
-              value={modelId}
-              onChange={(e) => handleModelChange(e.target.value)}
-              className="h-14 w-full rounded-2xl border border-graphite bg-transparent px-4 text-base font-medium"
-            >
-              {needsModel && (
-                <option value="" disabled>
-                  Elegí tu modelo
-                </option>
-              )}
-              {modelOptions.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ProductModelPicker models={modelOptions} value={modelId} onChange={handleModelChange} />
         )}
 
         {swatches ? (

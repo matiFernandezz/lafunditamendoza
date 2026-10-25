@@ -32,6 +32,17 @@ export async function PATCH(
     return jsonError(400, "price debe ser un numero mayor a 0");
   }
 
+  // El stock de un combo sale de sus partes: no se edita a mano.
+  if (stock_quantity !== undefined) {
+    const { count } = await supabaseAdmin()
+      .from("bundle_components")
+      .select("id", { count: "exact", head: true })
+      .eq("bundle_variant_id", id);
+    if ((count ?? 0) > 0) {
+      return jsonError(400, "El stock de un combo sale de sus partes: cargalo en la funda y en el protector.");
+    }
+  }
+
   const { data, error } = await supabaseAdmin()
     .from("product_variants")
     .update({

@@ -188,7 +188,7 @@ export default async function NosotrosPage() {
             <SectionHeading title="Hablemos" />
           </div>
           <p className="max-w-[52ch] text-graphite">
-            ¿Dudas de stock, de colores o querés algo puntual? Escribinos: respondemos nosotros.
+            ¿Dudas de stock, de colores o querés algo puntual?
           </p>
         </div>
         <ul className="mx-auto w-full max-w-[640px] border-b border-rule">

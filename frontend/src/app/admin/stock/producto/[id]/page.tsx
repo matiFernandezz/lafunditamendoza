@@ -32,6 +32,7 @@ import ProductEditor from "../../../catalogo/ProductEditor";
 import { categoryPathById, resolveCategorySettings } from "../../../categoryPath";
 import { STOCK_CHANGED, settingsHint, useStockCategories } from "../../stockData";
 import StockGroupsEditor from "../../StockGroupsEditor";
+import BundleEditor from "./BundleEditor";
 import DeleteProductDialog from "./DeleteProductDialog";
 
 function errorMessage(err: unknown) {
@@ -53,6 +54,8 @@ export default function StockProductPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Variantes armadas como combo: su stock sale de sus partes y no se edita acá.
+  const [bundleIds, setBundleIds] = useState<Set<string>>(new Set());
   const router = useRouter();
 
   useEffect(() => {
@@ -377,10 +380,24 @@ export default function StockProductPage() {
         onAddVariant={() => setAdding(true)}
         addLabel={addLabel}
         synced={synced}
+        lockedStock={bundleIds}
       />
 
+      {/* Combos (Accesorios › Combos): su stock sale de las partes que se eligen acá. */}
+      {(categories.find((c) => c.id === product.category_id)?.slug === "combos" || bundleIds.size > 0) && (
+        <BundleEditor
+          // Distinta de la de ProductEditor (son hermanos): React pide claves únicas.
+          key={`combo-${product.id}`}
+          product={product}
+          products={products}
+          categoryPath={categoryPath}
+          onBundleIds={setBundleIds}
+          onSaved={(message) => void refreshProducts(message)}
+        />
+      )}
+
       {/* Stock compartido: solo tiene sentido con 2 o más modelos. */}
-      {productModels.length >= 2 && (
+      {productModels.length >= 2 && bundleIds.size === 0 && (
         <section className={`${ADMIN_CARD} flex flex-col gap-3`}>
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-2">

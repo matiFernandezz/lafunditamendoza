@@ -32,7 +32,7 @@ export type Variant = {
   price: number;
   stock_quantity: number;
   iphone_model_id: string | null;
-  iphone_models: { name: string } | null;
+  iphone_models: { name: string; sort_order: number } | null;
 };
 
 export type ProductImage = {
@@ -64,7 +64,7 @@ export function coverImage(product: Pick<Product, "product_images">): string | n
 }
 
 const PRODUCT_SELECT =
-  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order, color_id, motif_id), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name), color_ref:colors(id, name, slug, hex, sort_order), motif_ref:motifs(id, name, slug, sort_order))";
+  "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order, color_id, motif_id), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name, sort_order), color_ref:colors(id, name, slug, hex, sort_order), motif_ref:motifs(id, name, slug, sort_order))";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

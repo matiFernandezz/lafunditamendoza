@@ -36,8 +36,8 @@ const hasText = (v: VariantLike) => {
 export type CategoryRules = { kind: "color" | "motif" | "none"; byModel: boolean };
 
 /**
- * - Por modelo o universal: lo que ya usan sus variantes (una funda con
- *   modelos sigue por modelo); sin variantes, lo que dice su categoría.
+ * - Por modelo o universal: por modelo si su categoría lo pide o si ya tiene
+ *   variantes con modelo; si no, universal.
  * - El atributo: el que ya usa el producto (diseño, color o una descripción
  *   libre); si todavía no usa ninguno, el de su categoría (sin variante =
  *   descripción libre).
@@ -47,14 +47,10 @@ export function variantRules(variants: VariantLike[], category: CategoryRules): 
   const usesColors = variants.some((v) => v.color_id !== null);
   const usesText = !usesMotifs && !usesColors && variants.some(hasText);
 
+  // Una categoría por modelo siempre pide modelo, aunque el producto tenga
+  // variantes universales (p. ej. se mudó desde una categoría sin modelo).
   const fixedTarget: Target =
-    variants.length === 0
-      ? category.byModel
-        ? "iphone"
-        : "universal"
-      : variants.some((v) => v.iphone_model_id !== null)
-        ? "iphone"
-        : "universal";
+    category.byModel || variants.some((v) => v.iphone_model_id !== null) ? "iphone" : "universal";
 
   const fromCategory: AttributeKind = category.kind === "none" ? "text" : category.kind;
   const kind: AttributeKind = usesMotifs ? "motif" : usesColors ? "color" : usesText ? "text" : fromCategory;
