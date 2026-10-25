@@ -21,8 +21,9 @@ export default function FilterPopover({
   label: string;
   onOpen?: () => void;
   /** "end": para una píldora pegada a la derecha; en compu la tarjeta abre a su izquierda. En mobile
-      las píldoras van una debajo de la otra contra el margen izquierdo, así que siempre abre debajo, hacia la derecha. */
-  align?: "start" | "end";
+      las píldoras van una debajo de la otra contra el margen izquierdo, así que siempre abre debajo, hacia la derecha.
+      "below": siempre debajo de la píldora (la ficha de producto). */
+  align?: "start" | "end" | "below";
   children: (close: () => void) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -78,7 +79,7 @@ export default function FilterPopover({
           strokeWidth="1.75"
           strokeLinecap="square"
           aria-hidden="true"
-          className={`size-3.5 transition-transform duration-200 ${open ? "rotate-180" : "-rotate-90"}`}
+          className={`size-3.5 transition-transform duration-200 ${open ? "rotate-180" : align === "below" ? "" : "-rotate-90"}`}
         >
           <path d="M3 6l5 5 5-5" />
         </svg>
@@ -88,9 +89,11 @@ export default function FilterPopover({
         <div
           id={id}
           className={`absolute top-[calc(100%+8px)] flex w-[calc(100vw-3rem)] animate-[lf-subnav-in_200ms_ease-out] flex-col gap-3 rounded-2xl border border-rule bg-paper p-3 shadow-[0_16px_40px_rgb(18_18_18/0.18)] motion-reduce:animate-none md:w-max ${
-            align === "end"
-              ? "left-0 md:left-auto md:right-[calc(100%+12px)] md:top-[-12px]"
-              : "left-0 md:left-[calc(100%+12px)] md:top-[-12px]"
+            align === "below"
+              ? "left-0"
+              : align === "end"
+                ? "left-0 md:left-auto md:right-[calc(100%+12px)] md:top-[-12px]"
+                : "left-0 md:left-[calc(100%+12px)] md:top-[-12px]"
           }`}
         >
           {children(() => setOpen(false))}

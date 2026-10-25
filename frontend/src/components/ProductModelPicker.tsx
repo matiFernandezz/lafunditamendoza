@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import FilterPopover, { optionPill } from "./FilterPopover";
 
 export type PickerModel = { id: string; name: string; sort_order: number };
 
@@ -8,10 +9,10 @@ export type PickerModel = { id: string; name: string; sort_order: number };
 const lineOf = (name: string) => name.match(/^iPhone (\d+)/i)?.[1] ?? name;
 
 /**
- * "Elegí tu modelo" de la ficha de producto, como el selector de Fundas: un
- * número por línea (11…18) y, al tocarlo, sus modelos debajo, en orden. Si la
- * línea tiene un solo modelo, se elige solo, pero igual se muestra abajo. Solo
- * muestra los modelos que el producto tiene.
+ * "Elegí tu modelo" de la ficha de producto, igual que el filtro de Fundas (sin
+ * "Todos"): una píldora con el modelo elegido que abre debajo los números de línea en una fila y, al tocar uno, sus
+ * modelos abajo en columnas iguales; se abre siempre, aunque la línea tenga uno
+ * solo. Solo los modelos que el producto tiene.
  */
 export default function ProductModelPicker({
   models,
@@ -29,62 +30,86 @@ export default function ProductModelPicker({
     .map((key) => ({ key, models: sorted.filter((m) => lineOf(m.name) === key) }));
 
   const selected = sorted.find((m) => m.id === value);
-  const [lineKey, setLineKey] = useState<string | null>(selected ? lineOf(selected.name) : null);
+  const selectedLine = selected ? lineOf(selected.name) : null;
+  const [lineKey, setLineKey] = useState<string | null>(selectedLine);
   const line = lines.find((l) => l.key === lineKey);
+
+  const number = (isActive: boolean) =>
+    `flex size-10 shrink-0 items-center justify-center rounded-full font-display text-lg font-semibold leading-none tracking-tight text-ink transition-colors duration-200 ${
+      isActive ? "bg-ink/10" : "hover:bg-ink/5"
+    }`;
 
   return (
     <div>
-      <p id="modelo-detalle" className="mb-2 font-medium">
-        Elegí tu modelo
-        {selected && <span className="font-normal text-graphite"> — {selected.name}</span>}
-      </p>
+      <p className="mb-2 font-medium">Elegí tu modelo</p>
+      <FilterPopover
+        id="modelo-detalle"
+        align="below"
+        label={selected ? selected.name : "Elegir modelo"}
+        // Al abrir, arranca mostrando la línea del modelo elegido.
+        onOpen={() => setLineKey(selectedLine)}
+        icon={
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            aria-hidden="true"
+            className="size-4"
+          >
+            <rect x="6" y="2.5" width="12" height="19" rx="3" />
+            <path d="M10.5 18.5h3" strokeLinecap="round" />
+          </svg>
+        }
+      >
+        {(close) => (
+          <>
+            <div className="flex h-11 min-w-0 items-center gap-1.5 overflow-x-auto">
+              {lines.map((l) => (
+                <button
+                  key={l.key}
+                  type="button"
+                  onClick={() => {
+                    setLineKey(l.key);
+                    // Con un solo modelo en la línea, queda elegido (y se ve abajo).
+                    if (l.models.length === 1) onChange(l.models[0].id);
+                  }}
+                  aria-expanded={lineKey === l.key}
+                  aria-label={`iPhone ${l.key}`}
+                  className={number(lineKey === l.key)}
+                >
+                  {l.key}
+                </button>
+              ))}
+            </div>
 
-      <div role="group" aria-labelledby="modelo-detalle" className="flex flex-wrap gap-1.5">
-        {lines.map((l) => {
-          const single = l.models.length === 1;
-          const active = lineKey === l.key;
-          return (
-            <button
-              key={l.key}
-              type="button"
-              onClick={() => {
-                setLineKey(l.key);
-                if (single) onChange(l.models[0].id);
-              }}
-              aria-pressed={active}
-              aria-label={`iPhone ${l.key}`}
-              className={`flex h-12 min-w-12 items-center justify-center rounded-full px-3 font-display text-xl font-semibold leading-none tracking-tight transition-colors duration-200 ${
-                active ? "bg-ink/10 text-ink" : "text-ink hover:bg-ink/5"
-              }`}
-            >
-              {l.key}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Los modelos de la línea elegida, separados por una línea suave. Se abre
-          siempre, aunque la línea tenga uno solo: así se ve qué modelo quedó. */}
-      {line && (
-        <div
-          key={line.key}
-          className="mt-3 flex animate-[lf-fade-in_200ms_ease-out] flex-wrap gap-2 border-t border-rule pt-3 motion-reduce:animate-none"
-        >
-          {line.models.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              onClick={() => onChange(m.id)}
-              aria-pressed={m.id === value}
-              className={`inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition-colors duration-200 ${
-                m.id === value ? "border-ink bg-ink text-paper" : "border-rule text-ink hover:border-ink"
-              }`}
-            >
-              {m.name}
-            </button>
-          ))}
-        </div>
-      )}
+            {/* Los modelos de la línea, debajo de los números y a su mismo ancho
+                (columnas iguales), separados por una línea suave. */}
+            {line && (
+              <div
+                key={line.key}
+                className="flex w-0 min-w-full animate-[lf-fade-in_200ms_ease-out] flex-wrap gap-2 border-t border-rule/60 pt-3 motion-reduce:animate-none md:grid"
+                style={{ gridTemplateColumns: `repeat(${Math.max(line.models.length, 2)}, minmax(0, 1fr))` }}
+              >
+                {line.models.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(m.id);
+                      close();
+                    }}
+                    aria-pressed={m.id === value}
+                    className={optionPill(m.id === value, { cell: true })}
+                  >
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </FilterPopover>
     </div>
   );
 }
