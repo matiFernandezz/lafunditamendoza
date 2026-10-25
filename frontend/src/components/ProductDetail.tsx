@@ -1,7 +1,8 @@
 "use client";
 
+import { Check, Plus } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import ProductGallery from "@/components/ProductGallery";
 import ProductModelPicker, { type PickerModel } from "@/components/ProductModelPicker";
 import { useCart } from "@/lib/cart";
@@ -194,6 +195,9 @@ export default function ProductDetail({
     }
   }
 
+  const [justAdded, setJustAdded] = useState(false);
+  const justAddedTimer = useRef<number | undefined>(undefined);
+
   function handleAdd() {
     if (needsModel || !selectedVariant || stock <= 0 || atLimit) return;
     cart.add({
@@ -210,6 +214,10 @@ export default function ProductDetail({
       image: galleryImages[0]?.url ?? coverImage(product),
     });
     setAddedVariantId(selectedVariant.id);
+    // El botón confirma por un momento con "✓ ¡Agregado!".
+    setJustAdded(true);
+    window.clearTimeout(justAddedTimer.current);
+    justAddedTimer.current = window.setTimeout(() => setJustAdded(false), 1600);
   }
 
   return (
@@ -348,7 +356,23 @@ export default function ProductDetail({
               disabled={needsModel || stock <= 0 || atLimit}
               className={`${STORE_BUTTON} w-full`}
             >
-              {needsModel ? "Elegí tu modelo" : stock <= 0 ? "Sin stock" : atLimit ? "Ya tenés todo el stock en el carrito" : "Agregar al carrito"}
+              {needsModel ? (
+                "Elegí tu modelo"
+              ) : stock <= 0 ? (
+                "Sin stock"
+              ) : justAdded ? (
+                <>
+                  <Check aria-hidden="true" className="size-5" strokeWidth={2.25} />
+                  ¡Agregado!
+                </>
+              ) : atLimit ? (
+                "Ya tenés todo el stock en el carrito"
+              ) : (
+                <>
+                  <Plus aria-hidden="true" className="size-5" strokeWidth={2.25} />
+                  Agregar al carrito
+                </>
+              )}
             </button>
             {addedVariantId === selectedVariant.id && (
               <div role="status" className="flex items-center justify-between gap-3 text-[15px] text-ink">

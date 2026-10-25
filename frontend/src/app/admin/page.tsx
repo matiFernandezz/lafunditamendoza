@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { getDashboard, getSales, type Dashboard, type Sale } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import AdminNotice from "./AdminNotice";
-import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminButton } from "./adminStyles";
+import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, adminButton } from "./adminStyles";
 import AttentionPanel from "./inicio/AttentionPanel";
 import PurchasesPanel from "./inicio/PurchasesPanel";
 import SalesChart from "./inicio/SalesChart";
@@ -13,6 +13,7 @@ import PeriodSwitch from "./PeriodSwitch";
 import { describePrevious, presetRange, previousRange, type PresetKind, type Range } from "./periods";
 import StatCard, { Panel } from "./StatCard";
 import SalesTable from "./ventas/listado/SalesTable";
+import AdminLoading from "./AdminLoading";
 
 const PERIODS = [
   { value: "today", label: "Hoy" },
@@ -119,7 +120,7 @@ export default function InicioPage() {
           </button>
         </div>
       ) : !data || !loaded ? (
-        <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        <AdminLoading />
       ) : (
         <div
           aria-busy={loading}

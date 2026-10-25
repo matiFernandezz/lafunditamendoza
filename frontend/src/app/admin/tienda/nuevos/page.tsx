@@ -20,10 +20,18 @@ import {
 import type { Cutout } from "@/lib/cutout";
 import { formatPrice } from "@/lib/format";
 import AdminNotice from "../../AdminNotice";
-import { ADMIN_EMPTY, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminBadge, adminButton } from "../../adminStyles";
+import {
+  ADMIN_EMPTY,
+  ADMIN_PAGE_SUBTITLE,
+  ADMIN_PAGE_TITLE,
+  ADMIN_TEXT_MUTED,
+  adminBadge,
+  adminButton,
+} from "../../adminStyles";
 import { categorySubtree } from "../../categoryPath";
 import { ReorderButtons, moveItem } from "../storeUi";
 import PhotoChooser from "./PhotoChooser";
+import AdminLoading from "../../AdminLoading";
 
 function errorMessage(err: unknown) {
   return err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.";
@@ -121,11 +129,16 @@ export default function NuevosIngresosAdminPage() {
         <div>
           <h1 className={ADMIN_PAGE_TITLE}>Las funditas más vendidas</h1>
           <p className={ADMIN_PAGE_SUBTITLE}>
-            Las fundas que giran en la home, en este orden. Elegís la funda y la foto (se le saca el fondo sola); el nombre, el
-            precio y la descripción salen del producto y se actualizan solos.
+            Las fundas que giran en la home, en este orden. Elegís la funda y la foto (se le saca el fondo sola); el
+            nombre, el precio y la descripción salen del producto y se actualizan solos.
           </p>
         </div>
-        <button type="button" onClick={() => setChooser({ mode: "add" })} disabled={busy || !arrivals} className={adminButton("primary")}>
+        <button
+          type="button"
+          onClick={() => setChooser({ mode: "add" })}
+          disabled={busy || !arrivals}
+          className={adminButton("primary")}
+        >
           <Plus aria-hidden="true" className="size-5" />
           Agregar funda
         </button>
@@ -143,11 +156,9 @@ export default function NuevosIngresosAdminPage() {
       )}
 
       {!arrivals ? (
-        !error && <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        !error && <AdminLoading />
       ) : arrivals.length === 0 ? (
-        <p className={ADMIN_EMPTY}>
-          No hay fundas en esta sección: en la home no aparece. Agregá la primera.
-        </p>
+        <p className={ADMIN_EMPTY}>No hay fundas en esta sección: en la home no aparece. Agregá la primera.</p>
       ) : (
         <>
           <p className={ADMIN_TEXT_MUTED}>
@@ -195,7 +206,9 @@ export default function NuevosIngresosAdminPage() {
                     className="flex shrink-0 flex-col items-center gap-0.5"
                     title="El borde del teléfono que se ve de costado mientras gira. Se calcula solo de la foto."
                   >
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-admin-muted">Canto</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-admin-muted">
+                      Canto
+                    </span>
                     <input
                       type="color"
                       value={arrival.edge_color}
@@ -203,7 +216,9 @@ export default function NuevosIngresosAdminPage() {
                       aria-label={`Canto de ${arrival.product?.name ?? "la funda"}`}
                       onChange={(e) => {
                         const color = e.target.value;
-                        setArrivals((prev) => (prev ?? []).map((a) => (a.id === arrival.id ? { ...a, edge_color: color } : a)));
+                        setArrivals((prev) =>
+                          (prev ?? []).map((a) => (a.id === arrival.id ? { ...a, edge_color: color } : a)),
+                        );
                       }}
                       onBlur={(e) =>
                         void run(async () => {
@@ -247,7 +262,11 @@ export default function NuevosIngresosAdminPage() {
                         >
                           Quitar
                         </button>
-                        <button type="button" onClick={() => setConfirmDelete(null)} className={adminButton("ghost", "sm")}>
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDelete(null)}
+                          className={adminButton("ghost", "sm")}
+                        >
                           Cancelar
                         </button>
                       </>

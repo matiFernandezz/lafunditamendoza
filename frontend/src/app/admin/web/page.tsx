@@ -7,16 +7,10 @@ import { formatPrice } from "@/lib/format";
 import { useNow } from "@/lib/useNow";
 import AdminNotice from "../AdminNotice";
 import { WEB_ORDERS_CHANGED } from "../AdminShell";
-import {
-  ADMIN_EMPTY,
-  ADMIN_PAGE_SUBTITLE,
-  ADMIN_PAGE_TITLE,
-  ADMIN_TEXT_MUTED,
-  adminButton,
-  adminSegment,
-} from "../adminStyles";
+import { ADMIN_EMPTY, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, adminButton, adminSegment } from "../adminStyles";
 import WebOrderCard, { isExpired, orderUnits } from "./WebOrderCard";
 import { CANCEL_REASONS, CancelDialog, PaidDialog } from "./WebOrderDialogs";
+import AdminLoading from "../AdminLoading";
 
 const STATUSES: WebOrderStatus[] = ["pendiente", "pagada", "cancelada"];
 
@@ -89,7 +83,7 @@ export default function WebVentasPage() {
   }
 
   if (!lists) {
-    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+    return <AdminLoading />;
   }
 
   const pendingCount = lists.pendiente.length;
@@ -172,7 +166,9 @@ export default function WebVentasPage() {
           key={paying.id}
           order={paying}
           onClose={() => setPaying(null)}
-          onDone={(o) => afterChange(`${o.code} marcada como pagada · ${formatPrice(o.total_amount)} sumado al historial.`)}
+          onDone={(o) =>
+            afterChange(`${o.code} marcada como pagada · ${formatPrice(o.total_amount)} sumado al historial.`)
+          }
         />
       )}
       {cancelling && (

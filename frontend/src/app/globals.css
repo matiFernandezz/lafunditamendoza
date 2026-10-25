@@ -126,6 +126,30 @@ p {
   }
 }
 
+/* Logo que "respira" mientras algo carga (LoadingLogo). */
+@keyframes lf-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Lo mismo sin movimiento, para "reducir movimiento". */
+@keyframes lf-blink {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* Barra de avisos de la home (AnnouncementBar): la pista va duplicada. */
 @keyframes lf-marquee {
   from {

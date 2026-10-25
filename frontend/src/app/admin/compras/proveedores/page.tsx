@@ -20,11 +20,11 @@ import {
   ADMIN_PAGE_SUBTITLE,
   ADMIN_PAGE_TITLE,
   ADMIN_TEXTAREA,
-  ADMIN_TEXT_MUTED,
   adminButton,
   adminInput,
 } from "../../adminStyles";
 import { formatDay } from "../purchaseStatus";
+import AdminLoading from "../../AdminLoading";
 
 type Draft = { name: string; contact: string; payment: string; shipping: string; notes: string };
 
@@ -88,7 +88,10 @@ function SupplierDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 sm:items-center sm:p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
       <form
         role="dialog"
         aria-modal="true"
@@ -105,7 +108,15 @@ function SupplierDialog({
           <label htmlFor="prov-nombre" className={ADMIN_LABEL}>
             Nombre
           </label>
-          <input id="prov-nombre" required maxLength={120} autoFocus value={draft.name} onChange={set("name")} className={ADMIN_INPUT} />
+          <input
+            id="prov-nombre"
+            required
+            maxLength={120}
+            autoFocus
+            value={draft.name}
+            onChange={set("name")}
+            className={ADMIN_INPUT}
+          />
         </div>
         <div>
           <label htmlFor="prov-contacto" className={ADMIN_LABEL}>
@@ -228,7 +239,7 @@ export default function ProveedoresPage() {
       {error ? (
         <AdminNotice kind="danger">{error}</AdminNotice>
       ) : !suppliers ? (
-        <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        <AdminLoading />
       ) : suppliers.length === 0 ? (
         <p className={ADMIN_EMPTY}>Todavía no hay proveedores.</p>
       ) : (
@@ -238,11 +249,21 @@ export default function ProveedoresPage() {
             <table className="w-full table-fixed border-collapse text-left text-[15px]">
               <thead className="bg-admin-bg text-[13px] text-admin-muted">
                 <tr>
-                  <th scope="col" className="w-[34%] px-4 py-3 font-semibold">Proveedor</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Contacto</th>
-                  <th scope="col" className="px-4 py-3 font-semibold">Se le paga en</th>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">Envío estimado</th>
-                  <th scope="col" className="px-4 py-3 text-right font-semibold">Comprado</th>
+                  <th scope="col" className="w-[34%] px-4 py-3 font-semibold">
+                    Proveedor
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-semibold">
+                    Contacto
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-semibold">
+                    Se le paga en
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold">
+                    Envío estimado
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-semibold">
+                    Comprado
+                  </th>
                   <th scope="col" className="w-20 px-4 py-3">
                     <span className="sr-only">Editar</span>
                   </th>
@@ -290,15 +311,24 @@ export default function ProveedoresPage() {
           <ul className="divide-y divide-admin-border overflow-hidden rounded-md border border-admin-border bg-admin-surface md:hidden">
             {suppliers.map((s) => (
               <li key={s.id}>
-                <button type="button" onClick={() => setDialog({ editing: s })} className="block w-full px-4 py-3 text-left">
+                <button
+                  type="button"
+                  onClick={() => setDialog({ editing: s })}
+                  className="block w-full px-4 py-3 text-left"
+                >
                   <span className="block font-semibold text-admin-text">{s.name}</span>
                   <span className="block text-[13px] text-admin-muted">
-                    {[s.contact_info, s.payment_method, Number(s.shipping_cost) > 0 && `envío ${formatPrice(Number(s.shipping_cost))}`]
+                    {[
+                      s.contact_info,
+                      s.payment_method,
+                      Number(s.shipping_cost) > 0 && `envío ${formatPrice(Number(s.shipping_cost))}`,
+                    ]
                       .filter(Boolean)
                       .join(" · ") || "Sin datos de contacto"}
                   </span>
                   <span className="block text-[13px] text-admin-muted">
-                    {s.purchases_count === 1 ? "1 pedido" : `${s.purchases_count} pedidos`} · {formatPrice(s.total_paid)}
+                    {s.purchases_count === 1 ? "1 pedido" : `${s.purchases_count} pedidos`} ·{" "}
+                    {formatPrice(s.total_paid)}
                   </span>
                 </button>
               </li>

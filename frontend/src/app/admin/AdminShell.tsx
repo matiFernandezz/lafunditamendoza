@@ -18,6 +18,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getWebOrderCounts } from "@/lib/adminApi";
+import NavigationProgress from "@/components/NavigationProgress";
 import { createClient } from "@/lib/supabase/client";
 import AdminLogo from "./AdminLogo";
 import ComprasSidebar from "./compras/ComprasSidebar";
@@ -269,7 +270,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </button>
         </div>
 
-        <nav aria-label="Panel" className={`flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2 ${collapsed ? "lg:px-2" : "lg:px-2.5"}`}>
+        <nav
+          aria-label="Panel"
+          className={`flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-2 ${collapsed ? "lg:px-2" : "lg:px-2.5"}`}
+        >
           {TABS.map((tab) => {
             const current = tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
             const pending = tab.href === "/admin/web" ? pendingWeb : 0;
@@ -281,7 +285,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 aria-current={current ? "page" : undefined}
                 title={collapsed ? tab.label : undefined}
                 className={`${NAV_ITEM} ${itemLayout} ${
-                  current ? "bg-admin-bg text-admin-text" : "text-admin-on-ink/78 hover:bg-admin-on-ink/10 hover:text-admin-on-ink"
+                  current
+                    ? "bg-admin-bg text-admin-text"
+                    : "text-admin-on-ink/78 hover:bg-admin-on-ink/10 hover:text-admin-on-ink"
                 }`}
               >
                 <span className="relative flex shrink-0">
@@ -298,7 +304,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           })}
         </nav>
 
-        <div className={`shrink-0 border-t border-admin-on-ink/15 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] ${collapsed ? "lg:px-2" : "lg:px-2.5"}`}>
+        <div
+          className={`shrink-0 border-t border-admin-on-ink/15 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] ${collapsed ? "lg:px-2" : "lg:px-2.5"}`}
+        >
           <button
             type="button"
             onClick={handleLogout}
@@ -316,6 +324,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {subnav === "stock" && <StockSidebar />}
       {subnav === "tienda" && <TiendaSidebar />}
 
+      {/* Barrita de progreso arriba de todo: crema sobre el header oscuro del
+          celular, tinta sobre el fondo claro en la compu. */}
+      <div className="fixed inset-x-0 top-0 z-[60] h-[3px]">
+        <NavigationProgress className="bg-admin-on-ink lg:bg-admin-ink" />
+      </div>
       <main className="mx-auto w-full min-w-0 max-w-[1440px] flex-1 px-4 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 lg:px-6 lg:pb-18 lg:pt-6 xl:px-8 xl:pt-8">
         {children}
       </main>

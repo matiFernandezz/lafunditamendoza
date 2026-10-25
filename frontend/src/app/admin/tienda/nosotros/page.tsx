@@ -33,6 +33,7 @@ import {
 } from "../../adminStyles";
 import { PHOTO_SIZES, PickPhotoButton, ReorderButtons, SizeHint, moveItem } from "../storeUi";
 import InstagramConnection from "./InstagramConnection";
+import AdminLoading from "../../AdminLoading";
 
 const NETWORKS = [
   {
@@ -156,7 +157,7 @@ export default function NosotrosAdminPage() {
       )}
 
       {!page ? (
-        !error && <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        !error && <AdminLoading />
       ) : (
         <>
           {/* Texto */}
@@ -192,7 +193,12 @@ export default function NosotrosAdminPage() {
             </div>
             {dirty && (
               <div className="flex justify-end gap-2">
-                <button type="button" onClick={() => setDraft(page)} disabled={busy} className={adminButton("ghost", "sm")}>
+                <button
+                  type="button"
+                  onClick={() => setDraft(page)}
+                  disabled={busy}
+                  className={adminButton("ghost", "sm")}
+                >
                   Descartar
                 </button>
                 <button
@@ -296,9 +302,7 @@ export default function NosotrosAdminPage() {
               <section key={network.value} className={`${ADMIN_CARD} flex flex-col gap-3`}>
                 <div>
                   <h2 className={ADMIN_SECTION_TITLE}>Publicaciones de {network.label}</h2>
-                  <p className={ADMIN_TEXT_MUTED}>
-                    {network.auto}
-                  </p>
+                  <p className={ADMIN_TEXT_MUTED}>{network.auto}</p>
                 </div>
                 <form
                   className="flex flex-col gap-2 sm:flex-row"
@@ -307,7 +311,9 @@ export default function NosotrosAdminPage() {
                     void run(async () => {
                       const res = await createSocialPost(links[network.value]);
                       if (res.data.network !== network.value) {
-                        setNotice(`Ese link es de ${res.data.network === "instagram" ? "Instagram" : "TikTok"}: quedó en esa lista.`);
+                        setNotice(
+                          `Ese link es de ${res.data.network === "instagram" ? "Instagram" : "TikTok"}: quedó en esa lista.`,
+                        );
                       } else {
                         setNotice("Publicación agregada.");
                       }
@@ -328,7 +334,11 @@ export default function NosotrosAdminPage() {
                     disabled={busy}
                     className={ADMIN_INPUT}
                   />
-                  <button type="submit" disabled={busy || links[network.value].trim() === ""} className={adminButton("primary", "sm")}>
+                  <button
+                    type="submit"
+                    disabled={busy || links[network.value].trim() === ""}
+                    className={adminButton("primary", "sm")}
+                  >
                     Agregar
                   </button>
                 </form>

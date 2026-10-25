@@ -34,6 +34,8 @@ import { STOCK_CHANGED, settingsHint, useStockCategories } from "../../stockData
 import StockGroupsEditor from "../../StockGroupsEditor";
 import BundleEditor from "./BundleEditor";
 import DeleteProductDialog from "./DeleteProductDialog";
+import { startNavigationProgress } from "@/components/NavigationProgress";
+import AdminLoading from "../../../AdminLoading";
 
 function errorMessage(err: unknown) {
   return err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.";
@@ -96,7 +98,8 @@ export default function StockProductPage() {
   // Variantes ordenadas por modelo (universales al final) y después por color.
   const variants = useMemo(() => {
     if (!product) return [];
-    const order = (v: AdminVariant) => (v.iphone_model_id === null ? Infinity : modelOrder.get(v.iphone_model_id) ?? Infinity);
+    const order = (v: AdminVariant) =>
+      v.iphone_model_id === null ? Infinity : (modelOrder.get(v.iphone_model_id) ?? Infinity);
     return [...product.product_variants].sort((a, b) => {
       const byModel = order(a) - order(b);
       if (byModel) return byModel;
@@ -225,7 +228,8 @@ export default function StockProductPage() {
         delete rest.stock[variantId];
         delete rest.price[variantId];
         // Las sincronizadas con esta ya quedaron con el mismo stock.
-        if (stockSent.has(variantId)) for (const sibling of synced.get(variantId)?.ids ?? []) delete rest.stock[sibling];
+        if (stockSent.has(variantId))
+          for (const sibling of synced.get(variantId)?.ids ?? []) delete rest.stock[sibling];
       }
       return rest;
     });
@@ -247,11 +251,14 @@ export default function StockProductPage() {
   }
 
   if (loadError) return <AdminNotice kind="danger">{loadError}</AdminNotice>;
-  if (!products || !categories) return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+  if (!products || !categories) return <AdminLoading />;
   if (!product) {
     return (
       <div className="flex flex-col gap-3">
-        <Link href="/admin/stock" className="inline-flex items-center gap-1 text-sm text-admin-muted hover:text-admin-text">
+        <Link
+          href="/admin/stock"
+          className="inline-flex items-center gap-1 text-sm text-admin-muted hover:text-admin-text"
+        >
           <ChevronLeft aria-hidden="true" className="size-4" />
           Stock
         </Link>
@@ -316,8 +323,9 @@ export default function StockProductPage() {
                 >
                   {settingsHint(settings.kind, rules.fixedTarget === "iphone")}
                 </Link>{" "}
-                · {product.product_variants.length === 1 ? "1 variante" : `${product.product_variants.length} variantes`} ·{" "}
-                {units} unidades
+                ·{" "}
+                {product.product_variants.length === 1 ? "1 variante" : `${product.product_variants.length} variantes`}{" "}
+                · {units} unidades
               </p>
             </div>
           </div>
@@ -353,6 +361,7 @@ export default function StockProductPage() {
           onDeleted={() => {
             // El producto ya no está: se vuelve a su categoría y se refrescan las listas.
             window.dispatchEvent(new Event(STOCK_CHANGED));
+            startNavigationProgress();
             router.push(top ? `/admin/stock/${top.slug}` : "/admin/stock");
           }}
         />

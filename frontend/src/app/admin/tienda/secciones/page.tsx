@@ -11,8 +11,16 @@ import {
   type HomeSectionKey,
 } from "@/lib/adminApi";
 import AdminNotice from "../../AdminNotice";
-import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminBadge, adminButton, adminInput } from "../../adminStyles";
+import {
+  ADMIN_PAGE_SUBTITLE,
+  ADMIN_PAGE_TITLE,
+  ADMIN_TEXT_MUTED,
+  adminBadge,
+  adminButton,
+  adminInput,
+} from "../../adminStyles";
 import { ReorderButtons, moveItem } from "../storeUi";
+import AdminLoading from "../../AdminLoading";
 
 const ABOUT: Record<HomeSectionKey, string> = {
   categorias: "Los mosaicos de categorías (Silicona, Diseño…). Las fotos se cambian en Tienda › Categorías.",
@@ -104,7 +112,7 @@ export default function SeccionesPage() {
       )}
 
       {!sections ? (
-        !error && <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        !error && <AdminLoading />
       ) : (
         <ol className="flex flex-col gap-3">
           {sections.map((section, index) => {
@@ -164,7 +172,9 @@ export default function SeccionesPage() {
                       save(
                         section.key,
                         { visible: !section.visible },
-                        section.visible ? "La sección ya no se ve en la home." : "La sección vuelve a verse en la home.",
+                        section.visible
+                          ? "La sección ya no se ve en la home."
+                          : "La sección vuelve a verse en la home.",
                       )
                     }
                     className={adminButton("secondary", "sm")}

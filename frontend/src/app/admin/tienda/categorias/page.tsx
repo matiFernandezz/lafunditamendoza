@@ -10,14 +10,16 @@ import {
   type AdminCategory,
 } from "@/lib/adminApi";
 import AdminNotice from "../../AdminNotice";
-import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminButton } from "../../adminStyles";
+import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, adminButton } from "../../adminStyles";
 import { PHOTO_SIZES, PickPhotoButton, SizeHint } from "../storeUi";
+import AdminLoading from "../../AdminLoading";
 
 function errorMessage(err: unknown) {
   return err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.";
 }
 
-const byOrder = (a: AdminCategory, b: AdminCategory) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "es");
+const byOrder = (a: AdminCategory, b: AdminCategory) =>
+  a.sort_order - b.sort_order || a.name.localeCompare(b.name, "es");
 
 /**
  * Los mosaicos de "Elegí por categoría", igual que los arma la home: la
@@ -77,7 +79,8 @@ export default function TiendaCategoriasPage() {
       <div>
         <h1 className={ADMIN_PAGE_TITLE}>Fotos de categorías</h1>
         <p className={ADMIN_PAGE_SUBTITLE}>
-          Los mosaicos de “Elegí por categoría”. Sin foto, el mosaico va en gris grafito. El orden es el de las categorías.
+          Los mosaicos de “Elegí por categoría”. Sin foto, el mosaico va en gris grafito. El orden es el de las
+          categorías.
         </p>
         <div className="mt-1">
           <SizeHint size={PHOTO_SIZES.tile} />
@@ -101,7 +104,7 @@ export default function TiendaCategoriasPage() {
       )}
 
       {!categories ? (
-        !error && <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        !error && <AdminLoading />
       ) : (
         <ul className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {tiles.map((tile, index) => {
@@ -112,7 +115,11 @@ export default function TiendaCategoriasPage() {
                 <div className="relative flex aspect-[4/5] flex-col justify-between overflow-hidden rounded-md bg-admin-muted text-admin-on-ink">
                   {tile.home_image_url && (
                     // eslint-disable-next-line @next/next/no-img-element -- vista previa de la foto tal cual.
-                    <img src={tile.home_image_url} alt="" className="absolute inset-0 size-full object-cover opacity-80" />
+                    <img
+                      src={tile.home_image_url}
+                      alt=""
+                      className="absolute inset-0 size-full object-cover opacity-80"
+                    />
                   )}
                   <div className="absolute inset-0 bg-[linear-gradient(to_top,rgb(18_18_18/0.8),rgb(18_18_18/0.1)_50%,transparent)]" />
                   <span className="relative p-3 text-xs font-semibold uppercase tracking-[0.1em]">{tile.name}</span>

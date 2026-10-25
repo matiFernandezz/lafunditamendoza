@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import AdminLogo from "../AdminLogo";
 import AdminNotice from "../AdminNotice";
+import { startNavigationProgress } from "@/components/NavigationProgress";
 
 // Controles sobre la tarjeta negra: etiqueta en crema e input blanco cálido sin
 // borde, con anillo crema al enfocar (el contorno negro global no se vería).
@@ -32,14 +33,13 @@ export default function AdminLoginPage() {
 
     if (signInError) {
       setError(
-        signInError.message === "Invalid login credentials"
-          ? "Email o contraseña incorrectos."
-          : signInError.message,
+        signInError.message === "Invalid login credentials" ? "Email o contraseña incorrectos." : signInError.message,
       );
       setSubmitting(false);
       return;
     }
 
+    startNavigationProgress();
     router.push("/admin");
     router.refresh();
   }

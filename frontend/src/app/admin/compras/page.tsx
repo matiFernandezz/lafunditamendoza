@@ -7,9 +7,10 @@ import { Suspense, useEffect, useState } from "react";
 import { getPurchases, type PurchaseStatus, type PurchaseSummary } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import AdminNotice from "../AdminNotice";
-import { ADMIN_EMPTY, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminBadge, adminButton } from "../adminStyles";
+import { ADMIN_EMPTY, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, adminBadge, adminButton } from "../adminStyles";
 import { presetRange } from "../periods";
 import StatCard from "../StatCard";
+import { startNavigationProgress } from "@/components/NavigationProgress";
 import {
   PURCHASE_STEPS,
   PURCHASES_CHANGED,
@@ -19,6 +20,7 @@ import {
   pendingPurchases,
   purchaseTotal,
 } from "./purchaseStatus";
+import AdminLoading from "../AdminLoading";
 
 type Filter = "todos" | PurchaseStatus;
 
@@ -98,7 +100,7 @@ function PedidosList() {
     return (
       <div className="flex flex-col gap-5">
         {header}
-        <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        <AdminLoading />
       </div>
     );
   }
@@ -115,6 +117,7 @@ function PedidosList() {
 
   function selectFilter(next: Filter) {
     setFilter(next);
+    startNavigationProgress();
     router.replace(next === "todos" ? "/admin/compras" : `/admin/compras?estado=${next}`, { scroll: false });
   }
 
@@ -142,11 +145,12 @@ function PedidosList() {
 
       <div>
         <div role="tablist" aria-label="Estado" className="mb-4 flex overflow-x-auto border-b border-admin-border">
-          {([["todos", "Todos", purchases.length], ...PURCHASE_STEPS.map((s) => [s.status, s.label, counts(s.status)])] as [
-            Filter,
-            string,
-            number,
-          ][]).map(([value, label, count]) => (
+          {(
+            [
+              ["todos", "Todos", purchases.length],
+              ...PURCHASE_STEPS.map((s) => [s.status, s.label, counts(s.status)]),
+            ] as [Filter, string, number][]
+          ).map(([value, label, count]) => (
             <button
               key={value}
               type="button"
@@ -185,13 +189,27 @@ function PedidosList() {
               <table className="w-full border-collapse text-left text-[15px]">
                 <thead className="bg-admin-bg text-[13px] text-admin-muted">
                   <tr>
-                    <th scope="col" className="px-4 py-3 font-semibold">Pedido</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Fecha</th>
-                    <th scope="col" className="px-4 py-3 text-right font-semibold">Unidades</th>
-                    <th scope="col" className="px-4 py-3 text-right font-semibold">Mercadería</th>
-                    <th scope="col" className="px-4 py-3 text-right font-semibold">Envío</th>
-                    <th scope="col" className="px-4 py-3 text-right font-semibold">Total</th>
-                    <th scope="col" className="px-4 py-3 font-semibold">Estado</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Pedido
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Fecha
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">
+                      Unidades
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">
+                      Mercadería
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">
+                      Envío
+                    </th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">
+                      Total
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Estado
+                    </th>
                     <th scope="col" className="w-10 px-2 py-3">
                       <span className="sr-only">Abrir</span>
                     </th>
@@ -203,14 +221,23 @@ function PedidosList() {
                     return (
                       <tr
                         key={p.id}
-                        onClick={() => router.push(href)}
+                        onClick={() => {
+                          startNavigationProgress();
+                          router.push(href);
+                        }}
                         className="cursor-pointer transition-colors duration-150 hover:bg-admin-bg"
                       >
                         <td className="px-4 py-3">
-                          <Link href={href} className="block font-semibold text-admin-text" onClick={(e) => e.stopPropagation()}>
+                          <Link
+                            href={href}
+                            className="block font-semibold text-admin-text"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             Pedido {p.number}
                           </Link>
-                          <span className="block text-[13px] text-admin-muted">{p.supplier?.name ?? "Sin proveedor"}</span>
+                          <span className="block text-[13px] text-admin-muted">
+                            {p.supplier?.name ?? "Sin proveedor"}
+                          </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-admin-text">{formatDay(p.purchase_date)}</td>
                         <td className="px-4 py-3 text-right font-mono tabular-nums text-admin-text">{p.units}</td>
@@ -269,7 +296,7 @@ function PedidosList() {
 // useSearchParams necesita un Suspense alrededor para el render del servidor.
 export default function PedidosPage() {
   return (
-    <Suspense fallback={<p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>}>
+    <Suspense fallback={<AdminLoading />}>
       <PedidosList />
     </Suspense>
   );

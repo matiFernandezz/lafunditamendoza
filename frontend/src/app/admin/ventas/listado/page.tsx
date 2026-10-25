@@ -28,6 +28,7 @@ import StatCard from "../../StatCard";
 import { SALES_CHANGED } from "../salesEvents";
 import SalesTable from "./SalesTable";
 import VoidSaleDialog from "./VoidSaleDialog";
+import AdminLoading from "../../AdminLoading";
 
 const PAGE_SIZE = 50;
 
@@ -216,7 +217,7 @@ export default function ListadoVentasPage() {
           </button>
         </div>
       ) : !loaded || !summary ? (
-        <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        <AdminLoading />
       ) : (
         <div
           className={`flex flex-col gap-5 transition-opacity duration-200 ${loading ? "opacity-50" : ""}`}
@@ -251,7 +252,11 @@ export default function ListadoVentasPage() {
           )}
 
           <div>
-            <div role="tablist" aria-label="Ventas del período" className="mb-4 flex overflow-x-auto border-b border-admin-border">
+            <div
+              role="tablist"
+              aria-label="Ventas del período"
+              className="mb-4 flex overflow-x-auto border-b border-admin-border"
+            >
               {(
                 [
                   ["todas", "Todas", loaded.all.pagination.total],
@@ -275,7 +280,9 @@ export default function ListadoVentasPage() {
                   }`}
                 >
                   {label}
-                  {count !== null && <span className="font-mono text-[13px] font-medium text-admin-muted">{count}</span>}
+                  {count !== null && (
+                    <span className="font-mono text-[13px] font-medium text-admin-muted">{count}</span>
+                  )}
                 </button>
               ))}
             </div>

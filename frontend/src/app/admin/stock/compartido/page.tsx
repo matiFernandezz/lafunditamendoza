@@ -12,6 +12,7 @@ import AdminNotice from "../../AdminNotice";
 import { ADMIN_CARD, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED } from "../../adminStyles";
 import { STOCK_CHANGED } from "../stockData";
 import StockGroupsEditor from "../StockGroupsEditor";
+import AdminLoading from "../../AdminLoading";
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? `1 ${one}` : `${n} ${many}`);
 
@@ -66,7 +67,7 @@ export default function StockCompartidoPage() {
       )}
 
       {models === null || rule === null ? (
-        !error && <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        !error && <AdminLoading />
       ) : (
         <section className={`${ADMIN_CARD} flex flex-col gap-3`}>
           <p className={ADMIN_TEXT_MUTED}>

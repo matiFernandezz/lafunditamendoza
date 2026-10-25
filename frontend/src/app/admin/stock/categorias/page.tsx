@@ -14,6 +14,7 @@ import AdminNotice from "../../AdminNotice";
 import { ADMIN_INPUT, ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED } from "../../adminStyles";
 import { resolveCategorySettings } from "../../categoryPath";
 import { STOCK_CHANGED, topCategories, useStockCategories } from "../stockData";
+import AdminLoading from "../../AdminLoading";
 
 const KIND_LABEL: Record<VariantKind, string> = { color: "Color", motif: "Diseño", none: "Sin variante" };
 const KIND_HELP: Record<VariantKind, string> = {
@@ -50,7 +51,10 @@ export default function CategoriasPage() {
     return counts;
   }, [products]);
 
-  async function save(category: AdminCategory, patch: { variant_kind?: VariantKind | null; by_model?: boolean | null }) {
+  async function save(
+    category: AdminCategory,
+    patch: { variant_kind?: VariantKind | null; by_model?: boolean | null },
+  ) {
     setSavingId(category.id);
     setError(null);
     setNotice(null);
@@ -65,7 +69,7 @@ export default function CategoriasPage() {
     }
   }
 
-  if (!categories || !settings) return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+  if (!categories || !settings) return <AdminLoading />;
 
   const byId = new Map(categories.map((c) => [c.id, c]));
   const tree = topCategories(categories).map((top) => ({
@@ -89,12 +93,17 @@ export default function CategoriasPage() {
     return (
       <li
         key={category.id}
-        className={`grid grid-cols-1 gap-2 px-4 py-3 md:grid-cols-[minmax(0,1fr)_200px_200px] md:items-center ${child ? "md:pl-10" : "bg-admin-bg/50"}`}>
+        className={`grid grid-cols-1 gap-2 px-4 py-3 md:grid-cols-[minmax(0,1fr)_200px_200px] md:items-center ${child ? "md:pl-10" : "bg-admin-bg/50"}`}
+      >
         <div className="min-w-0">
           <p className={`text-[15px] text-admin-text ${child ? "" : "font-semibold"}`}>{category.name}</p>
           <p className="text-[13px] text-admin-muted">
             <Link
-              href={child ? `/admin/stock/${byId.get(category.parent_id!)?.slug}?tipo=${category.id}` : `/admin/stock/${category.slug}`}
+              href={
+                child
+                  ? `/admin/stock/${byId.get(category.parent_id!)?.slug}?tipo=${category.id}`
+                  : `/admin/stock/${category.slug}`
+              }
               className="font-semibold text-admin-text underline-offset-2 hover:underline"
             >
               {count === 1 ? "1 producto" : `${count} productos`}
@@ -107,10 +116,16 @@ export default function CategoriasPage() {
           <select
             value={category.variant_kind ?? INHERIT}
             disabled={busy}
-            onChange={(e) => save(category, { variant_kind: e.target.value === INHERIT ? null : (e.target.value as VariantKind) })}
+            onChange={(e) =>
+              save(category, { variant_kind: e.target.value === INHERIT ? null : (e.target.value as VariantKind) })
+            }
             className={`${ADMIN_INPUT} ${category.variant_kind === null ? "text-admin-muted" : ""}`}
           >
-            {parentSettings && <option value={INHERIT}>Igual que {byId.get(category.parent_id!)?.name} ({KIND_LABEL[parentSettings.kind]})</option>}
+            {parentSettings && (
+              <option value={INHERIT}>
+                Igual que {byId.get(category.parent_id!)?.name} ({KIND_LABEL[parentSettings.kind]})
+              </option>
+            )}
             {(Object.keys(KIND_LABEL) as VariantKind[]).map((k) => (
               <option key={k} value={k}>
                 {KIND_LABEL[k]}
@@ -123,7 +138,9 @@ export default function CategoriasPage() {
           <select
             value={category.by_model === null ? INHERIT : category.by_model ? "model" : "universal"}
             disabled={busy}
-            onChange={(e) => save(category, { by_model: e.target.value === INHERIT ? null : e.target.value === "model" })}
+            onChange={(e) =>
+              save(category, { by_model: e.target.value === INHERIT ? null : e.target.value === "model" })
+            }
             className={`${ADMIN_INPUT} ${category.by_model === null ? "text-admin-muted" : ""}`}
           >
             {parentSettings && (
@@ -179,8 +196,8 @@ export default function CategoriasPage() {
       </div>
 
       <p className={ADMIN_TEXT_MUTED}>
-        Cambiar una categoría no toca las variantes que ya existen: vale para lo que se agregue de ahora en más. Donde la
-        variante no es Color, no se pueden agregar colores.
+        Cambiar una categoría no toca las variantes que ya existen: vale para lo que se agregue de ahora en más. Donde
+        la variante no es Color, no se pueden agregar colores.
       </p>
     </div>
   );

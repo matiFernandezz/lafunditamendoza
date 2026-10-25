@@ -26,6 +26,7 @@ import {
   adminInput,
 } from "../adminStyles";
 import { PHOTO_SIZES, PickPhotoButton, ReorderButtons, SizeHint, moveItem } from "./storeUi";
+import AdminLoading from "../AdminLoading";
 
 const KINDS: { value: HomeSlideKind; label: string; hint: string }[] = [
   { value: "foto", label: "Solo la foto", hint: "Sin nada encima." },
@@ -143,7 +144,13 @@ function SlideCard({
               {String(index + 1).padStart(2, "0")}
             </span>
             <div className="flex flex-wrap items-center gap-2">
-              <ReorderButtons index={index} total={total} disabled={disabled} onMove={onMove} label={`la foto ${index + 1}`} />
+              <ReorderButtons
+                index={index}
+                total={total}
+                disabled={disabled}
+                onMove={onMove}
+                label={`la foto ${index + 1}`}
+              />
               {confirmDelete ? (
                 <>
                   <button
@@ -267,7 +274,13 @@ function SlideCard({
             <label htmlFor={id("kind")} className={ADMIN_LABEL}>
               Qué va encima
             </label>
-            <select id={id("kind")} value={draft.kind} onChange={set("kind")} disabled={disabled} className={ADMIN_INPUT}>
+            <select
+              id={id("kind")}
+              value={draft.kind}
+              onChange={set("kind")}
+              disabled={disabled}
+              className={ADMIN_INPUT}
+            >
               {KINDS.map((k) => (
                 <option key={k.value} value={k.value}>
                   {k.label}
@@ -283,13 +296,27 @@ function SlideCard({
                 <label htmlFor={id("title")} className={ADMIN_LABEL}>
                   Titular
                 </label>
-                <input id={id("title")} maxLength={120} value={draft.title} onChange={set("title")} disabled={disabled} className={ADMIN_INPUT} />
+                <input
+                  id={id("title")}
+                  maxLength={120}
+                  value={draft.title}
+                  onChange={set("title")}
+                  disabled={disabled}
+                  className={ADMIN_INPUT}
+                />
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor={id("label")} className={ADMIN_LABEL}>
                   Etiqueta <span className="font-normal text-admin-muted">(opcional, arriba del titular)</span>
                 </label>
-                <input id={id("label")} maxLength={80} value={draft.label} onChange={set("label")} disabled={disabled} className={ADMIN_INPUT} />
+                <input
+                  id={id("label")}
+                  maxLength={80}
+                  value={draft.label}
+                  onChange={set("label")}
+                  disabled={disabled}
+                  className={ADMIN_INPUT}
+                />
               </div>
               <div>
                 <label htmlFor={id("cta_label")} className={ADMIN_LABEL}>
@@ -327,7 +354,13 @@ function SlideCard({
               <label htmlFor={id("position")} className={ADMIN_LABEL}>
                 Encuadre
               </label>
-              <select id={id("position")} value={draft.position} onChange={set("position")} disabled={disabled} className={ADMIN_INPUT}>
+              <select
+                id={id("position")}
+                value={draft.position}
+                onChange={set("position")}
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              >
                 {POSITIONS.map((p) => (
                   <option key={p.value} value={p.value}>
                     {p.label}
@@ -339,7 +372,13 @@ function SlideCard({
               <label htmlFor={id("dim")} className={ADMIN_LABEL}>
                 Oscurecer
               </label>
-              <select id={id("dim")} value={draft.dim} onChange={set("dim")} disabled={disabled} className={ADMIN_INPUT}>
+              <select
+                id={id("dim")}
+                value={draft.dim}
+                onChange={set("dim")}
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              >
                 {DIMS.map((d) => (
                   <option key={d.value} value={d.value}>
                     {d.label}
@@ -351,14 +390,27 @@ function SlideCard({
 
           <div>
             <label htmlFor={id("alt")} className={ADMIN_LABEL}>
-              Qué se ve en la foto <span className="font-normal text-admin-muted">(para buscadores y lectores de pantalla)</span>
+              Qué se ve en la foto{" "}
+              <span className="font-normal text-admin-muted">(para buscadores y lectores de pantalla)</span>
             </label>
-            <input id={id("alt")} maxLength={200} value={draft.alt} onChange={set("alt")} disabled={disabled} className={ADMIN_INPUT} />
+            <input
+              id={id("alt")}
+              maxLength={200}
+              value={draft.alt}
+              onChange={set("alt")}
+              disabled={disabled}
+              className={ADMIN_INPUT}
+            />
           </div>
 
           {dirty && (
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setDraft(toDraft(slide))} disabled={disabled} className={adminButton("ghost", "sm")}>
+              <button
+                type="button"
+                onClick={() => setDraft(toDraft(slide))}
+                disabled={disabled}
+                className={adminButton("ghost", "sm")}
+              >
                 Descartar
               </button>
               <button
@@ -474,7 +526,7 @@ export default function CarruselPage() {
       )}
 
       {!slides ? (
-        !error && <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>
+        !error && <AdminLoading />
       ) : slides.length === 0 ? (
         <p className={ADMIN_EMPTY}>El carrusel está vacío: la home arranca directo en los modelos. Agregá una foto.</p>
       ) : (

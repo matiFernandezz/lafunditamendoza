@@ -14,10 +14,18 @@ import {
   type AdminIphoneModel,
 } from "@/lib/adminApi";
 import AdminNotice from "../../AdminNotice";
-import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, ADMIN_TEXT_MUTED, adminButton } from "../../adminStyles";
+import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, adminButton } from "../../adminStyles";
 import ProductDraftForm from "../../productos/ProductDraftForm";
 import { STOCK_CHANGED } from "../stockData";
-import { UNIVERSAL, assignSkus, emptyDraft, releasePhotos, rowLabel, type ProductDraft } from "../../productos/productDraft";
+import {
+  UNIVERSAL,
+  assignSkus,
+  emptyDraft,
+  releasePhotos,
+  rowLabel,
+  type ProductDraft,
+} from "../../productos/productDraft";
+import AdminLoading from "../../AdminLoading";
 
 function parseStock(text: string) {
   return text.trim() === "" ? 0 : Number(text);
@@ -210,7 +218,7 @@ export default function ProductosPage() {
   }
 
   if (loading) {
-    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+    return <AdminLoading />;
   }
 
   if (loadError) {

@@ -58,6 +58,8 @@ import {
   type PurchaseBlock as Block,
 } from "../purchaseLogic";
 import { PURCHASE_STEPS, PURCHASES_CHANGED } from "../purchaseStatus";
+import { startNavigationProgress } from "@/components/NavigationProgress";
+import AdminLoading from "../../AdminLoading";
 
 const MAX_RESULTS = 8;
 
@@ -167,7 +169,13 @@ export default function ComprasPage() {
       if (block.kind === "new") {
         assignSkus(block.draft.name, block.draft.rows, taken, modelNameById, result);
       } else {
-        assignSkus(block.name, block.rows.filter((row) => row.variantId === null), taken, modelNameById, result);
+        assignSkus(
+          block.name,
+          block.rows.filter((row) => row.variantId === null),
+          taken,
+          modelNameById,
+          result,
+        );
       }
     }
     return result;
@@ -175,7 +183,11 @@ export default function ComprasPage() {
 
   const form = { supplierId, date, blocks };
   const validation = useMemo(
-    () => validatePurchase({ supplierId, date, blocks }, products.map((p) => p.name)),
+    () =>
+      validatePurchase(
+        { supplierId, date, blocks },
+        products.map((p) => p.name),
+      ),
     [supplierId, date, blocks, products],
   );
   const summary = summarize(blocks);
@@ -206,7 +218,7 @@ export default function ComprasPage() {
   function addProduct(product: AdminProduct) {
     touch();
     setSearch("");
-    const order = (modelId: string | null) => (modelId === null ? Infinity : modelOrderById.get(modelId) ?? Infinity);
+    const order = (modelId: string | null) => (modelId === null ? Infinity : (modelOrderById.get(modelId) ?? Infinity));
     const variants = [...product.product_variants].sort((a, b) => {
       const byModel = order(a.iphone_model_id) - order(b.iphone_model_id);
       // Infinity - Infinity es NaN: dos variantes sin modelo empatan.
@@ -282,7 +294,8 @@ export default function ComprasPage() {
             failed += 1;
           }
         }
-        if (failed > 0) photoFailures.push(`${failed === 1 ? "1 foto" : `${failed} fotos`} de “${createdProduct.name}”`);
+        if (failed > 0)
+          photoFailures.push(`${failed === 1 ? "1 foto" : `${failed} fotos`} de “${createdProduct.name}”`);
       }
 
       for (const block of blocks) if (block.kind === "new") releasePhotos(block.draft.photos);
@@ -290,6 +303,7 @@ export default function ComprasPage() {
       // Todo bien: al detalle del pedido nuevo. Si alguna foto falló, se queda
       // acá para avisarlo.
       if (photoFailures.length === 0) {
+        startNavigationProgress();
         router.push(`/admin/compras/pedidos/${res.data.id}`);
         return;
       }
@@ -332,7 +346,7 @@ export default function ComprasPage() {
   }
 
   if (loading) {
-    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+    return <AdminLoading />;
   }
 
   if (loadError) {

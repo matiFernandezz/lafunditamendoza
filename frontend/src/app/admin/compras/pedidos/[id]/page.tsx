@@ -18,13 +18,13 @@ import {
   ADMIN_INPUT_ADORNMENT,
   ADMIN_PAGE_TITLE,
   ADMIN_TEXTAREA,
-  ADMIN_TEXT_MUTED,
   adminBadge,
   adminButton,
   adminInput,
 } from "../../../adminStyles";
 import StatCard, { Panel } from "../../../StatCard";
 import { displayColor } from "../../../ventas/utils";
+import { startNavigationProgress } from "@/components/NavigationProgress";
 import {
   PURCHASE_STEPS,
   PURCHASES_CHANGED,
@@ -34,6 +34,7 @@ import {
   formatInstant,
   purchaseTotal,
 } from "../../purchaseStatus";
+import AdminLoading from "../../../AdminLoading";
 
 const STEP_INDEX: Record<PurchaseStatus, number> = { armando: 0, pagado: 1, en_camino: 2, recibida: 3 };
 
@@ -45,7 +46,8 @@ const NEXT_ACTION: Partial<Record<PurchaseStatus, { to: PurchaseStatus; label: s
 
 function stepDate(purchase: Purchase, status: PurchaseStatus): string | null {
   if (status === "armando") return formatInstant(purchase.created_at);
-  const at = status === "pagado" ? purchase.paid_at : status === "en_camino" ? purchase.shipped_at : purchase.received_at;
+  const at =
+    status === "pagado" ? purchase.paid_at : status === "en_camino" ? purchase.shipped_at : purchase.received_at;
   return at ? formatInstant(at) : null;
 }
 
@@ -114,6 +116,7 @@ export default function PedidoPage() {
     try {
       await deletePurchase(id);
       window.dispatchEvent(new Event(PURCHASES_CHANGED));
+      startNavigationProgress();
       router.push("/admin/compras");
     } catch (err) {
       setActionError(err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.");
@@ -123,7 +126,10 @@ export default function PedidoPage() {
   }
 
   const back = (
-    <Link href="/admin/compras" className="inline-flex items-center gap-1 text-sm text-admin-muted hover:text-admin-text">
+    <Link
+      href="/admin/compras"
+      className="inline-flex items-center gap-1 text-sm text-admin-muted hover:text-admin-text"
+    >
       <ChevronLeft aria-hidden="true" className="size-4" />
       Pedidos
     </Link>
@@ -139,7 +145,7 @@ export default function PedidoPage() {
   }
 
   if (!purchase) {
-    return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+    return <AdminLoading />;
   }
 
   const received = purchase.status === "recibida";
@@ -193,7 +199,11 @@ export default function PedidoPage() {
                 </button>
               </div>
             ) : (
-              <button type="button" onClick={() => setConfirmDelete(true)} className={adminButton("dangerOutline", "sm")}>
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className={adminButton("dangerOutline", "sm")}
+              >
                 <Trash2 aria-hidden="true" className="size-4" />
                 Borrar pedido
               </button>
@@ -203,9 +213,7 @@ export default function PedidoPage() {
 
       <section aria-label="Montos" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <StatCard label="Mercadería" value={formatPrice(merchandise)}>
-          <span>
-            {units === 1 ? "1 unidad" : `${units} unidades`} · sin envío
-          </span>
+          <span>{units === 1 ? "1 unidad" : `${units} unidades`} · sin envío</span>
         </StatCard>
         <StatCard label="Envío" value={formatPrice(shippingCost)}>
           <span>{formatPrice(shippingPerUnit)} por unidad</span>
@@ -239,7 +247,9 @@ export default function PedidoPage() {
                 >
                   <span
                     className={`flex size-7 items-center justify-center rounded-full border-2 ${
-                      done ? "border-admin-ink bg-admin-ink text-admin-on-ink" : "border-admin-border-strong bg-admin-surface"
+                      done
+                        ? "border-admin-ink bg-admin-ink text-admin-on-ink"
+                        : "border-admin-border-strong bg-admin-surface"
                     }`}
                   >
                     {done && <Check aria-hidden="true" className="size-4" strokeWidth={3} />}
@@ -263,7 +273,9 @@ export default function PedidoPage() {
                 </p>
                 <button
                   type="button"
-                  onClick={() => save({ status: "recibida" }, `Pedido recibido: se sumaron ${units} unidades al stock.`)}
+                  onClick={() =>
+                    save({ status: "recibida" }, `Pedido recibido: se sumaron ${units} unidades al stock.`)
+                  }
                   disabled={saving}
                   className={adminButton("primary", "sm")}
                 >
@@ -276,12 +288,22 @@ export default function PedidoPage() {
             ) : (
               <>
                 {next && (
-                  <button type="button" onClick={() => goTo(next.to)} disabled={saving} className={adminButton("primary", "sm")}>
+                  <button
+                    type="button"
+                    onClick={() => goTo(next.to)}
+                    disabled={saving}
+                    className={adminButton("primary", "sm")}
+                  >
                     {saving ? "Guardando…" : next.label}
                   </button>
                 )}
                 {next?.to !== "recibida" && (
-                  <button type="button" onClick={() => goTo("recibida")} disabled={saving} className={adminButton("secondary", "sm")}>
+                  <button
+                    type="button"
+                    onClick={() => goTo("recibida")}
+                    disabled={saving}
+                    className={adminButton("secondary", "sm")}
+                  >
                     Ya llegó
                   </button>
                 )}
@@ -310,12 +332,24 @@ export default function PedidoPage() {
           <table className="w-full min-w-[640px] border-collapse text-left text-[15px]">
             <thead className="bg-admin-bg text-[13px] text-admin-muted">
               <tr>
-                <th scope="col" className="px-4 py-3 font-semibold">Producto</th>
-                <th scope="col" className="px-3 py-3 text-right font-semibold">Cant.</th>
-                <th scope="col" className="px-3 py-3 text-right font-semibold">Costo c/u</th>
-                <th scope="col" className="px-3 py-3 text-right font-semibold">Con envío</th>
-                <th scope="col" className="px-3 py-3 text-right font-semibold">Venta c/u</th>
-                <th scope="col" className="px-4 py-3 text-right font-semibold">Ganancia</th>
+                <th scope="col" className="px-4 py-3 font-semibold">
+                  Producto
+                </th>
+                <th scope="col" className="px-3 py-3 text-right font-semibold">
+                  Cant.
+                </th>
+                <th scope="col" className="px-3 py-3 text-right font-semibold">
+                  Costo c/u
+                </th>
+                <th scope="col" className="px-3 py-3 text-right font-semibold">
+                  Con envío
+                </th>
+                <th scope="col" className="px-3 py-3 text-right font-semibold">
+                  Venta c/u
+                </th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold">
+                  Ganancia
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-border bg-admin-surface">

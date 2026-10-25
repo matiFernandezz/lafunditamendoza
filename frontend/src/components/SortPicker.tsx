@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import FilterPopover, { optionPill } from "./FilterPopover";
+import { startNavigationProgress } from "@/components/NavigationProgress";
 
 const pesos = (n: number) => `$${n.toLocaleString("es-AR")}`;
 const digits = (value: string) => value.replace(/\D/g, "");
@@ -84,6 +85,7 @@ export default function SortPicker({
             onSubmit={(event) => {
               event.preventDefault();
               close();
+              startNavigationProgress();
               router.replace(withPrice(desde, hasta), { scroll: false });
             }}
           >

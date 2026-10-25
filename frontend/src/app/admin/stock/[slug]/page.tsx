@@ -4,12 +4,7 @@ import { ChevronRight, ImageOff, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import {
-  getAdminIphoneModels,
-  getAdminProducts,
-  type AdminIphoneModel,
-  type AdminProduct,
-} from "@/lib/adminApi";
+import { getAdminIphoneModels, getAdminProducts, type AdminIphoneModel, type AdminProduct } from "@/lib/adminApi";
 import { formatPriceRange } from "@/lib/format";
 import { colorsWithoutPhotos, motifsWithoutPhotos } from "@/lib/productColors";
 import AdminNotice from "../../AdminNotice";
@@ -28,6 +23,7 @@ import CategoryColors from "../../catalogo/CategoryColors";
 import { categorySubtree, resolveCategorySettings } from "../../categoryPath";
 import PeriodSwitch from "../../PeriodSwitch";
 import { STOCK_CHANGED, settingsHint, topCategories, useStockCategories } from "../stockData";
+import AdminLoading from "../../AdminLoading";
 
 const UNIVERSAL = "__universal__";
 
@@ -48,7 +44,7 @@ const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 // useSearchParams necesita un Suspense alrededor para el render del servidor.
 export default function StockCategoryPage() {
   return (
-    <Suspense fallback={<p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>}>
+    <Suspense fallback={<AdminLoading />}>
       <StockCategory />
     </Suspense>
   );
@@ -137,7 +133,7 @@ function StockCategory() {
   }, [top, categories, products, childId, modelId, stockFilter, search]);
 
   if (error) return <AdminNotice kind="danger">{error}</AdminNotice>;
-  if (!categories || !products) return <p className={`py-10 text-center ${ADMIN_TEXT_MUTED}`}>Cargando…</p>;
+  if (!categories || !products) return <AdminLoading />;
   if (!top) return <p className={ADMIN_EMPTY}>Esa categoría no existe.</p>;
 
   const byModel = [top, ...children].some((c) => settings?.(c.id).byModel);
@@ -164,7 +160,11 @@ function StockCategory() {
       </div>
 
       {children.length > 0 && (
-        <div role="radiogroup" aria-label="Tipo" className="-mx-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
+        <div
+          role="radiogroup"
+          aria-label="Tipo"
+          className="-mx-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0"
+        >
           {[{ id: "", name: "Todos" }, ...children].map((c) => {
             const active = childId === c.id;
             const s = c.id ? settings?.(c.id) : null;
@@ -212,7 +212,12 @@ function StockCategory() {
             <label htmlFor="stock-modelo" className="sr-only">
               Modelo de iPhone
             </label>
-            <select id="stock-modelo" value={modelId} onChange={(e) => setModelId(e.target.value)} className={ADMIN_INPUT}>
+            <select
+              id="stock-modelo"
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+              className={ADMIN_INPUT}
+            >
               <option value="">Todos los modelos</option>
               <option value={UNIVERSAL}>Universales</option>
               {models.map((m) => (

@@ -7,6 +7,7 @@ import PageHeader from "@/components/PageHeader";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
 import { STORE_BUTTON, STORE_CAP, STORE_NARROW } from "@/lib/storeStyles";
+import { startNavigationProgress } from "@/components/NavigationProgress";
 
 const INPUT =
   "h-14 w-full rounded-lg border border-rule bg-white px-4 text-base text-ink outline-none transition-colors duration-200 placeholder:text-graphite/70 focus:border-ink";
@@ -44,6 +45,7 @@ export default function CheckoutView() {
         setSubmitting(false);
         return;
       }
+      startNavigationProgress();
       router.push(`/reserva/${json.data.public_token}`);
       cart.clear();
     } catch {
