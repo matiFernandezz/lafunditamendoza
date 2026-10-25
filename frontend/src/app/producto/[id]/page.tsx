@@ -9,14 +9,20 @@ const RELATED_CANDIDATES = 16;
 /**
  * Candidatos para "Completá tu compra", en orden: primero lo que complementa (de
  * la otra categoría de tope: accesorios para una funda, fundas para un
- * accesorio), con lo que sirve para los mismos modelos adelante; después lo
+ * accesorio), con lo hecho para los mismos modelos adelante; después lo
  * parecido (misma categoría, mismo tipo primero). Solo productos con stock.
  */
 function relatedFor(product: Product, pool: Product[]): Product[] {
   const top = (p: Product) => p.category?.parent_id ?? p.category?.id;
   const models = new Set(product.product_variants.map((v) => v.iphone_model_id).filter((id) => id !== null));
+  // Primero lo hecho para los mismos modelos (lentes, vidrios), después lo
+  // universal (straps, cargadores) y al final lo de otros modelos.
   const fits = (p: Product) =>
-    p.product_variants.some((v) => v.iphone_model_id === null || models.has(v.iphone_model_id)) ? 0 : 1;
+    p.product_variants.some((v) => v.iphone_model_id !== null && models.has(v.iphone_model_id))
+      ? 0
+      : p.product_variants.some((v) => v.iphone_model_id === null)
+        ? 1
+        : 2;
   const others = pool.filter((p) => p.id !== product.id);
   const complements = others.filter((p) => top(p) !== top(product)).sort((a, b) => fits(a) - fits(b));
   const similar = others
