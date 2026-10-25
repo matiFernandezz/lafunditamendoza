@@ -26,6 +26,8 @@ export async function GET(request: NextRequest) {
     // Una variante eliminada que tenía historial queda archivada (active =
     // false): no se muestra en ninguna pantalla del panel.
     .eq("product_variants.active", true)
+    // Lo mismo con un producto eliminado que tenía historial (archivado).
+    .is("archived_at", null)
     .order("name", { ascending: true })
     .order("sort_order", { referencedTable: "product_images", ascending: true });
 

@@ -592,6 +592,20 @@ export function deleteVariant(id: string, force = false): Promise<{ data: Delete
   return adminFetch(`/api/product-variants/${id}${force ? "?force=1" : ""}`, { method: "DELETE" });
 }
 
+export type DeleteProductResult = Omit<DeleteVariantResult, "sku"> & { name: string };
+
+/** dryRun: solo averigua qué pasaría (stock que se pierde, si tiene historial). */
+export function deleteProduct(
+  id: string,
+  { force = false, dryRun = false } = {},
+): Promise<{ data: DeleteProductResult }> {
+  const query = new URLSearchParams();
+  if (force) query.set("force", "1");
+  if (dryRun) query.set("dry_run", "1");
+  const qs = query.toString();
+  return adminFetch(`/api/products/${id}${qs ? `?${qs}` : ""}`, { method: "DELETE" });
+}
+
 // --- colores de una categoría ---------------------------------------------------
 
 /** Resumen de lo que se le hizo a un producto al agregarle variantes. */

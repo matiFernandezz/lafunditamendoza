@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
+import { PRODUCT_IMAGE_BUCKET } from "@/lib/productImages";
 import { requireAdmin } from "@/lib/server/auth";
+import { queryFlag } from "@/lib/server/colorManagement";
 import { jsonData, jsonError, readJsonBody } from "@/lib/server/http";
 import { PRODUCT_SELECT } from "@/lib/server/selects";
 import { isUuid } from "@/lib/server/validate";
@@ -52,5 +54,37 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<"/api/produc
 
   if (error) return jsonError(500, error.message);
   if (!data) return jsonError(404, "No existe un producto con ese id");
+  return jsonData(data);
+}
+
+// "Eliminar producto": si ninguna variante tiene ventas, compras ni reservas, se
+// borra entero (y sus fotos del bucket). Si tiene historial, queda archivado:
+// oculto en la tienda y en el panel, pero el historial lo sigue nombrando. Con
+// stock y sin ?force=1 responde blocked: true con las unidades, para pedir
+// confirmación. ?dry_run=1 solo informa.
+export async function DELETE(request: NextRequest, ctx: RouteContext<"/api/products/[id]">) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  const { id } = await ctx.params;
+  if (!isUuid(id)) return jsonError(400, "id debe ser un uuid valido");
+
+  const supabase = supabaseAdmin();
+  const { data, error } = await supabase.rpc("delete_product", {
+    p_product_id: id,
+    p_force: queryFlag(request, "force"),
+    p_dry_run: queryFlag(request, "dry_run"),
+  });
+  if (error) return jsonError(error.code === "CC404" ? 404 : 500, error.message);
+
+  // Si se borró, sus fotos quedan huérfanas en Storage: se sacan (si falla, no
+  // importa: nadie las ve).
+  const marker = `/object/public/${PRODUCT_IMAGE_BUCKET}/`;
+  const paths = ((data.images ?? []) as string[])
+    .filter((url) => url.includes(marker))
+    .map((url) => url.slice(url.indexOf(marker) + marker.length));
+  if (paths.length > 0) await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(paths);
+
+  delete data.images;
   return jsonData(data);
 }

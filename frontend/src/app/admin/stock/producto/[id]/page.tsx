@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronLeft, ImageOff, Plus } from "lucide-react";
+import { ChevronLeft, ImageOff, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AdminApiError,
@@ -23,6 +23,7 @@ import { EMPTY_DRAFT, draftChanges, type CatalogDraft } from "../../../catalogo/
 import ProductEditor from "../../../catalogo/ProductEditor";
 import { categoryPathById, resolveCategorySettings } from "../../../categoryPath";
 import { STOCK_CHANGED, settingsHint, useStockCategories } from "../../stockData";
+import DeleteProductDialog from "./DeleteProductDialog";
 
 function errorMessage(err: unknown) {
   return err instanceof AdminApiError ? err.message : "No se pudo conectar con el servidor.";
@@ -42,6 +43,8 @@ export default function StockProductPage() {
   const [justSaved, setJustSaved] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     let ignore = false;
@@ -247,10 +250,21 @@ export default function StockProductPage() {
               </p>
             </div>
           </div>
-          <button type="button" onClick={() => setAdding(true)} className={adminButton("primary")}>
-            <Plus aria-hidden="true" className="size-5" />
-            {addLabel}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleting(true)}
+              title="Eliminar el producto (p. ej. si se cargó dos veces)"
+              className={adminButton("dangerOutline")}
+            >
+              <Trash2 aria-hidden="true" className="size-5" />
+              Eliminar
+            </button>
+            <button type="button" onClick={() => setAdding(true)} className={adminButton("primary")}>
+              <Plus aria-hidden="true" className="size-5" />
+              {addLabel}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -258,6 +272,19 @@ export default function StockProductPage() {
         <AdminNotice kind="ok" onClose={() => setNotice(null)}>
           {notice}
         </AdminNotice>
+      )}
+
+      {deleting && (
+        <DeleteProductDialog
+          productId={product.id}
+          productName={product.name}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => {
+            // El producto ya no está: se vuelve a su categoría y se refrescan las listas.
+            window.dispatchEvent(new Event(STOCK_CHANGED));
+            router.push(top ? `/admin/stock/${top.slug}` : "/admin/stock");
+          }}
+        />
       )}
 
       <ProductEditor
