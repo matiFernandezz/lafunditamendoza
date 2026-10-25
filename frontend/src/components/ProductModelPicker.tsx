@@ -83,13 +83,16 @@ export default function ProductModelPicker({
               ))}
             </div>
 
-            {/* Los modelos de la línea, debajo de los números y a su mismo ancho
-                (columnas iguales), separados por una línea suave. */}
+            {/* Los modelos de la línea, debajo de los números, en columnas iguales y
+                separados por una línea suave. */}
             {line && (
               <div
                 key={line.key}
-                className="flex w-0 min-w-full animate-[lf-fade-in_200ms_ease-out] flex-wrap gap-2 border-t border-rule/60 pt-3 motion-reduce:animate-none md:grid"
-                style={{ gridTemplateColumns: `repeat(${Math.max(line.models.length, 2)}, minmax(0, 1fr))` }}
+                className="flex animate-[lf-fade-in_200ms_ease-out] flex-wrap gap-2 border-t border-rule/60 pt-3 motion-reduce:animate-none md:grid"
+                // Columnas iguales que nunca bajan del ancho del nombre: con pocos
+                // números la tarjeta crece para que cada modelo entre en un renglón;
+                // con muchos, las columnas se estiran al ancho de la fila.
+                style={{ gridTemplateColumns: `repeat(${line.models.length}, minmax(max-content, 1fr))` }}
               >
                 {line.models.map((m) => (
                   <button
@@ -100,7 +103,7 @@ export default function ProductModelPicker({
                       close();
                     }}
                     aria-pressed={m.id === value}
-                    className={optionPill(m.id === value, { cell: true })}
+                    className={optionPill(m.id === value)}
                   >
                     {m.name}
                   </button>
