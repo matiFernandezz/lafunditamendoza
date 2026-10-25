@@ -32,7 +32,10 @@ export default function ProductTile({
   const image = hoverImage ?? coverImage(product);
 
   return (
-    <Link href={href} className="group block text-ink">
+    // relative: el texto oculto de los colores (sr-only, absoluto) queda dentro
+    // de la tarjeta. Sin esto, en un carrusel se posicionaba contra un contenedor
+    // de afuera, el carrusel no lo recortaba y ensanchaba toda la página en el celular.
+    <Link href={href} className="group relative block text-ink">
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-rule/40">
         {image ? (
           <Image
