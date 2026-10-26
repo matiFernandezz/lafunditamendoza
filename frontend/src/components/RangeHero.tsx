@@ -10,6 +10,7 @@ export default function RangeHero({
   tone = "ink",
   titleClassName = "text-hero",
   leadClassName = "text-lead max-w-[34ch]",
+  align = "left",
 }: {
   from: string;
   to: string;
@@ -17,16 +18,24 @@ export default function RangeHero({
   tone?: "ink" | "paper";
   titleClassName?: string;
   leadClassName?: string;
+  /** Alineación del texto dentro del bloque (el carrusel lo deja elegir desde el panel). */
+  align?: "left" | "center" | "right";
 }) {
+  const alignClass = {
+    left: "items-start text-left",
+    center: "items-center text-center",
+    right: "items-end text-right",
+  }[align];
+  const rowJustify = { left: "", center: "justify-center", right: "justify-end" }[align];
   return (
-    <div className="flex flex-col gap-6">
+    <div className={`flex flex-col gap-6 ${alignClass}`}>
       <h1
         aria-label={`${from} a ${to}`}
         className={`font-display font-semibold leading-hero tracking-hero ${titleClassName} ${
           tone === "paper" ? "text-paper" : "text-ink"
         }`}
       >
-        <span className="flex items-center gap-[0.2em] whitespace-nowrap">
+        <span className={`flex items-center gap-[0.2em] whitespace-nowrap ${rowJustify}`}>
           {from}
           <svg
             viewBox="0 0 64 40"

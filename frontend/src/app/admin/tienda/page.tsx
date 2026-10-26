@@ -13,6 +13,8 @@ import {
   type HomeSlide,
   type HomeSlideInput,
   type HomeSlideKind,
+  type HomeSlideTextPosition,
+  type HomeSlideTextSize,
 } from "@/lib/adminApi";
 import AdminNotice from "../AdminNotice";
 import {
@@ -29,16 +31,68 @@ import { PHOTO_SIZES, PickPhotoButton, ReorderButtons, SizeHint, moveItem } from
 import AdminLoading from "../AdminLoading";
 
 const KINDS: { value: HomeSlideKind; label: string; hint: string }[] = [
-  { value: "foto", label: "Solo la foto", hint: "Sin nada encima." },
-  { value: "titulo", label: "Titular", hint: "Etiqueta chica, titular grande y un botón opcional." },
-  { value: "rango", label: "Rango de modelos", hint: "“iPhone 11 → 18 Pro Max” y la bajada de la marca." },
-  { value: "logo", label: "Logo", hint: "El logo grande abajo a la izquierda." },
+  { value: "foto", label: "Solo la foto", hint: "La foto sola; si querés, con titular, etiqueta o link." },
+  { value: "titulo", label: "Titular", hint: "Etiqueta chica, titular grande y un link opcional." },
+  {
+    value: "rango",
+    label: "Rango de modelos",
+    hint: "El rango de modelos (“iPhone 11 → 18 Pro Max”) con su bajada; los textos se pueden cambiar.",
+  },
+  { value: "logo", label: "Logo", hint: "El logo grande; si querés, con titular y link." },
 ];
 
-const POSITIONS = [
-  { value: "", label: "Centro" },
+// Tamaño del texto encima de la foto: los mismos para el rango y los titulares.
+const TEXT_SIZES: { value: "" | HomeSlideTextSize; label: string }[] = [
+  { value: "", label: "Automático" },
+  { value: "chico", label: "Chico" },
+  { value: "mediano", label: "Mediano" },
+  { value: "grande", label: "Grande" },
+];
+
+// Dónde va el texto encima de la foto. Automático: el rango abajo, el resto arriba, a la izquierda.
+const TEXT_POSITIONS: { value: "" | HomeSlideTextPosition; label: string }[] = [
+  { value: "", label: "Automático" },
+  { value: "arriba-izquierda", label: "Arriba a la izquierda" },
+  { value: "arriba-centro", label: "Arriba al centro" },
+  { value: "arriba-derecha", label: "Arriba a la derecha" },
+  { value: "centro-izquierda", label: "Al medio a la izquierda" },
+  { value: "centro-centro", label: "Al medio, centrado" },
+  { value: "centro-derecha", label: "Al medio a la derecha" },
+  { value: "abajo-izquierda", label: "Abajo a la izquierda" },
+  { value: "abajo-centro", label: "Abajo al centro" },
+  { value: "abajo-derecha", label: "Abajo a la derecha" },
+];
+
+// Dónde va el logo: en cualquier foto, aparte del texto. En el tipo "logo", vacío = abajo a la izquierda.
+const LOGO_POSITIONS = (kind: HomeSlideKind) => [
+  { value: "", label: kind === "logo" ? "Automático (abajo a la izquierda)" : "Sin logo" },
+  ...TEXT_POSITIONS.slice(1),
+];
+
+// Textos del rango de modelos si se dejan vacíos (los de siempre).
+const RANGE_DEFAULTS = {
+  from: "iPhone 11",
+  to: "18 Pro Max",
+  subtitle: "Fundas y accesorios para tu iPhone. Elegí tu modelo y mirá lo que hay en stock.",
+};
+
+// Qué parte de la foto se ve cuando no entra entera (object-position).
+const FRAMES = [
   { value: "center 25%", label: "Más arriba" },
+  { value: "center top", label: "Arriba del todo" },
   { value: "center 75%", label: "Más abajo" },
+  { value: "center bottom", label: "Abajo del todo" },
+  { value: "30% center", label: "Más a la izquierda" },
+  { value: "left center", label: "Izquierda del todo" },
+  { value: "70% center", label: "Más a la derecha" },
+  { value: "right center", label: "Derecha del todo" },
+];
+const POSITIONS = [{ value: "", label: "Centro" }, ...FRAMES];
+// En el celular, vacío = el mismo encuadre que en la computadora (como era antes).
+const MOBILE_POSITIONS = [
+  { value: "", label: "Igual que en computadora" },
+  { value: "center", label: "Centro" },
+  ...FRAMES,
 ];
 
 // Brillo de la foto debajo del texto (1 = como está). Automático: el logo va más oscuro.
@@ -57,10 +111,15 @@ type Draft = Required<Pick<HomeSlideInput, "kind">> & {
   alt: string;
   label: string;
   title: string;
+  subtitle: string;
   cta_label: string;
   cta_href: string;
   position: string;
+  position_mobile: string;
   dim: string;
+  text_size: "" | HomeSlideTextSize;
+  text_position: "" | HomeSlideTextPosition;
+  logo_position: "" | HomeSlideTextPosition;
 };
 
 function toDraft(slide: HomeSlide): Draft {
@@ -69,10 +128,15 @@ function toDraft(slide: HomeSlide): Draft {
     alt: slide.alt,
     label: slide.label ?? "",
     title: slide.title ?? "",
+    subtitle: slide.subtitle ?? "",
     cta_label: slide.cta_label ?? "",
     cta_href: slide.cta_href ?? "",
     position: slide.position ?? "",
+    position_mobile: slide.position_mobile ?? "",
     dim: slide.dim === null ? "" : String(slide.dim),
+    text_size: slide.text_size ?? "",
+    text_position: slide.text_position ?? "",
+    logo_position: slide.logo_position ?? "",
   };
 }
 
@@ -82,10 +146,15 @@ function draftPatch(draft: Draft): HomeSlideInput {
     alt: draft.alt,
     label: draft.label.trim() || null,
     title: draft.title.trim() || null,
+    subtitle: draft.subtitle.trim() || null,
     cta_label: draft.cta_label.trim() || null,
     cta_href: draft.cta_href.trim() || null,
     position: draft.position || null,
+    position_mobile: draft.position_mobile || null,
     dim: draft.dim === "" ? null : Number(draft.dim),
+    text_size: draft.text_size || null,
+    text_position: draft.text_position || null,
+    logo_position: draft.logo_position || null,
   };
 }
 
@@ -134,6 +203,7 @@ function SlideCard({
   // La vista previa oscurece igual que la home (el logo, por defecto, al 0.55).
   const brightness = draft.dim ? Number(draft.dim) : draft.kind === "logo" ? 0.55 : 1;
   const previewStyle = { objectPosition: draft.position || "center", filter: `brightness(${brightness})` };
+  const mobilePreviewStyle = { ...previewStyle, objectPosition: draft.position_mobile || draft.position || "center" };
 
   return (
     <li className="overflow-hidden rounded-lg border border-admin-border bg-admin-surface">
@@ -220,7 +290,7 @@ function SlideCard({
                 src={slide.mobile_image_url ?? slide.image_url}
                 alt=""
                 className={`size-full object-cover ${slide.mobile_image_url ? "" : "opacity-60"}`}
-                style={previewStyle}
+                style={mobilePreviewStyle}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -290,7 +360,60 @@ function SlideCard({
             <p className={`mt-1 ${ADMIN_TEXT_MUTED}`}>{KINDS.find((k) => k.value === draft.kind)?.hint}</p>
           </div>
 
-          {draft.kind === "titulo" && (
+          {/* Rango de modelos: label es el "desde" y title el "hasta". Vacíos, los de siempre. */}
+          {draft.kind === "rango" && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label htmlFor={id("from")} className={ADMIN_LABEL}>
+                  Desde
+                </label>
+                <input
+                  id={id("from")}
+                  maxLength={80}
+                  value={draft.label}
+                  onChange={set("label")}
+                  placeholder={RANGE_DEFAULTS.from}
+                  disabled={disabled}
+                  className={ADMIN_INPUT}
+                />
+              </div>
+              <div>
+                <label htmlFor={id("to")} className={ADMIN_LABEL}>
+                  Hasta
+                </label>
+                <input
+                  id={id("to")}
+                  maxLength={120}
+                  value={draft.title}
+                  onChange={set("title")}
+                  placeholder={RANGE_DEFAULTS.to}
+                  disabled={disabled}
+                  className={ADMIN_INPUT}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor={id("subtitle")} className={ADMIN_LABEL}>
+                  Bajada <span className="font-normal text-admin-muted">(el texto chico de abajo)</span>
+                </label>
+                <input
+                  id={id("subtitle")}
+                  maxLength={200}
+                  value={draft.subtitle}
+                  onChange={set("subtitle")}
+                  placeholder={RANGE_DEFAULTS.subtitle}
+                  disabled={disabled}
+                  className={ADMIN_INPUT}
+                />
+                <p className={`mt-1 ${ADMIN_TEXT_MUTED}`}>
+                  Se ve “{draft.label.trim() || RANGE_DEFAULTS.from} → {draft.title.trim() || RANGE_DEFAULTS.to}”.
+                  Vacíos, quedan los textos de siempre.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Titular y etiqueta: en todas menos el rango, que tiene sus propios textos. */}
+          {draft.kind !== "rango" && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <label htmlFor={id("title")} className={ADMIN_LABEL}>
@@ -307,7 +430,8 @@ function SlideCard({
               </div>
               <div className="sm:col-span-2">
                 <label htmlFor={id("label")} className={ADMIN_LABEL}>
-                  Etiqueta <span className="font-normal text-admin-muted">(opcional, arriba del titular)</span>
+                  Etiqueta{" "}
+                  <span className="font-normal text-admin-muted">(opcional, el texto chico arriba del titular)</span>
                 </label>
                 <input
                   id={id("label")}
@@ -318,41 +442,49 @@ function SlideCard({
                   className={ADMIN_INPUT}
                 />
               </div>
-              <div>
-                <label htmlFor={id("cta_label")} className={ADMIN_LABEL}>
-                  Texto del botón
-                </label>
-                <input
-                  id={id("cta_label")}
-                  maxLength={40}
-                  value={draft.cta_label}
-                  onChange={set("cta_label")}
-                  placeholder="Ver más"
-                  disabled={disabled}
-                  className={ADMIN_INPUT}
-                />
-              </div>
-              <div>
-                <label htmlFor={id("cta_href")} className={ADMIN_LABEL}>
-                  Lleva a
-                </label>
-                <input
-                  id={id("cta_href")}
-                  maxLength={300}
-                  value={draft.cta_href}
-                  onChange={set("cta_href")}
-                  placeholder="/categoria/fundas"
-                  disabled={disabled}
-                  className={adminInput({ mono: true })}
-                />
-              </div>
             </div>
           )}
 
+          {/* El link va en todas: el texto lo elige la dueña ("Ver fundas", "Ir a fundas"…). */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={id("cta_label")} className={ADMIN_LABEL}>
+                Texto del link <span className="font-normal text-admin-muted">(opcional)</span>
+              </label>
+              <input
+                id={id("cta_label")}
+                maxLength={40}
+                value={draft.cta_label}
+                onChange={set("cta_label")}
+                placeholder="Ver más"
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              />
+            </div>
+            <div>
+              <label htmlFor={id("cta_href")} className={ADMIN_LABEL}>
+                Lleva a
+              </label>
+              <input
+                id={id("cta_href")}
+                maxLength={300}
+                value={draft.cta_href}
+                onChange={set("cta_href")}
+                placeholder="/categoria/fundas"
+                disabled={disabled}
+                className={adminInput({ mono: true })}
+              />
+            </div>
+            <p className={`sm:col-span-2 ${ADMIN_TEXT_MUTED}`}>
+              Para que aparezca el link, completá “Lleva a”. Sin texto, dice “Ver más”.
+            </p>
+          </div>
+
+          {/* Recorte de la foto: la computadora es apaisada y el celular vertical, cada uno con el suyo. */}
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={id("position")} className={ADMIN_LABEL}>
-                Encuadre
+                Encuadre en computadora
               </label>
               <select
                 id={id("position")}
@@ -361,9 +493,85 @@ function SlideCard({
                 disabled={disabled}
                 className={ADMIN_INPUT}
               >
-                {POSITIONS.map((p) => (
-                  <option key={p.value} value={p.value}>
-                    {p.label}
+                {POSITIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor={id("position_mobile")} className={ADMIN_LABEL}>
+                Encuadre en celular
+              </label>
+              <select
+                id={id("position_mobile")}
+                value={draft.position_mobile}
+                onChange={set("position_mobile")}
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              >
+                {MOBILE_POSITIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Dónde va el texto, qué tan grande y cuánto se oscurece la foto. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor={id("text_position")} className={ADMIN_LABEL}>
+                Ubicación del texto
+              </label>
+              <select
+                id={id("text_position")}
+                value={draft.text_position}
+                onChange={set("text_position")}
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              >
+                {TEXT_POSITIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor={id("logo_position")} className={ADMIN_LABEL}>
+                Logo
+              </label>
+              <select
+                id={id("logo_position")}
+                value={draft.logo_position}
+                onChange={set("logo_position")}
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              >
+                {LOGO_POSITIONS(draft.kind).map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor={id("text_size")} className={ADMIN_LABEL}>
+                Tamaño del texto
+              </label>
+              <select
+                id={id("text_size")}
+                value={draft.text_size}
+                onChange={set("text_size")}
+                disabled={disabled}
+                className={ADMIN_INPUT}
+              >
+                {TEXT_SIZES.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </select>
@@ -379,13 +587,18 @@ function SlideCard({
                 disabled={disabled}
                 className={ADMIN_INPUT}
               >
-                {DIMS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
+                {DIMS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
                   </option>
                 ))}
               </select>
             </div>
+            <p className={`sm:col-span-2 ${ADMIN_TEXT_MUTED}`}>
+              Si el logo y el texto van en el mismo lugar, el texto queda debajo del logo. Automático deja el de
+              siempre. Chico, Mediano y Grande son iguales en todas las fotos: para que se vean del mismo tamaño, elegí
+              el mismo en cada una.
+            </p>
           </div>
 
           <div>

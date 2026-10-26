@@ -66,11 +66,9 @@ export function coverImage(product: Pick<Product, "product_images">): string | n
 const PRODUCT_SELECT =
   "id, name, description, created_at, category:categories(id, name, slug, parent_id), product_images(id, url, sort_order, color_id, motif_id), product_variants!inner(id, sku, color, price, stock_quantity, iphone_model_id, iphone_models(name, sort_order), color_ref:colors(id, name, slug, hex, sort_order), motif_ref:motifs(id, name, slug, sort_order))";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export const isUuid = (value: unknown): value is string =>
-  typeof value === "string" && UUID_RE.test(value);
+export const isUuid = (value: unknown): value is string => typeof value === "string" && UUID_RE.test(value);
 
 /**
  * Categorías de tope (las del menú: Fundas, Accesorios) con sus tipos, en el
@@ -263,7 +261,14 @@ export async function getCategoryTiles(): Promise<CategoryTile[]> {
     }
     const count = [group, ...group.children].reduce((sum, c) => sum + (counts[c.id] ?? 0), 0);
     return [
-      { id: group.id, name: group.name, slug: group.slug, href: categoryHref(group), count, imageUrl: group.home_image_url ?? null },
+      {
+        id: group.id,
+        name: group.name,
+        slug: group.slug,
+        href: categoryHref(group),
+        count,
+        imageUrl: group.home_image_url ?? null,
+      },
     ];
   });
 }
@@ -313,17 +318,29 @@ export type HomeSlideRow = {
   kind: "rango" | "titulo" | "logo" | "foto";
   label: string | null;
   title: string | null;
+  /** Bajada del rango de modelos (null = la de siempre). */
+  subtitle: string | null;
   cta_label: string | null;
   cta_href: string | null;
   position: string | null;
+  /** Encuadre en el celular (null = el mismo que en computadora). */
+  position_mobile: string | null;
   dim: number | null;
+  /** Tamaño del texto (null = automático, según el tipo). */
+  text_size: "chico" | "mediano" | "grande" | null;
+  /** Dónde va el texto, "arriba-izquierda"… (null = automático, según el tipo). */
+  text_position: `${"arriba" | "centro" | "abajo"}-${"izquierda" | "centro" | "derecha"}` | null;
+  /** Dónde va el logo (null = sin logo; en el tipo "logo", abajo a la izquierda). */
+  logo_position: HomeSlideRow["text_position"];
 };
 
 /** Fotos del carrusel de la portada, en orden. */
 export async function getHomeSlides(): Promise<HomeSlideRow[]> {
   const { data, error } = await supabase
     .from("home_slides")
-    .select("id, image_url, mobile_image_url, alt, kind, label, title, cta_label, cta_href, position, dim")
+    .select(
+      "id, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position",
+    )
     .order("sort_order")
     .order("created_at")
     .overrideTypes<HomeSlideRow[], { merge: false }>();
@@ -447,9 +464,7 @@ export async function searchProducts(query: string): Promise<Product[]> {
     const variants = product.product_variants
       .map((v) => [v.iphone_models?.name, v.color, v.motif_ref?.name].filter(Boolean).join(" "))
       .join(" ");
-    const haystack = fold(
-      [product.name, product.description ?? "", product.category?.name ?? "", variants].join(" "),
-    );
+    const haystack = fold([product.name, product.description ?? "", product.category?.name ?? "", variants].join(" "));
     return words.every((word) => haystack.includes(word));
   });
 }

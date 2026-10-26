@@ -11,6 +11,8 @@ export type HeroSlide = {
   alt: string;
   /** object-position de la foto (por defecto "center"). */
   position?: string;
+  /** object-position en el celular (por defecto, el mismo de computadora). */
+  mobilePosition?: string;
   /** Oscurece la foto (0.5–0.6) cuando lleva logo o texto encima. */
   dim?: number;
   /** Contenido propio del slide (titular, CTA, logo), ya posicionado. */
@@ -25,13 +27,17 @@ const AUTO_ADVANCE_MS = 6000;
  * navegador baja solo la que corresponde.
  */
 function SlidePhoto({ slide, priority }: { slide: HeroSlide; priority: boolean }) {
+  // Encuadre por variable: el celular usa el suyo y desde md el de computadora.
+  const position = slide.position ?? "center";
   const style = {
-    objectPosition: slide.position ?? "center",
+    "--pos": position,
+    "--pos-m": slide.mobilePosition ?? position,
     filter: slide.dim ? `brightness(${slide.dim})` : undefined,
-  };
+  } as React.CSSProperties;
+  const fit = "object-cover object-[var(--pos-m)] md:object-[var(--pos)]";
   if (!slide.mobileSrc) {
     return (
-      <Image src={slide.src} alt={slide.alt} fill priority={priority} sizes="100vw" className="object-cover" style={style} />
+      <Image src={slide.src} alt={slide.alt} fill priority={priority} sizes="100vw" className={fit} style={style} />
     );
   }
   const common = { alt: slide.alt, fill: true, sizes: "100vw", priority };
@@ -42,7 +48,7 @@ function SlidePhoto({ slide, priority }: { slide: HeroSlide; priority: boolean }
   return (
     <picture>
       <source media="(min-width: 768px)" srcSet={desktop} sizes="100vw" />
-      <img {...mobile} alt={slide.alt} className="object-cover" style={{ ...mobile.style, ...style }} />
+      <img {...mobile} alt={slide.alt} className={fit} style={{ ...mobile.style, ...style }} />
     </picture>
   );
 }

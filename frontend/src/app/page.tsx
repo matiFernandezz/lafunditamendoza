@@ -48,7 +48,7 @@ function SlideCta({ href, children }: { href: string; children: React.ReactNode 
   return (
     <Link
       href={href}
-      className="group inline-flex min-h-11 items-center gap-2 self-start text-xs font-semibold uppercase tracking-label text-paper"
+      className="group pointer-events-auto inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-label text-paper"
     >
       {children}
       <ArrowMark className="h-2.5 w-4 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={5} />
@@ -56,70 +56,153 @@ function SlideCta({ href, children }: { href: string; children: React.ReactNode 
   );
 }
 
-/** Lo que va encima de la foto de cada slide, según su tipo (lo elige el panel). */
+const BOTTOM_SCRIM = "bg-[linear-gradient(to_top,rgb(18_18_18/0.78)_0%,rgb(18_18_18/0.35)_45%,rgb(18_18_18/0.05)_75%)]";
+const MIDDLE_SCRIM = "bg-[radial-gradient(ellipse_at_center,rgb(18_18_18/0.45),transparent_70%)]";
+
+// Tamaño del titular elegido en el panel: iguales para el rango y los titulares.
+const TEXT_SIZE_CLASS = {
+  chico: "text-[40px] md:text-[clamp(2.5rem,min(5vw,10svh),4.5rem)]",
+  mediano: "text-5xl md:text-[clamp(3rem,min(6.5vw,13svh),6rem)]",
+  grande: "text-[min(3.9rem,15.2vw)] md:text-[clamp(3rem,min(10vw,17svh),10.5rem)]",
+} as const;
+
+type TextPosition = NonNullable<HomeSlideRow["text_position"]>;
+
+/**
+ * Clases del contenedor para ubicar el texto (o el logo) donde dice el panel,
+ * con la sombra del lado del texto para que se lea. Abajo a la derecha deja
+ * lugar para los puntitos del carrusel. El contenedor deja pasar los clics
+ * (texto y logo pueden ir en dos capas encima de la foto); el link los toma.
+ */
+function placeText(position: TextPosition, scrim = true) {
+  const [v, h] = position.split("-") as ["arriba" | "centro" | "abajo", "izquierda" | "centro" | "derecha"];
+  const vertical = {
+    arriba: `justify-start pt-8 md:pt-[72px] ${scrim ? TOP_SCRIM : ""}`,
+    centro: `justify-center py-12 ${scrim ? MIDDLE_SCRIM : ""}`,
+    abajo: `justify-end ${h === "derecha" ? "pb-16 md:pb-[clamp(4rem,10svh,96px)]" : "pb-12 md:pb-[clamp(2rem,8svh,72px)]"} ${scrim ? BOTTOM_SCRIM : ""}`,
+  }[v];
+  const horizontal = {
+    izquierda: "items-start text-left",
+    centro: "items-center text-center",
+    derecha: "items-end text-right",
+  }[h];
+  const align = ({ izquierda: "left", centro: "center", derecha: "right" } as const)[h];
+  return {
+    className: `pointer-events-none absolute inset-0 flex flex-col ${vertical} ${horizontal} ${PAGE_PADDING}`,
+    align,
+    h,
+  };
+}
+
+const RANGE_LEAD = (
+  <>
+    Fundas y accesorios para tu iPhone.
+    <span className="hidden md:inline"> Elegí tu modelo y mirá lo que hay en stock.</span>
+  </>
+);
+
+/** El logo blanco de la marca encima de la foto. */
+function SlideLogo({ h }: { h: ReturnType<typeof placeText>["h"] }) {
+  // El PNG trae aire transparente alrededor: el margen negativo lo compensa del lado del borde.
+  const nudge = { izquierda: "-ml-[8%] md:-ml-[3%]", centro: "", derecha: "-mr-[8%] md:-mr-[3%]" }[h];
+  return (
+    <Image
+      src="/brand/logo-transparent.png"
+      alt="La Fundita"
+      width={2000}
+      height={2000}
+      sizes="(min-width: 768px) 30vw, 72vw"
+      className={`h-auto w-[min(72%,62svh)] max-w-[520px] md:w-[min(30%,55svh)] ${nudge}`}
+    />
+  );
+}
+
+/**
+ * Lo que va encima de la foto de cada slide (lo elige el panel): el texto
+ * según el tipo, el link y, si se eligió, el logo. Texto y logo en el mismo
+ * lugar van uno debajo del otro; en lugares distintos, cada uno en el suyo.
+ */
 function slideContent(slide: HomeSlideRow): React.ReactNode {
-  if (slide.kind === "rango") {
+  // El link va en cualquier tipo de foto, con el texto que se eligió en el panel.
+  const cta = slide.cta_href && <SlideCta href={slide.cta_href}>{slide.cta_label || "Ver más"}</SlideCta>;
+  // El tipo "logo" lo lleva siempre (abajo a la izquierda si no se eligió); el resto, solo si se eligió.
+  const logoAt = slide.logo_position ?? (slide.kind === "logo" ? "abajo-izquierda" : null);
+  const hasText = slide.kind === "rango" || Boolean(slide.title || slide.label || cta);
+  // Automático: el rango abajo, el texto del tipo "logo" debajo del logo, y los titulares arriba.
+  const textAt =
+    slide.text_position ??
+    (slide.kind === "rango" ? "abajo-izquierda" : slide.kind === "logo" && logoAt ? logoAt : "arriba-izquierda");
+
+  function text(align: "left" | "center" | "right") {
+    if (slide.kind === "rango") {
+      return (
+        <>
+          {/* Textos del panel; vacíos, los de siempre del diseño. */}
+          <RangeHero
+            tone="paper"
+            align={align}
+            from={slide.label ?? "iPhone 11"}
+            to={slide.title ?? "18 Pro Max"}
+            titleClassName={TEXT_SIZE_CLASS[slide.text_size ?? "grande"]}
+            leadClassName="max-w-[30ch] text-[0.9375rem] md:max-w-[34ch] md:text-[clamp(1rem,2.6svh,1.375rem)]"
+            lead={slide.subtitle ?? RANGE_LEAD}
+          />
+          {cta}
+        </>
+      );
+    }
+    // Automático: junto al logo, chico; con etiqueta, más chico debajo de ella; sin etiqueta, más grande.
+    const size = slide.text_size ?? (slide.kind === "logo" ? "chico" : slide.label ? null : "mediano");
     return (
-      <div
-        className={`absolute inset-0 flex flex-col justify-end bg-[linear-gradient(to_top,rgb(18_18_18/0.78)_0%,rgb(18_18_18/0.35)_45%,rgb(18_18_18/0.05)_75%)] pb-12 md:pb-[clamp(2rem,8svh,72px)] ${PAGE_PADDING}`}
-      >
-        {/* Texto fijo del diseño (pedido por la marca), no derivado de los modelos cargados. */}
-        <RangeHero
-          tone="paper"
-          from="iPhone 11"
-          to="18 Pro Max"
-          titleClassName="text-[min(3.9rem,15.2vw)] md:text-[clamp(3rem,min(10vw,17svh),10.5rem)]"
-          leadClassName="max-w-[30ch] text-[0.9375rem] md:max-w-[34ch] md:text-[clamp(1rem,2.6svh,1.375rem)]"
-          lead={
-            <>
-              Fundas y accesorios para tu iPhone.
-              <span className="hidden md:inline"> Elegí tu modelo y mirá lo que hay en stock.</span>
-            </>
-          }
-        />
+      <>
+        <SlideHeadline slide={slide} size={size} />
+        {cta}
+      </>
+    );
+  }
+  const gap = slide.kind === "rango" ? "gap-6" : slide.label ? "gap-4" : "gap-5";
+
+  if (!hasText && !logoAt) return null;
+  if (!logoAt || !hasText || logoAt === textAt) {
+    const place = placeText(hasText ? textAt : logoAt!);
+    return (
+      <div className={`${place.className} ${gap} text-paper`}>
+        {logoAt && <SlideLogo h={place.h} />}
+        {hasText && text(place.align)}
       </div>
     );
   }
-  if (slide.kind === "logo") {
-    return (
-      <div className={`absolute inset-0 flex items-end pb-[clamp(2.5rem,9svh,72px)] ${PAGE_PADDING}`}>
-        {/* El PNG trae aire transparente alrededor: el margen negativo lo compensa. */}
-        <Image
-          src="/brand/logo-transparent.png"
-          alt="La Fundita"
-          width={2000}
-          height={2000}
-          sizes="(min-width: 768px) 30vw, 72vw"
-          className="-ml-[8%] h-auto w-[min(72%,62svh)] max-w-[520px] md:-ml-[3%] md:w-[min(30%,55svh)]"
-        />
+  // Cada uno en su lugar: la sombra va del lado del texto.
+  const logoPlace = placeText(logoAt, false);
+  const textPlace = placeText(textAt);
+  return (
+    <>
+      <div className={`${textPlace.className} ${gap} text-paper`}>{text(textPlace.align)}</div>
+      <div className={logoPlace.className}>
+        <SlideLogo h={logoPlace.h} />
       </div>
-    );
-  }
-  if (slide.kind === "titulo" && (slide.title || slide.label)) {
-    // Con etiqueta, titular más chico debajo de ella; sin etiqueta, titular grande.
-    return (
-      <div
-        className={`absolute inset-0 flex flex-col pt-8 text-paper md:pt-[72px] ${slide.label ? "gap-4" : "gap-5"} ${TOP_SCRIM} ${PAGE_PADDING}`}
-      >
-        {slide.label && (
-          <span className="text-xs font-semibold uppercase tracking-label text-paper/85">{slide.label}</span>
-        )}
-        {slide.title && (
-          <h2
-            className={`max-w-[10ch] font-display font-semibold leading-[0.95] tracking-page ${
-              slide.label
-                ? "text-[42px] md:text-[clamp(2.75rem,min(5.5vw,11svh),5.25rem)]"
-                : "text-5xl md:text-[clamp(3rem,min(6.5vw,13svh),6rem)]"
-            }`}
-          >
-            {slide.title}
-          </h2>
-        )}
-        {slide.cta_href && <SlideCta href={slide.cta_href}>{slide.cta_label || "Ver más"}</SlideCta>}
-      </div>
-    );
-  }
-  return null;
+    </>
+  );
+}
+
+/** Etiqueta chica y titular de un slide (lo que haya cargado). */
+function SlideHeadline({ slide, size }: { slide: HomeSlideRow; size: HomeSlideRow["text_size"] }) {
+  return (
+    <>
+      {slide.label && (
+        <span className="text-xs font-semibold uppercase tracking-label text-paper/85">{slide.label}</span>
+      )}
+      {slide.title && (
+        <h2
+          className={`max-w-[10ch] font-display font-semibold leading-[0.95] tracking-page ${
+            size ? TEXT_SIZE_CLASS[size] : "text-[42px] md:text-[clamp(2.75rem,min(5.5vw,11svh),5.25rem)]"
+          }`}
+        >
+          {slide.title}
+        </h2>
+      )}
+    </>
+  );
 }
 
 export default async function Home() {
@@ -145,6 +228,7 @@ export default async function Home() {
     mobileSrc: slide.mobile_image_url ?? undefined,
     alt: slide.alt,
     position: slide.position ?? undefined,
+    mobilePosition: slide.position_mobile ?? undefined,
     // El logo y los titulares necesitan la foto un poco más oscura para leerse.
     dim: slide.dim ?? (slide.kind === "logo" ? 0.55 : undefined),
     content: slideContent(slide),

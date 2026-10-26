@@ -322,9 +322,7 @@ export type CreatedPurchase = {
   total_amount: number;
 };
 
-export function createPurchase(
-  payload: CreatePurchasePayload,
-): Promise<{ data: CreatedPurchase }> {
+export function createPurchase(payload: CreatePurchasePayload): Promise<{ data: CreatedPurchase }> {
   return adminFetch("/api/purchases", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -461,10 +459,7 @@ export function updateVariant(
 }
 
 /** Mismo precio para todas las variantes del producto; devuelve las variantes actualizadas. */
-export function updateProductPrice(
-  productId: string,
-  price: number,
-): Promise<{ data: AdminVariant[] }> {
+export function updateProductPrice(productId: string, price: number): Promise<{ data: AdminVariant[] }> {
   return adminFetch(`/api/products/${productId}/price`, {
     method: "PATCH",
     body: JSON.stringify({ price }),
@@ -519,10 +514,7 @@ export async function deleteProductImage(productId: string, imageId: string): Pr
   await adminFetch(`/api/products/${productId}/images/${imageId}`, { method: "DELETE" });
 }
 
-export function reorderProductImages(
-  productId: string,
-  order: string[],
-): Promise<{ data: AdminProductImage[] }> {
+export function reorderProductImages(productId: string, order: string[]): Promise<{ data: AdminProductImage[] }> {
   return adminFetch(`/api/products/${productId}/images/reorder`, {
     method: "PATCH",
     body: JSON.stringify({ order }),
@@ -926,11 +918,23 @@ export type HomeSlide = {
   kind: HomeSlideKind;
   label: string | null;
   title: string | null;
+  /** Bajada del rango de modelos (null = la de siempre). */
+  subtitle: string | null;
   cta_label: string | null;
   cta_href: string | null;
   position: string | null;
+  /** Encuadre en el celular (null = el mismo que en computadora). */
+  position_mobile: string | null;
   dim: number | null;
+  /** Tamaño del texto (null = automático). */
+  text_size: HomeSlideTextSize | null;
+  text_position: HomeSlideTextPosition | null;
+  /** Dónde va el logo (null = sin logo; en el tipo "logo", abajo a la izquierda). */
+  logo_position: HomeSlideTextPosition | null;
 };
+
+export type HomeSlideTextSize = "chico" | "mediano" | "grande";
+export type HomeSlideTextPosition = `${"arriba" | "centro" | "abajo"}-${"izquierda" | "centro" | "derecha"}`;
 
 export type HomeSlideInput = Partial<Omit<HomeSlide, "id" | "sort_order">>;
 
