@@ -74,6 +74,24 @@ export const isUuid = (value: unknown): value is string => typeof value === "str
  * Categorías de tope (las del menú: Fundas, Accesorios) con sus tipos, en el
  * orden de sort_order.
  */
+/** Slug de la página con todos los productos: /categoria/todo. */
+export const ALL_PRODUCTS_SLUG = "todo";
+
+/**
+ * "Todos los productos" como si fuera una categoría más: sus tipos son todas
+ * las categorías donde se cargan productos (los tipos de cada grupo, o el
+ * grupo mismo si no tiene). Así la página usa los mismos filtros que el resto.
+ */
+export function allProductsGroup(groups: CategoryGroup[]): CategoryGroup {
+  return {
+    id: ALL_PRODUCTS_SLUG,
+    name: "Todos los productos",
+    slug: ALL_PRODUCTS_SLUG,
+    parent_id: null,
+    children: groups.flatMap(({ children, ...group }) => (children.length > 0 ? [group, ...children] : [group])),
+  };
+}
+
 export async function getCategoryGroups(): Promise<CategoryGroup[]> {
   const { data, error } = await supabase
     .from("categories")

@@ -19,7 +19,7 @@ export default function RelatedProducts({ products, modelId }: { products: Produ
   if (shown.length === 0) return null;
 
   return (
-    <section aria-label="Completá tu compra" className="space-y-5 lg:space-y-7">
+    <section aria-label="Completá tu compra" className="space-y-4 lg:space-y-6">
       <HomeSectionTitle>Completá tu compra</HomeSectionTitle>
       <div className="grid grid-cols-2 gap-x-3 gap-y-7 md:grid-cols-4 md:gap-x-4">
         {shown.map((product) => (

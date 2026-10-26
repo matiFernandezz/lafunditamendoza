@@ -6,7 +6,14 @@ import PageHeader from "@/components/PageHeader";
 import ProductGrid from "@/components/ProductGrid";
 import SortPicker from "@/components/SortPicker";
 import TypePicker from "@/components/TypePicker";
-import { getCategoryGroups, getIphoneModels, getProductsInCategory, groupModelsByLine } from "@/lib/catalog";
+import {
+  ALL_PRODUCTS_SLUG,
+  allProductsGroup,
+  getCategoryGroups,
+  getIphoneModels,
+  getProductsInCategory,
+  groupModelsByLine,
+} from "@/lib/catalog";
 import {
   buildListing,
   LEGACY_CATEGORY_SLUGS,
@@ -34,7 +41,8 @@ export default async function CategoryPage(props: PageProps<"/categoria/[slug]">
 
   const slug = LEGACY_CATEGORY_SLUGS[rawSlug] ?? rawSlug;
   const groups = await getCategoryGroups();
-  const group = groups.find((g) => g.slug === slug);
+  // /categoria/todo: todos los productos de la tienda, con los mismos filtros.
+  const group = slug === ALL_PRODUCTS_SLUG ? allProductsGroup(groups) : groups.find((g) => g.slug === slug);
 
   if (!group) {
     // Un tipo (o una URL vieja: /categoria/de-diseno, /categoria/transparentes,
@@ -47,7 +55,8 @@ export default async function CategoryPage(props: PageProps<"/categoria/[slug]">
 
   const [models, allProducts] = await Promise.all([
     getIphoneModels(),
-    getProductsInCategory([group.id, ...group.children.map((c) => c.id)]),
+    // "todo" no es una categoría de la base: van solo sus tipos.
+    getProductsInCategory([group.id, ...group.children.map((c) => c.id)].filter((id) => id !== ALL_PRODUCTS_SLUG)),
   ]);
 
   const listing = buildListing(group, allProducts, models, params);
@@ -73,7 +82,10 @@ export default async function CategoryPage(props: PageProps<"/categoria/[slug]">
           <div className="mt-5 flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between md:gap-6">
             <div className="flex flex-col items-start gap-3 md:flex-row md:flex-wrap md:items-center">
               {listing.showTypePicker && (
-                <TypePicker chips={listing.chips} allLabel={`Todos los ${group.name.toLowerCase()}`} />
+                <TypePicker
+                  chips={listing.chips}
+                  allLabel={slug === ALL_PRODUCTS_SLUG ? group.name : `Todos los ${group.name.toLowerCase()}`}
+                />
               )}
               {listing.showModelSelector && (
                 <ModelPicker

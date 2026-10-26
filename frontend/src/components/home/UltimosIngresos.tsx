@@ -27,7 +27,11 @@ function stepTrack(track: HTMLUListElement | null, direction: 1 | -1, loop: bool
 function Chevron({ direction }: { direction: "left" | "right" }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="size-5">
-      <path d={direction === "left" ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"} strokeLinecap="square" strokeLinejoin="miter" />
+      <path
+        d={direction === "left" ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"}
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+      />
     </svg>
   );
 }
@@ -36,7 +40,7 @@ function Chevron({ direction }: { direction: "left" | "right" }) {
 // invierte a tinta al pasar el mouse (regla de inversión del diseño). Solo
 // desde md y al pasar por la tira; en el celular se desliza con el dedo.
 const ARROW =
-  "absolute top-[calc(50%-1.75rem)] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-rule bg-paper text-ink opacity-0 transition-[opacity,background-color,color,border-color] duration-200 hover:border-ink hover:bg-ink hover:text-paper focus-visible:opacity-100 group-hover:opacity-100 disabled:pointer-events-none disabled:opacity-0 md:flex";
+  "absolute top-[calc(50%-1.75rem)] z-10 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full border border-rule bg-paper text-ink opacity-0 transition-[opacity,background-color,color,border-color] duration-200 hover:border-ink hover:bg-ink hover:text-paper focus-visible:opacity-100 group-hover/tira:opacity-100 disabled:pointer-events-none disabled:opacity-0 md:flex";
 
 /**
  * "Últimos ingresos": lo último que se cargó, en una tira horizontal con fotos
@@ -86,11 +90,11 @@ export default function UltimosIngresos({
   const scrolls = !(edges.start && edges.end);
 
   return (
-    <section aria-label={title} className="flex flex-col gap-5 lg:gap-7">
+    <section aria-label={title} className="flex flex-col gap-4 lg:gap-6">
       <HomeSectionTitle action={{ href: allHref, label: "Ver todo" }}>{title}</HomeSectionTitle>
 
       <div
-        className="group relative lg:mx-auto lg:w-full lg:max-w-[1008px]"
+        className="group/tira relative lg:mx-auto lg:w-full lg:max-w-[1008px]"
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
         onFocus={() => setPaused(true)}

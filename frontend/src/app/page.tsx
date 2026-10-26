@@ -14,7 +14,7 @@ import ModelStrip from "@/components/ModelStrip";
 import RangeHero from "@/components/RangeHero";
 import { InstagramIcon } from "@/components/SocialIcons";
 import {
-  getCategoryGroups,
+  ALL_PRODUCTS_SLUG,
   getCategoryTiles,
   getFeaturedProducts,
   getHomeNewArrivals,
@@ -214,8 +214,7 @@ function SlideHeadline({ slide, size }: { slide: HomeSlideRow; size: HomeSlideRo
 }
 
 export default async function Home() {
-  const [categoryGroups, tiles, models, latest, homeSlides, arrivals, sections, instagramPosts] = await Promise.all([
-    getCategoryGroups(),
+  const [tiles, models, latest, homeSlides, arrivals, sections, instagramPosts] = await Promise.all([
     getCategoryTiles(),
     getIphoneModels(),
     getFeaturedProducts(10),
@@ -227,8 +226,8 @@ export default async function Home() {
   const nuevos = buildNuevosIngresos(arrivals);
 
   const modelLines = groupModelsByLine(models);
-  const fundas = categoryGroups.find((g) => g.children.length > 0);
-  const fundasHref = fundas ? `/categoria/${fundas.slug}` : "/";
+  // "Ver todo" de los ingresos: la página con todos los productos.
+  const ALL_PRODUCTS_HREF = `/categoria/${ALL_PRODUCTS_SLUG}`;
 
   const slides: HeroSlide[] = homeSlides.map((slide) => ({
     id: slide.id,
@@ -247,7 +246,7 @@ export default async function Home() {
     if (section.key === "categorias") {
       if (tiles.length === 0) return null;
       return (
-        <section key={section.key} aria-label={section.title} className="space-y-5 lg:space-y-7">
+        <section key={section.key} aria-label={section.title} className="space-y-4 lg:space-y-6">
           <HomeSectionTitle>{section.title}</HomeSectionTitle>
           {/* Siempre con el margen de la página (no a sangre). Los tipos de funda
               y Accesorios: uno debajo del otro en mobile y los 4 en una fila desde md.
@@ -270,20 +269,22 @@ export default async function Home() {
     if (section.key === "mas_vendidas") {
       // Las fundas que giran, elegidas en el panel. Sin ninguna disponible, no se muestra.
       if (nuevos.length === 0) return null;
-      return <NuevosIngresosApilado key={section.key} items={nuevos} allHref={fundasHref} title={section.title} />;
+      return (
+        <NuevosIngresosApilado key={section.key} items={nuevos} allHref={ALL_PRODUCTS_HREF} title={section.title} />
+      );
     }
     if (section.key === "instagram") {
       // Los últimos posts, como en Nosotros. Sin la cuenta conectada (o sin posts), no se muestra.
       if (!instagramPosts || instagramPosts.length === 0) return null;
       return (
-        <section key={section.key} aria-label={section.title} className="space-y-5 lg:space-y-7">
+        <section key={section.key} aria-label={section.title} className="space-y-4 lg:space-y-6">
           <HomeSectionTitle>{section.title}</HomeSectionTitle>
           <SocialHeader icon={InstagramIcon} name="Instagram" handle={INSTAGRAM.handle} url={INSTAGRAM.url} />
           <InstagramFeed posts={instagramPosts} />
         </section>
       );
     }
-    return <UltimosIngresos key={section.key} products={latest} title={section.title} allHref={fundasHref} />;
+    return <UltimosIngresos key={section.key} products={latest} title={section.title} allHref={ALL_PRODUCTS_HREF} />;
   }
 
   return (
