@@ -101,18 +101,26 @@ const RANGE_LEAD = (
   </>
 );
 
-/** El logo blanco de la marca encima de la foto. */
-function SlideLogo({ h }: { h: ReturnType<typeof placeText>["h"] }) {
-  // El PNG trae aire transparente alrededor: el margen negativo lo compensa del lado del borde.
-  const nudge = { izquierda: "-ml-[8%] md:-ml-[3%]", centro: "", derecha: "-mr-[8%] md:-mr-[3%]" }[h];
+// Ancho del logo elegido en el panel. Mediano es el de siempre.
+const LOGO_SIZE_CLASS = {
+  chico: "w-[min(22%,19svh)] md:w-[min(9%,16svh)]",
+  mediano: "w-[min(30%,26svh)] md:w-[min(12.5%,23svh)]",
+  grande: "w-[min(42%,36svh)] md:w-[min(18%,33svh)]",
+} as const;
+
+/**
+ * El logo blanco de la marca encima de la foto. Es el PNG recortado (sin el
+ * aire transparente del original), así llega justo a la esquina que se eligió.
+ */
+function SlideLogo({ size }: { size: HomeSlideRow["logo_size"] }) {
   return (
     <Image
-      src="/brand/logo-transparent.png"
+      src="/brand/logo-trimmed.png"
       alt="La Fundita"
-      width={2000}
-      height={2000}
-      sizes="(min-width: 768px) 30vw, 72vw"
-      className={`h-auto w-[min(72%,62svh)] max-w-[520px] md:w-[min(30%,55svh)] ${nudge}`}
+      width={836}
+      height={949}
+      sizes="(min-width: 768px) 18vw, 42vw"
+      className={`h-auto ${LOGO_SIZE_CLASS[size ?? "mediano"]}`}
     />
   );
 }
@@ -167,7 +175,7 @@ function slideContent(slide: HomeSlideRow): React.ReactNode {
     const place = placeText(hasText ? textAt : logoAt!);
     return (
       <div className={`${place.className} ${gap} text-paper`}>
-        {logoAt && <SlideLogo h={place.h} />}
+        {logoAt && <SlideLogo size={slide.logo_size} />}
         {hasText && text(place.align)}
       </div>
     );
@@ -179,7 +187,7 @@ function slideContent(slide: HomeSlideRow): React.ReactNode {
     <>
       <div className={`${textPlace.className} ${gap} text-paper`}>{text(textPlace.align)}</div>
       <div className={logoPlace.className}>
-        <SlideLogo h={logoPlace.h} />
+        <SlideLogo size={slide.logo_size} />
       </div>
     </>
   );

@@ -69,6 +69,13 @@ const LOGO_POSITIONS = (kind: HomeSlideKind) => [
   ...TEXT_POSITIONS.slice(1),
 ];
 
+// Tamaño del logo: vacío = mediano, el de siempre.
+const LOGO_SIZES: { value: "" | HomeSlideTextSize; label: string }[] = [
+  { value: "", label: "Mediano (automático)" },
+  { value: "chico", label: "Chico" },
+  { value: "grande", label: "Grande" },
+];
+
 // Textos del rango de modelos si se dejan vacíos (los de siempre).
 const RANGE_DEFAULTS = {
   from: "iPhone 11",
@@ -120,6 +127,7 @@ type Draft = Required<Pick<HomeSlideInput, "kind">> & {
   text_size: "" | HomeSlideTextSize;
   text_position: "" | HomeSlideTextPosition;
   logo_position: "" | HomeSlideTextPosition;
+  logo_size: "" | HomeSlideTextSize;
 };
 
 function toDraft(slide: HomeSlide): Draft {
@@ -137,6 +145,7 @@ function toDraft(slide: HomeSlide): Draft {
     text_size: slide.text_size ?? "",
     text_position: slide.text_position ?? "",
     logo_position: slide.logo_position ?? "",
+    logo_size: slide.logo_size ?? "",
   };
 }
 
@@ -155,6 +164,7 @@ function draftPatch(draft: Draft): HomeSlideInput {
     text_size: draft.text_size || null,
     text_position: draft.text_position || null,
     logo_position: draft.logo_position || null,
+    logo_size: draft.logo_size || null,
   };
 }
 
@@ -558,6 +568,26 @@ function SlideCard({
                 ))}
               </select>
             </div>
+            {(draft.kind === "logo" || draft.logo_position !== "") && (
+              <div>
+                <label htmlFor={id("logo_size")} className={ADMIN_LABEL}>
+                  Tamaño del logo
+                </label>
+                <select
+                  id={id("logo_size")}
+                  value={draft.logo_size}
+                  onChange={set("logo_size")}
+                  disabled={disabled}
+                  className={ADMIN_INPUT}
+                >
+                  {LOGO_SIZES.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label htmlFor={id("text_size")} className={ADMIN_LABEL}>
                 Tamaño del texto

@@ -332,6 +332,8 @@ export type HomeSlideRow = {
   text_position: `${"arriba" | "centro" | "abajo"}-${"izquierda" | "centro" | "derecha"}` | null;
   /** Dónde va el logo (null = sin logo; en el tipo "logo", abajo a la izquierda). */
   logo_position: HomeSlideRow["text_position"];
+  /** Tamaño del logo (null = mediano, el de siempre). */
+  logo_size: HomeSlideRow["text_size"];
 };
 
 /** Fotos del carrusel de la portada, en orden. */
@@ -339,7 +341,7 @@ export async function getHomeSlides(): Promise<HomeSlideRow[]> {
   const { data, error } = await supabase
     .from("home_slides")
     .select(
-      "id, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position",
+      "id, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position, logo_size",
     )
     .order("sort_order")
     .order("created_at")

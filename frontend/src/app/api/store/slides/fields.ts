@@ -2,7 +2,7 @@ import "server-only";
 import { isStoreImageUrl } from "@/lib/server/storeContent";
 
 export const SLIDE_SELECT =
-  "id, sort_order, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position";
+  "id, sort_order, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position, logo_size";
 
 const KINDS = ["rango", "titulo", "logo", "foto"];
 const TEXT_SIZES = ["chico", "mediano", "grande"];
@@ -37,6 +37,7 @@ export function parseSlideFields(
     text_size,
     text_position,
     logo_position,
+    logo_size,
   } = body;
   const fields: Record<string, unknown> = {};
 
@@ -85,11 +86,16 @@ export function parseSlideFields(
     }
     fields[key] = pos;
   }
-  if (text_size !== undefined) {
-    if (text_size !== null && !(typeof text_size === "string" && TEXT_SIZES.includes(text_size))) {
-      return { error: `text_size debe ser uno de: ${TEXT_SIZES.join(", ")} (o null = automático)` };
+  // Tamaño del texto y del logo.
+  for (const [key, value] of [
+    ["text_size", text_size],
+    ["logo_size", logo_size],
+  ] as const) {
+    if (value === undefined) continue;
+    if (value !== null && !(typeof value === "string" && TEXT_SIZES.includes(value))) {
+      return { error: `${key} debe ser uno de: ${TEXT_SIZES.join(", ")} (o null = automático)` };
     }
-    fields.text_size = text_size;
+    fields[key] = value;
   }
   // Dónde van el texto y el logo encima de la foto.
   for (const [key, value] of [

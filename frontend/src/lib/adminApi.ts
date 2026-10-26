@@ -931,6 +931,8 @@ export type HomeSlide = {
   text_position: HomeSlideTextPosition | null;
   /** Dónde va el logo (null = sin logo; en el tipo "logo", abajo a la izquierda). */
   logo_position: HomeSlideTextPosition | null;
+  /** Tamaño del logo (null = mediano, el de siempre). */
+  logo_size: HomeSlideTextSize | null;
 };
 
 export type HomeSlideTextSize = "chico" | "mediano" | "grande";
