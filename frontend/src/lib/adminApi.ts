@@ -2,6 +2,7 @@
 // verifican la sesión de Supabase Auth (requireAdmin) y hablan con la base
 // con la secret key, que nunca sale del servidor.
 
+import type { SlideLayout } from "./slideLayout";
 import { PRODUCT_IMAGE_BUCKET } from "@/lib/productImages";
 import { createClient } from "@/lib/supabase/client";
 
@@ -933,6 +934,8 @@ export type HomeSlide = {
   logo_position: HomeSlideTextPosition | null;
   /** Tamaño del logo (null = mediano, el de siempre). */
   logo_size: HomeSlideTextSize | null;
+  /** Diseño del editor, por dispositivo (null = el carrusel de antes). */
+  layout: SlideLayout | null;
 };
 
 export type HomeSlideTextSize = "chico" | "mediano" | "grande";

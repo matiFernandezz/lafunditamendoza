@@ -1,3 +1,4 @@
+import { parseSlideLayout, type SlideLayout } from "./slideLayout";
 import { supabase } from "./supabase";
 
 export type Category = {
@@ -352,6 +353,8 @@ export type HomeSlideRow = {
   logo_position: HomeSlideRow["text_position"];
   /** Tamaño del logo (null = mediano, el de siempre). */
   logo_size: HomeSlideRow["text_size"];
+  /** Diseño del editor, por dispositivo (null = el carrusel de antes). */
+  layout: SlideLayout | null;
 };
 
 /** Fotos del carrusel de la portada, en orden. */
@@ -359,13 +362,17 @@ export async function getHomeSlides(): Promise<HomeSlideRow[]> {
   const { data, error } = await supabase
     .from("home_slides")
     .select(
-      "id, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position, logo_size",
+      "id, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position, logo_size, layout",
     )
     .order("sort_order")
     .order("created_at")
     .overrideTypes<HomeSlideRow[], { merge: false }>();
   if (error) throw new Error(`No se pudo cargar el carrusel: ${error.message}`);
-  return data;
+  // Un diseño que no pase la validación (no debería: lo valida la API) se ignora.
+  return data.map((slide) => {
+    const parsed = slide.layout ? parseSlideLayout(slide.layout) : null;
+    return { ...slide, layout: parsed && "layout" in parsed ? parsed.layout : null };
+  });
 }
 
 export type NewArrivalItem = {

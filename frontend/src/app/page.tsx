@@ -12,6 +12,8 @@ import { buildNuevosIngresos } from "@/components/home/nuevosIngresos";
 import UltimosIngresos from "@/components/home/UltimosIngresos";
 import ModelStrip from "@/components/ModelStrip";
 import RangeHero from "@/components/RangeHero";
+import SlideLayers from "@/components/SlideLayers";
+import { brightnessOf, type SlideLayout } from "@/lib/slideLayout";
 import { InstagramIcon } from "@/components/SocialIcons";
 import {
   ALL_PRODUCTS_SLUG,
@@ -193,6 +195,29 @@ function slideContent(slide: HomeSlideRow): React.ReactNode {
   );
 }
 
+/**
+ * Slide armado en el editor del panel: cada dispositivo con su encuadre, su
+ * oscurecido y sus elementos (el del celular hasta md, el de la compu desde md).
+ */
+function designedSlide(slide: HomeSlideRow, layout: SlideLayout): HeroSlide {
+  return {
+    id: slide.id,
+    src: slide.image_url,
+    mobileSrc: slide.mobile_image_url ?? undefined,
+    alt: slide.alt,
+    position: `${layout.desktop.focusX}% ${layout.desktop.focusY}%`,
+    mobilePosition: `${layout.mobile.focusX}% ${layout.mobile.focusY}%`,
+    dim: brightnessOf(layout.desktop),
+    mobileDim: brightnessOf(layout.mobile),
+    content: (
+      <>
+        <SlideLayers layout={layout.mobile} className="md:hidden" />
+        <SlideLayers layout={layout.desktop} className="hidden md:block" />
+      </>
+    ),
+  };
+}
+
 /** Etiqueta chica y titular de un slide (lo que haya cargado). */
 function SlideHeadline({ slide, size }: { slide: HomeSlideRow; size: HomeSlideRow["text_size"] }) {
   return (
@@ -229,17 +254,21 @@ export default async function Home() {
   // "Ver todo" de los ingresos: la página con todos los productos.
   const ALL_PRODUCTS_HREF = `/categoria/${ALL_PRODUCTS_SLUG}`;
 
-  const slides: HeroSlide[] = homeSlides.map((slide) => ({
-    id: slide.id,
-    src: slide.image_url,
-    mobileSrc: slide.mobile_image_url ?? undefined,
-    alt: slide.alt,
-    position: slide.position ?? undefined,
-    mobilePosition: slide.position_mobile ?? undefined,
-    // El logo y los titulares necesitan la foto un poco más oscura para leerse.
-    dim: slide.dim ?? (slide.kind === "logo" ? 0.55 : undefined),
-    content: slideContent(slide),
-  }));
+  const slides: HeroSlide[] = homeSlides.map((slide) =>
+    slide.layout
+      ? designedSlide(slide, slide.layout)
+      : {
+          id: slide.id,
+          src: slide.image_url,
+          mobileSrc: slide.mobile_image_url ?? undefined,
+          alt: slide.alt,
+          position: slide.position ?? undefined,
+          mobilePosition: slide.position_mobile ?? undefined,
+          // El logo y los titulares necesitan la foto un poco más oscura para leerse.
+          dim: slide.dim ?? (slide.kind === "logo" ? 0.55 : undefined),
+          content: slideContent(slide),
+        },
+  );
 
   // Debajo de "Elegí tu iPhone", en el orden y con los títulos del panel › Tienda › Secciones.
   function renderSection(section: HomeSectionRow) {

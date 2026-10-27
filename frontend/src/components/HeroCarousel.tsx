@@ -15,6 +15,8 @@ export type HeroSlide = {
   mobilePosition?: string;
   /** Oscurece la foto (0.5–0.6) cuando lleva logo o texto encima. */
   dim?: number;
+  /** Oscurecido en el celular (por defecto, el mismo de computadora). */
+  mobileDim?: number;
   /** Contenido propio del slide (titular, CTA, logo), ya posicionado. */
   content?: React.ReactNode;
 };
@@ -27,14 +29,16 @@ const AUTO_ADVANCE_MS = 6000;
  * navegador baja solo la que corresponde.
  */
 function SlidePhoto({ slide, priority }: { slide: HeroSlide; priority: boolean }) {
-  // Encuadre por variable: el celular usa el suyo y desde md el de computadora.
+  // Encuadre y oscurecido por variable: el celular usa los suyos y desde md los de computadora.
   const position = slide.position ?? "center";
   const style = {
     "--pos": position,
     "--pos-m": slide.mobilePosition ?? position,
-    filter: slide.dim ? `brightness(${slide.dim})` : undefined,
+    "--dim": slide.dim ?? 1,
+    "--dim-m": slide.mobileDim ?? slide.dim ?? 1,
   } as React.CSSProperties;
-  const fit = "object-cover object-[var(--pos-m)] md:object-[var(--pos)]";
+  const fit =
+    "object-cover object-[var(--pos-m)] md:object-[var(--pos)] brightness-[var(--dim-m)] md:brightness-[var(--dim)]";
   if (!slide.mobileSrc) {
     return (
       <Image src={slide.src} alt={slide.alt} fill priority={priority} sizes="100vw" className={fit} style={style} />

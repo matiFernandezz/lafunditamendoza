@@ -1,8 +1,9 @@
 import "server-only";
 import { isStoreImageUrl } from "@/lib/server/storeContent";
+import { parseSlideLayout } from "@/lib/slideLayout";
 
 export const SLIDE_SELECT =
-  "id, sort_order, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position, logo_size";
+  "id, sort_order, image_url, mobile_image_url, alt, kind, label, title, subtitle, cta_label, cta_href, position, position_mobile, dim, text_size, text_position, logo_position, logo_size, layout";
 
 const KINDS = ["rango", "titulo", "logo", "foto"];
 const TEXT_SIZES = ["chico", "mediano", "grande"];
@@ -38,6 +39,7 @@ export function parseSlideFields(
     text_position,
     logo_position,
     logo_size,
+    layout,
   } = body;
   const fields: Record<string, unknown> = {};
 
@@ -107,6 +109,15 @@ export function parseSlideFields(
       return { error: `${key} debe ser como "abajo-izquierda" (o null)` };
     }
     fields[key] = value;
+  }
+  // Diseño del editor (computadora y celular). null = el carrusel de antes.
+  if (layout !== undefined) {
+    if (layout === null) fields.layout = null;
+    else {
+      const parsed = parseSlideLayout(layout);
+      if ("error" in parsed) return { error: parsed.error };
+      fields.layout = parsed.layout;
+    }
   }
   if (dim !== undefined) {
     if (dim !== null && (typeof dim !== "number" || !Number.isFinite(dim) || dim < 0 || dim > 1)) {
