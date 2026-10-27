@@ -91,7 +91,16 @@ async function signIn(email, password) {
 }
 
 // Lo que había antes, para dejarlo igual.
-const saved = { slides: null, arrivals: null, categories: null, sections: null, userId: null, uploaded: [] };
+const saved = {
+  slides: null,
+  arrivals: null,
+  latest: null,
+  categories: null,
+  sections: null,
+  products: [],
+  userId: null,
+  uploaded: [],
+};
 
 async function cleanup() {
   if (saved.slides) {
@@ -107,6 +116,12 @@ async function cleanup() {
       .delete()
       .not("id", "in", `(${saved.arrivals.map((a) => a.id).join(",") || FAKE_ID})`);
     for (const a of saved.arrivals) await admin.from("home_new_arrivals").update(a).eq("id", a.id);
+  }
+  // Productos de prueba (al borrarlos, también salen de Últimos ingresos) y la lista como estaba.
+  if (saved.products.length) await admin.from("products").delete().in("id", saved.products);
+  if (saved.latest) {
+    await admin.from("home_latest_products").delete().not("id", "is", null);
+    if (saved.latest.length) await admin.from("home_latest_products").insert(saved.latest);
   }
   if (saved.categories) {
     for (const c of saved.categories)
@@ -125,6 +140,7 @@ async function main() {
 
   saved.slides = (await admin.from("home_slides").select("*")).data;
   saved.arrivals = (await admin.from("home_new_arrivals").select("*")).data;
+  saved.latest = (await admin.from("home_latest_products").select("*")).data;
   saved.categories = (await admin.from("categories").select("id, home_image_url")).data;
   saved.sections = (await admin.from("home_sections").select("*")).data;
 
@@ -486,6 +502,103 @@ async function main() {
     html.indexOf(`aria-label="${saved.sections.find((s) => s.key === "mas_vendidas").title}"`) <
       html.indexOf('aria-label="Probando títulos"'),
   );
+
+  group("8. Últimos ingresos");
+  for (const [method, path] of [
+    ["GET", "/api/store/latest"],
+    ["POST", "/api/store/latest"],
+    ["DELETE", `/api/store/latest/${FAKE_ID}`],
+    ["POST", "/api/store/latest/reorder"],
+  ]) {
+    eq(
+      `${method} ${path} sin sesión -> 401`,
+      (await api(method, path, method === "GET" ? undefined : {}, { auth: false })).status,
+      401,
+    );
+  }
+  const latest_anonLatest = await anon.from("home_latest_products").insert({ product_id: FAKE_ID });
+  check("la clave pública no puede escribir Últimos ingresos", latest_anonLatest.error !== null);
+
+  // Lista de prueba: 3 productos activos, en un orden que no es el de carga.
+  const { data: latest_pool } = await admin
+    .from("products")
+    .select("id")
+    .eq("active", true)
+    .order("created_at")
+    .limit(4);
+  await admin.from("home_latest_products").delete().not("id", "is", null);
+  await admin
+    .from("home_latest_products")
+    .insert(latest_pool.slice(0, 3).map((p, i) => ({ product_id: p.id, sort_order: i })));
+  let latest_latestList = (await api("GET", "/api/store/latest")).body.data;
+  eq(
+    "lista en orden",
+    latest_latestList.map((l) => l.product_id),
+    latest_pool.slice(0, 3).map((p) => p.id),
+  );
+  const latest_added = await api("POST", "/api/store/latest", { product_id: latest_pool[3].id });
+  eq("agregar -> 201", latest_added.status, 201);
+  latest_latestList = (await api("GET", "/api/store/latest")).body.data;
+  eq("…y entra primero", latest_latestList[0].product_id, latest_pool[3].id);
+  eq(
+    "agregar uno que ya está -> 409",
+    (await api("POST", "/api/store/latest", { product_id: latest_pool[3].id })).status,
+    409,
+  );
+  eq("producto que no existe -> 404", (await api("POST", "/api/store/latest", { product_id: FAKE_ID })).status, 404);
+  const latest_reversedLatest = [...latest_latestList.map((l) => l.id)].reverse();
+  eq("reordenar -> 200", (await api("POST", "/api/store/latest/reorder", { ids: latest_reversedLatest })).status, 200);
+  eq(
+    "…y queda en ese orden",
+    (await api("GET", "/api/store/latest")).body.data.map((l) => l.id),
+    latest_reversedLatest,
+  );
+  eq("quitar -> 200", (await api("DELETE", `/api/store/latest/${latest_latestList[0].id}`)).status, 200);
+  eq("quitar uno que no está -> 404", (await api("DELETE", `/api/store/latest/${FAKE_ID}`)).status, 404);
+
+  // La home muestra la lista en su orden (los de stock y activos).
+  const latest_homeList = (await api("GET", "/api/store/latest")).body.data.map((l) => l.product_id);
+  const latest_homeHtml = await (await fetch(BASE_URL)).text();
+  const latest_positions = latest_homeList
+    .map((id) => latest_homeHtml.indexOf(`/producto/${id}`))
+    .filter((i) => i >= 0);
+  check(
+    "la home los muestra en el orden de la lista",
+    latest_positions.length > 0 && latest_positions.every((p, i) => i === 0 || p > latest_positions[i - 1]),
+  );
+
+  // Lista llena: no se agrega a mano; un producto nuevo entra primero y sale el último.
+  const { data: latest_many } = await admin
+    .from("products")
+    .select("id")
+    .eq("active", true)
+    .order("created_at")
+    .limit(10);
+  await admin.from("home_latest_products").delete().not("id", "is", null);
+  await admin.from("home_latest_products").insert(latest_many.map((p, i) => ({ product_id: p.id, sort_order: i })));
+  const { data: latest_other } = await admin
+    .from("products")
+    .select("id")
+    .not("id", "in", `(${latest_many.map((p) => p.id).join(",")})`)
+    .limit(1)
+    .single();
+  eq(
+    "con 10, agregar a mano -> 409",
+    (await api("POST", "/api/store/latest", { product_id: latest_other.id })).status,
+    409,
+  );
+  const { data: latest_category } = await admin.from("categories").select("id").limit(1).single();
+  const { data: latest_fresh, error: latest_freshError } = await admin
+    .from("products")
+    .insert({ name: `Prueba últimos ${RUN}`, category_id: latest_category.id })
+    .select("id")
+    .single();
+  if (latest_freshError) throw new Error(`No se pudo crear el producto de prueba: ${latest_freshError.message}`);
+  saved.products.push(latest_fresh.id);
+  const { data: latest_after } = await admin.from("home_latest_products").select("product_id").order("sort_order");
+  eq("producto nuevo: entra primero", latest_after[0]?.product_id, latest_fresh.id);
+  eq("…la lista sigue en 10", latest_after.length, 10);
+  check("…y salió el último", !latest_after.some((l) => l.product_id === latest_many[9].id));
 
   group("7. Buscador");
   const search = await (await fetch(`${BASE_URL}/buscar?q=${encodeURIComponent("cherry")}`)).text();

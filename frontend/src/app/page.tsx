@@ -18,7 +18,7 @@ import { InstagramIcon } from "@/components/SocialIcons";
 import {
   ALL_PRODUCTS_SLUG,
   getCategoryTiles,
-  getFeaturedProducts,
+  getHomeLatestProducts,
   getHomeNewArrivals,
   getHomeSections,
   getHomeSlides,
@@ -242,7 +242,7 @@ export default async function Home() {
   const [tiles, models, latest, homeSlides, arrivals, sections, instagramPosts] = await Promise.all([
     getCategoryTiles(),
     getIphoneModels(),
-    getFeaturedProducts(10),
+    getHomeLatestProducts(),
     getHomeSlides(),
     getHomeNewArrivals(),
     getHomeSections(),

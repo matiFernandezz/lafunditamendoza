@@ -246,6 +246,34 @@ export async function getFeaturedProducts(limit: number): Promise<Product[]> {
   return data;
 }
 
+/**
+ * "Últimos ingresos" de la home: los productos de la lista del panel (Tienda ›
+ * Últimos ingresos), en su orden. Los que están ocultos o sin stock no salen.
+ */
+export async function getHomeLatestProducts(): Promise<Product[]> {
+  const { data: list, error: listError } = await supabase
+    .from("home_latest_products")
+    .select("product_id")
+    .order("sort_order")
+    .order("created_at", { ascending: false });
+  if (listError) throw new Error(`No se pudieron cargar los últimos ingresos: ${listError.message}`);
+  const ids = (list ?? []).map((row) => row.product_id as string);
+  if (ids.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_SELECT)
+    .in("id", ids)
+    .eq("active", true)
+    .eq("product_variants.active", true)
+    .gt("product_variants.stock_quantity", 0)
+    .order("sort_order", { referencedTable: "product_images", ascending: true })
+    .overrideTypes<Product[], { merge: false }>();
+  if (error) throw new Error(`No se pudieron cargar los últimos ingresos: ${error.message}`);
+  const position = new Map(ids.map((id, index) => [id, index]));
+  return [...data].sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0));
+}
+
 export type CategoryTile = {
   id: string;
   name: string;

@@ -1003,6 +1003,29 @@ export async function reorderNewArrivals(ids: string[]): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Tienda › Últimos ingresos: qué productos y en qué orden (un producto nuevo
+// entra primero solo).
+// ---------------------------------------------------------------------------
+
+export type LatestProduct = { id: string; product_id: string; sort_order: number };
+
+export function getLatestProducts(): Promise<{ data: LatestProduct[] }> {
+  return adminFetch("/api/store/latest");
+}
+
+export function addLatestProduct(productId: string): Promise<{ data: LatestProduct }> {
+  return adminFetch("/api/store/latest", { method: "POST", body: JSON.stringify({ product_id: productId }) });
+}
+
+export async function removeLatestProduct(id: string): Promise<void> {
+  await adminFetch(`/api/store/latest/${id}`, { method: "DELETE" });
+}
+
+export async function reorderLatestProducts(ids: string[]): Promise<void> {
+  await adminFetch("/api/store/latest/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
+// ---------------------------------------------------------------------------
 // Tienda › Nosotros: el texto, las fotos de al lado y las publicaciones.
 // ---------------------------------------------------------------------------
 
