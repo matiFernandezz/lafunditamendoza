@@ -6,7 +6,8 @@
 // Todo se guarda relativo a la foto, así la vista previa del panel, la compu y
 // el celular dibujan lo mismo a distinta escala:
 //   x, y: dónde va el elemento, en % del ancho y del alto de la foto.
-//   size: tamaño en % del ancho de la foto (la letra; en el logo, su ancho).
+//   size: tamaño en % del ancho de la pantalla de referencia (la letra; en el
+//         logo, su ancho). En una foto más apaisada escala por el alto.
 //   w:    solo textos: ancho de la caja en % del ancho (sin w, cada renglón
 //         ocupa lo que mide; con w, el texto se acomoda en renglones).
 //   h:    alto del elemento en % del alto (lo mide el editor). Con él, los que
@@ -19,7 +20,7 @@ export type SlideDevice = "desktop" | "mobile";
 
 /** Pantalla de referencia de cada dispositivo (los px que ve el panel). */
 export const DEVICE_FRAME: Record<SlideDevice, { width: number; height: number; label: string }> = {
-  desktop: { width: 1440, height: 791, label: "Computadora" },
+  desktop: { width: 1920, height: 818, label: "Computadora" },
   mobile: { width: 390, height: 488, label: "Celular" },
 };
 
@@ -144,7 +145,7 @@ export function emptyDeviceLayout(): DeviceLayout {
  * mismo tamaño en px de pantalla escalado (lo de la compu en el celular, más chico).
  */
 export function copyDeviceLayout(from: DeviceLayout, fromDevice: SlideDevice, to: SlideDevice): DeviceLayout {
-  const factor = to === fromDevice ? 1 : to === "mobile" ? 0.55 : 1 / 0.55;
+  const factor = to === fromDevice ? 1 : to === "mobile" ? 0.7 : 1 / 0.7;
   return {
     ...from,
     elements: from.elements.map((el) => {

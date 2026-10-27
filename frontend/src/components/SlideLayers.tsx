@@ -2,12 +2,18 @@ import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import ArrowMark from "@/components/ArrowMark";
-import type { DeviceLayout, SlideElement, SlideShade } from "@/lib/slideLayout";
+import {
+  DEVICE_FRAME,
+  type DeviceLayout,
+  type SlideDevice,
+  type SlideElement,
+  type SlideShade,
+} from "@/lib/slideLayout";
 
 // Dibuja el diseño de una foto del carrusel (lo que se armó en el editor del
 // panel) encima de la foto. Lo usan la home y la vista previa del editor, así
-// lo que se ve en el panel es lo mismo que sale en la tienda. Las medidas van
-// en cqw/%: el contenedor es la foto, y todo escala con ella.
+// lo que se ve en el panel es lo mismo que sale en la tienda. Las posiciones
+// van en % de la foto y los tamaños escalan con ella (ver sizeUnit).
 
 /** El degradé oscuro de cada opción de "Sombra". */
 export const SHADE_BACKGROUND: Record<SlideShade, string | undefined> = {
@@ -19,6 +25,21 @@ export const SHADE_BACKGROUND: Record<SlideShade, string | undefined> = {
   pareja: "linear-gradient(rgb(18 18 18 / 0.3), rgb(18 18 18 / 0.3))",
 };
 
+/**
+ * Unidad de tamaño: 1% del ancho de la pantalla de referencia, a escala. En la
+ * tienda la foto no siempre tiene la proporción del editor (en una compu ancha
+ * es más apaisada): ahí escala por el lado que limita, como si el marco del
+ * editor entrara entero en la foto. Sin dispositivo (editor y vista previa, que
+ * ya tienen la proporción justa), es 1cqw.
+ */
+function sizeUnit(device?: SlideDevice) {
+  if (!device) return "1cqw";
+  const { width, height } = DEVICE_FRAME[device];
+  return `min(1cqw, ${+(width / height).toFixed(4)}cqh)`;
+}
+
+const scaled = (value: number, unit: string) => (unit === "1cqw" ? `${value}cqw` : `calc(${value} * ${unit})`);
+
 const ALIGN_SHIFT = { left: undefined, center: "translateX(-50%)", right: "translateX(-100%)" } as const;
 
 /**
@@ -27,15 +48,16 @@ const ALIGN_SHIFT = { left: undefined, center: "translateX(-50%)", right: "trans
  * mitad de abajo se anclan al borde inferior (en pantallas más bajas que la de
  * referencia no se salen de la foto).
  */
-export function elementPlacement(el: SlideElement, fromBottom: boolean): CSSProperties {
+export function elementPlacement(el: SlideElement, fromBottom: boolean, device?: SlideDevice): CSSProperties {
+  const unit = sizeUnit(device);
   const anchorBottom = fromBottom && el.y + el.h / 2 > 50;
   return {
     left: `${el.x}%`,
     ...(anchorBottom ? { bottom: `${100 - el.y - el.h}%` } : { top: `${el.y}%` }),
     transform: ALIGN_SHIFT[el.align],
-    ...(el.type === "logo" ? { width: `${el.size}cqw` } : { fontSize: `${el.size}cqw` }),
+    ...(el.type === "logo" ? { width: scaled(el.size, unit) } : { fontSize: scaled(el.size, unit) }),
     // Texto con caja de ancho fijo: se acomoda en renglones dentro de ella.
-    ...(el.type === "texto" && el.w !== undefined ? { width: `${el.w}cqw` } : {}),
+    ...(el.type === "texto" && el.w !== undefined ? { width: scaled(el.w, unit) } : {}),
   };
 }
 
@@ -117,8 +139,19 @@ export function SlideElementView({ el, linkable = true }: { el: SlideElement; li
   }
 }
 
-/** La sombra y los elementos de un dispositivo, encima de la foto (que dibuja el carrusel). */
-export default function SlideLayers({ layout, className = "" }: { layout: DeviceLayout; className?: string }) {
+/**
+ * La sombra y los elementos de un dispositivo, encima de la foto (que dibuja el
+ * carrusel). `device`: en la tienda, para escalar bien en fotos de otra proporción.
+ */
+export default function SlideLayers({
+  layout,
+  device,
+  className = "",
+}: {
+  layout: DeviceLayout;
+  device?: SlideDevice;
+  className?: string;
+}) {
   const shade = SHADE_BACKGROUND[layout.shade];
   return (
     <div
@@ -127,7 +160,7 @@ export default function SlideLayers({ layout, className = "" }: { layout: Device
     >
       {shade && <div aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: shade }} />}
       {layout.elements.map((el) => (
-        <div key={el.id} className="absolute w-max" style={elementPlacement(el, true)}>
+        <div key={el.id} className="absolute w-max" style={elementPlacement(el, true, device)}>
           <SlideElementView el={el} />
         </div>
       ))}

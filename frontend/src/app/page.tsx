@@ -211,8 +211,8 @@ function designedSlide(slide: HomeSlideRow, layout: SlideLayout): HeroSlide {
     mobileDim: brightnessOf(layout.mobile),
     content: (
       <>
-        <SlideLayers layout={layout.mobile} className="md:hidden" />
-        <SlideLayers layout={layout.desktop} className="hidden md:block" />
+        <SlideLayers layout={layout.mobile} device="mobile" className="md:hidden" />
+        <SlideLayers layout={layout.desktop} device="desktop" className="hidden md:block" />
       </>
     ),
   };
