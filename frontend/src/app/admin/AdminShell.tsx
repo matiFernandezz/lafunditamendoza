@@ -11,6 +11,7 @@ import {
   ShoppingCart,
   Store,
   Truck,
+  Wallet,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const TABS: Tab[] = [
   { href: "/admin/ventas", label: "Ventas", icon: ShoppingCart },
   { href: "/admin/web", label: "Ventas web", icon: Globe },
   { href: "/admin/compras", label: "Compras", icon: Truck },
+  { href: "/admin/caja", label: "Caja", icon: Wallet },
   { href: "/admin/stock", label: "Stock", icon: Package },
   { href: "/admin/tienda", label: "Tienda", icon: Store },
 ];

@@ -1135,3 +1135,73 @@ export function updateHomeSection(
 export async function reorderHomeSections(keys: HomeSectionKey[]): Promise<void> {
   await adminFetch("/api/store/sections/reorder", { method: "POST", body: JSON.stringify({ keys }) });
 }
+
+// ---------------------------------------------------------------------------
+// Caja: aportes, gastos, retiros y transferencias, más lo que entra solo de
+// las ventas y los pedidos pagados.
+// ---------------------------------------------------------------------------
+
+export type CashAccount = "efectivo" | "banco";
+export type CashKind = "aporte" | "retiro" | "gasto" | "transferencia" | "venta" | "compra" | "ajuste";
+/** Los que se cargan a mano; "venta" y "compra" los genera el sistema. */
+export type ManualCashKind = Exclude<CashKind, "venta" | "compra">;
+
+export type CashMovement = {
+  id: string;
+  occurred_at: string;
+  kind: CashKind;
+  direction: "ingreso" | "egreso";
+  account: CashAccount;
+  amount: number;
+  category: string | null;
+  description: string;
+  sale_id: string | null;
+  purchase_id: string | null;
+  transfer_group: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+};
+
+export type CashBalance = { efectivo: number; banco: number };
+
+export type CashSummary = {
+  balance: CashBalance;
+  by_kind: { kind: CashKind; direction: "ingreso" | "egreso"; total: number }[];
+  by_category: { category: string; total: number }[];
+  series: { day: string; ingresos: number; egresos: number }[];
+};
+
+export type CashNewMovement = {
+  kind: ManualCashKind;
+  account: CashAccount;
+  amount: number;
+  description: string;
+  /** Solo en transferencias: la cuenta a la que va la plata. */
+  to_account?: CashAccount;
+  /** Solo en ajustes. */
+  direction?: "ingreso" | "egreso";
+  category?: string;
+  occurred_at?: string;
+};
+
+export function getCash(
+  range: DateRange,
+): Promise<{ data: { summary: CashSummary; movements: CashMovement[]; categories: string[] } }> {
+  return adminFetch(`/api/cash?${new URLSearchParams(range)}`);
+}
+
+export function getCashBalance(): Promise<{ data: CashBalance }> {
+  return adminFetch("/api/cash/balance");
+}
+
+export function createCashMovement(movement: CashNewMovement): Promise<{ data: CashMovement[] }> {
+  return adminFetch("/api/cash", { method: "POST", body: JSON.stringify(movement) });
+}
+
+export async function voidCashMovement(id: string, reason: string): Promise<void> {
+  await adminFetch(`/api/cash/${id}/void`, { method: "POST", body: JSON.stringify({ reason }) });
+}
+
+export async function setCashMovementAccount(id: string, account: CashAccount): Promise<void> {
+  await adminFetch(`/api/cash/${id}`, { method: "PATCH", body: JSON.stringify({ account }) });
+}

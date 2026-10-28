@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { getDashboard, getSales, type Dashboard, type Sale } from "@/lib/adminApi";
+import { getCashBalance, getDashboard, getSales, type CashBalance, type Dashboard, type Sale } from "@/lib/adminApi";
 import { formatPrice } from "@/lib/format";
 import AdminNotice from "./AdminNotice";
 import { ADMIN_PAGE_SUBTITLE, ADMIN_PAGE_TITLE, adminButton } from "./adminStyles";
@@ -24,7 +24,7 @@ const PERIODS = [
 // Últimas ventas: las más nuevas de todo el historial, no solo del período.
 const ALL_TIME = { from: new Date(2000, 0, 1).toISOString() };
 
-type Loaded = { key: string; dashboard: Dashboard; recent: Sale[] };
+type Loaded = { key: string; dashboard: Dashboard; recent: Sale[]; cash: CashBalance };
 
 const longDay = new Intl.DateTimeFormat("es-AR", { weekday: "long", day: "numeric", month: "long" });
 const shortDay = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "long" });
@@ -74,9 +74,10 @@ export default function InicioPage() {
         tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
       }),
       getSales({ ...ALL_TIME, to: new Date(now.getTime() + 60_000).toISOString() }, 1, 6),
+      getCashBalance(),
     ])
-      .then(([dashboard, recent]) => {
-        if (!ignore) setLoaded({ key: requestKey, dashboard: dashboard.data, recent: recent.data });
+      .then(([dashboard, recent, cash]) => {
+        if (!ignore) setLoaded({ key: requestKey, dashboard: dashboard.data, recent: recent.data, cash: cash.data });
       })
       .catch((err) => {
         if (!ignore) setFailed({ key: requestKey, message: err instanceof Error ? err.message : "No se pudo cargar." });
@@ -139,14 +140,10 @@ export default function InicioPage() {
             <StatCard label="Ganancia bruta" value={formatPrice(data.sales.gross_profit)}>
               <span>{percent(data.sales.gross_profit, data.sales.total_amount)}% de lo vendido</span>
             </StatCard>
-            <StatCard
-              label="En caja"
-              value={formatPrice(data.cash.efectivo + data.cash.transferencia - data.cash.purchases)}
-            >
+            <StatCard label="En caja" value={formatPrice(loaded.cash.efectivo + loaded.cash.banco)}>
               <span>
-                Efectivo {formatPrice(data.cash.efectivo)} · Transferencia {formatPrice(data.cash.transferencia)}
+                Efectivo {formatPrice(loaded.cash.efectivo)} · Banco {formatPrice(loaded.cash.banco)}
               </span>
-              {data.cash.purchases > 0 && <span>Menos {formatPrice(data.cash.purchases)} en pedidos</span>}
             </StatCard>
             <StatCard label="Plata en stock" value={formatPrice(data.stock.cost_value)}>
               <span>
@@ -166,32 +163,32 @@ export default function InicioPage() {
             <Panel title={data.series.unit === "hour" ? "Ventas por hora" : "Ventas por día"} className="lg:col-span-2">
               <SalesChart series={data.series} />
             </Panel>
-            <Panel title="Caja">
+            <Panel
+              title="Caja"
+              action={
+                <Link href="/admin/caja" className="text-sm font-semibold text-admin-text hover:underline">
+                  Ver caja
+                </Link>
+              }
+            >
               <dl className="flex flex-col divide-y divide-admin-border text-[15px]">
                 <div className="flex justify-between gap-3 pb-3">
-                  <dt className="text-admin-text">Cobrado en efectivo</dt>
-                  <dd className="font-mono tabular-nums text-admin-text">{formatPrice(data.cash.efectivo)}</dd>
+                  <dt className="text-admin-text">Efectivo</dt>
+                  <dd className="font-mono tabular-nums text-admin-text">{formatPrice(loaded.cash.efectivo)}</dd>
                 </div>
                 <div className="flex justify-between gap-3 py-3">
-                  <dt className="text-admin-text">Cobrado por transferencia</dt>
-                  <dd className="font-mono tabular-nums text-admin-text">{formatPrice(data.cash.transferencia)}</dd>
-                </div>
-                <div className="flex justify-between gap-3 py-3">
-                  <dt className="text-admin-text">Pagado en pedidos</dt>
-                  <dd className="font-mono tabular-nums text-admin-text">
-                    {data.cash.purchases > 0 ? `− ${formatPrice(data.cash.purchases)}` : formatPrice(0)}
-                  </dd>
+                  <dt className="text-admin-text">Banco</dt>
+                  <dd className="font-mono tabular-nums text-admin-text">{formatPrice(loaded.cash.banco)}</dd>
                 </div>
                 <div className="flex justify-between gap-3 pt-3 font-semibold">
                   <dt className="text-admin-text">Total</dt>
                   <dd className="font-mono tabular-nums text-admin-text">
-                    {formatPrice(data.cash.efectivo + data.cash.transferencia - data.cash.purchases)}
+                    {formatPrice(loaded.cash.efectivo + loaded.cash.banco)}
                   </dd>
                 </div>
               </dl>
               <p className="mt-4 text-[13px] text-admin-muted">
-                Todo lo cobrado desde el primer registro, menos lo pagado en pedidos. No incluye otros gastos ni
-                retiros.
+                Suma todo lo que entró y salió: ventas, pedidos pagados, aportes, gastos y retiros.
               </p>
             </Panel>
           </div>
