@@ -14,7 +14,14 @@ const ARROW =
  * se deslizan de costado (con el dedo o las flechas de los costados); cada uno
  * frena en su lugar. En mobile llega a los bordes de la pantalla.
  */
-export default function ScrollRow({ children }: { children: React.ReactNode }) {
+export default function ScrollRow({
+  children,
+  itemClassName = "w-[min(340px,82vw)]",
+}: {
+  children: React.ReactNode;
+  /** Ancho de cada elemento; por defecto, el de las fotos 4:5 de las redes. */
+  itemClassName?: string;
+}) {
   const trackRef = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
 
@@ -50,7 +57,7 @@ export default function ScrollRow({ children }: { children: React.ReactNode }) {
       >
         {Children.map(children, (child) => (
           // relative: lo posicionado adentro (textos ocultos, íconos) queda dentro del carrusel.
-          <li className="relative w-[min(340px,82vw)] shrink-0 snap-start">{child}</li>
+          <li className={`relative shrink-0 snap-start ${itemClassName}`}>{child}</li>
         ))}
       </ul>
       {!(edges.start && edges.end) && (

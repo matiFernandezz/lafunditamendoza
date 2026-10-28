@@ -470,6 +470,29 @@ export async function getAboutContent(): Promise<AboutContent> {
   };
 }
 
+export type CommunityContent = {
+  title: string;
+  subtitle: string;
+  ctaLabel: string;
+  photos: string[];
+};
+
+/** Comunidad (home): textos y capturas de clientes, como los dejó el panel › Tienda › Comunidad. */
+export async function getCommunityContent(): Promise<CommunityContent> {
+  const [content, photos] = await Promise.all([
+    supabase.from("community_content").select("title, subtitle, cta_label").eq("id", 1).single(),
+    supabase.from("community_photos").select("image_url").order("sort_order").order("created_at"),
+  ]);
+  const error = content.error ?? photos.error;
+  if (error || !content.data) throw new Error(`No se pudo cargar Comunidad: ${error?.message ?? "sin textos"}`);
+  return {
+    title: content.data.title,
+    subtitle: content.data.subtitle,
+    ctaLabel: content.data.cta_label,
+    photos: (photos.data ?? []).map((p) => p.image_url as string),
+  };
+}
+
 export type HomeSectionRow = {
   key: "categorias" | "mas_vendidas" | "ultimos" | "instagram";
   visible: boolean;

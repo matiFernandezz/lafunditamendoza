@@ -51,6 +51,7 @@ export type PhotoSize = { width: number; height: number; label: string };
 export const PHOTO_SIZES = {
   heroDesktop: { width: 1600, height: 730, label: "Computadora: horizontal, 1920 × 875 px (mínimo 1600 × 730)" },
   heroMobile: { width: 900, height: 1125, label: "Celular: vertical, 1080 × 1350 px (mínimo 900 × 1125)" },
+  story: { width: 720, height: 1280, label: "Vertical como una historia, 1080 × 1920 px (mínimo 720 × 1280)" },
   tile: { width: 800, height: 1000, label: "Vertical, 1000 × 1250 px (mínimo 800 × 1000)" },
   cutout: { width: 400, height: 800, label: "La funda de frente, con fondo liso, 1200 px de alto (mínimo 800)" },
 } satisfies Record<string, PhotoSize>;

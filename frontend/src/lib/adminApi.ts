@@ -1053,6 +1053,33 @@ export async function reorderAboutPhotos(ids: string[]): Promise<void> {
   await adminFetch("/api/store/about/photos/reorder", { method: "POST", body: JSON.stringify({ ids }) });
 }
 
+// ---------------------------------------------------------------------------
+// Tienda › Comunidad: los textos y las capturas de clientes del carrusel.
+// ---------------------------------------------------------------------------
+
+export type CommunityContent = { title: string; subtitle: string; cta_label: string };
+export type CommunityPhoto = { id: string; sort_order: number; image_url: string };
+
+export function getCommunity(): Promise<{ data: { content: CommunityContent; photos: CommunityPhoto[] } }> {
+  return adminFetch("/api/store/community");
+}
+
+export function updateCommunity(patch: Partial<CommunityContent>): Promise<{ data: CommunityContent }> {
+  return adminFetch("/api/store/community", { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export function createCommunityPhoto(image_url: string): Promise<{ data: CommunityPhoto }> {
+  return adminFetch("/api/store/community/photos", { method: "POST", body: JSON.stringify({ image_url }) });
+}
+
+export async function deleteCommunityPhoto(id: string): Promise<void> {
+  await adminFetch(`/api/store/community/photos/${id}`, { method: "DELETE" });
+}
+
+export async function reorderCommunityPhotos(ids: string[]): Promise<void> {
+  await adminFetch("/api/store/community/photos/reorder", { method: "POST", body: JSON.stringify({ ids }) });
+}
+
 export function createSocialPost(url: string): Promise<{ data: SocialPost }> {
   return adminFetch("/api/store/social", { method: "POST", body: JSON.stringify({ url }) });
 }

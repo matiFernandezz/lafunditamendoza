@@ -6,6 +6,7 @@ import AnnouncementBar from "@/components/AnnouncementBar";
 import ArrowMark from "@/components/ArrowMark";
 import CategoryTile from "@/components/CategoryTile";
 import HeroCarousel, { type HeroSlide } from "@/components/HeroCarousel";
+import CommunityStories from "@/components/home/CommunityStories";
 import HomeSectionTitle from "@/components/home/HomeSectionTitle";
 import NuevosIngresosApilado from "@/components/home/NuevosIngresosApilado";
 import { buildNuevosIngresos } from "@/components/home/nuevosIngresos";
@@ -18,6 +19,7 @@ import { InstagramIcon } from "@/components/SocialIcons";
 import {
   ALL_PRODUCTS_SLUG,
   getCategoryTiles,
+  getCommunityContent,
   getHomeLatestProducts,
   getHomeNewArrivals,
   getHomeSections,
@@ -239,7 +241,7 @@ function SlideHeadline({ slide, size }: { slide: HomeSlideRow; size: HomeSlideRo
 }
 
 export default async function Home() {
-  const [tiles, models, latest, homeSlides, arrivals, sections, instagramPosts] = await Promise.all([
+  const [tiles, models, latest, homeSlides, arrivals, sections, instagramPosts, community] = await Promise.all([
     getCategoryTiles(),
     getIphoneModels(),
     getHomeLatestProducts(),
@@ -247,6 +249,7 @@ export default async function Home() {
     getHomeNewArrivals(),
     getHomeSections(),
     getInstagramPosts(),
+    getCommunityContent(),
   ]);
   const nuevos = buildNuevosIngresos(arrivals);
 
@@ -303,13 +306,29 @@ export default async function Home() {
       );
     }
     if (section.key === "instagram") {
-      // Los últimos posts, como en Nosotros. Sin la cuenta conectada (o sin posts), no se muestra.
-      if (!instagramPosts || instagramPosts.length === 0) return null;
+      // Los últimos posts (como en Nosotros) y, debajo, la Comunidad. Cada parte se omite
+      // si no tiene nada: sin la cuenta conectada no hay posts, sin fotos no hay carrusel.
+      const hasPosts = instagramPosts !== null && instagramPosts.length > 0;
+      const hasCommunity = community.photos.length > 0;
+      if (!hasPosts && !hasCommunity) return null;
       return (
-        <section key={section.key} aria-label={section.title} className="space-y-4 lg:space-y-6">
-          <HomeSectionTitle>{section.title}</HomeSectionTitle>
-          <SocialHeader icon={InstagramIcon} name="Instagram" handle={INSTAGRAM.handle} url={INSTAGRAM.url} />
-          <InstagramFeed posts={instagramPosts} />
+        <section key={section.key} aria-label={section.title} className="space-y-12 lg:space-y-16">
+          {hasPosts && (
+            <div className="space-y-4 lg:space-y-6">
+              <HomeSectionTitle>{section.title}</HomeSectionTitle>
+              <SocialHeader icon={InstagramIcon} name="Instagram" handle={INSTAGRAM.handle} url={INSTAGRAM.url} />
+              <InstagramFeed posts={instagramPosts} />
+            </div>
+          )}
+          {hasCommunity && (
+            <CommunityStories
+              title={community.title}
+              subtitle={community.subtitle}
+              photos={community.photos}
+              ctaLabel={community.ctaLabel}
+              ctaHref={INSTAGRAM.url}
+            />
+          )}
         </section>
       );
     }
