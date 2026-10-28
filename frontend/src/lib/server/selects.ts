@@ -31,10 +31,11 @@ const WEB_ORDER_ITEMS_SELECT = `items:web_order_items (
   )`;
 
 export const WEB_ORDER_SELECT = `id, code, public_token, customer_name, customer_phone, status, total_amount,
+  subtotal_amount, coupon_code, discount_percent, discount_amount,
   created_at, expires_at, paid_at, cancelled_at, cancel_reason, sale_id, ${WEB_ORDER_ITEMS_SELECT}`;
 
 // Lo que ve el cliente: sin su teléfono ni ids internos de la venta.
-export const WEB_ORDER_PUBLIC_SELECT = `code, customer_name, status, total_amount, created_at, expires_at, ${WEB_ORDER_ITEMS_SELECT}`;
+export const WEB_ORDER_PUBLIC_SELECT = `code, customer_name, status, total_amount, subtotal_amount, coupon_code, discount_percent, discount_amount, created_at, expires_at, ${WEB_ORDER_ITEMS_SELECT}`;
 
 export const SUPPLIER_SELECT = "id, name, contact_info, payment_method, shipping_cost, notes";
 

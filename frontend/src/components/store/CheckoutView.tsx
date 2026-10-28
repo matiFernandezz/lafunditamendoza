@@ -37,10 +37,13 @@ export default function CheckoutView() {
           customer_name: name.trim(),
           customer_phone: phone.trim(),
           items: cart.items.map((i) => ({ variant_id: i.variantId, quantity: i.quantity })),
+          coupon_code: cart.coupon?.code ?? null,
         }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.data?.public_token) {
+        // 410: el cupón venció mientras armaba la compra; se saca para que pueda reservar sin él.
+        if (res.status === 410) cart.removeCoupon();
         setError(json?.error ?? "No pudimos hacer la reserva. Probá de nuevo en un rato.");
         setSubmitting(false);
         return;
@@ -107,9 +110,23 @@ export default function CheckoutView() {
             <span className="shrink-0 font-mono tabular-nums">{formatPrice(i.quantity * i.price)}</span>
           </div>
         ))}
+        {cart.coupon && (
+          <>
+            <div className="flex justify-between gap-3 text-[15px] text-ink">
+              <span className="text-graphite">Subtotal</span>
+              <span className="font-mono tabular-nums">{formatPrice(cart.total)}</span>
+            </div>
+            <div className="flex justify-between gap-3 text-[15px] text-ink">
+              <span className="text-graphite">
+                Cupón <span className="font-mono">{cart.coupon.code}</span> · {cart.coupon.percent}%
+              </span>
+              <span className="font-mono tabular-nums">− {formatPrice(cart.discount)}</span>
+            </div>
+          </>
+        )}
         <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-ink pt-4">
           <span className={STORE_CAP}>Total</span>
-          <span className="font-mono text-[28px] font-medium tabular-nums text-ink">{formatPrice(cart.total)}</span>
+          <span className="font-mono text-[28px] font-medium tabular-nums text-ink">{formatPrice(cart.payable)}</span>
         </div>
       </div>
 

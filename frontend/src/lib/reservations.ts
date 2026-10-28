@@ -24,6 +24,10 @@ export type PublicReservation = {
   customer_name: string;
   status: "pendiente" | "pagada" | "cancelada";
   total_amount: number;
+  subtotal_amount: number;
+  coupon_code: string | null;
+  discount_percent: number;
+  discount_amount: number;
   created_at: string;
   expires_at: string;
   items: ReservationItem[];

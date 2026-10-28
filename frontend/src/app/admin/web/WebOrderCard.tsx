@@ -83,6 +83,12 @@ export default function WebOrderCard({
             {badge}
           </span>
           <span className="break-words text-[15px] font-semibold text-admin-text">{o.customer_name}</span>
+          {o.coupon_code && (
+            <span className="text-[13px] text-admin-muted">
+              Cupón <span className="font-mono font-semibold">{o.coupon_code}</span> · −{o.discount_percent}% (
+              {formatPrice(o.discount_amount)})
+            </span>
+          )}
         </div>
         <span
           className={`shrink-0 font-mono text-xl font-bold tabular-nums text-admin-text ${

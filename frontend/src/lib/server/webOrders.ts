@@ -8,7 +8,8 @@ import { jsonError } from "@/lib/server/http";
 export const WEB_ORDER_STATUSES = ["pendiente", "pagada", "cancelada"] as const;
 export type WebOrderStatus = (typeof WEB_ORDER_STATUSES)[number];
 
-const STATUS_BY_CODE: Record<string, number> = { WO400: 400, WO404: 404, WO409: 409 };
+// WO410: el cupón no existe o venció.
+const STATUS_BY_CODE: Record<string, number> = { WO400: 400, WO404: 404, WO409: 409, WO410: 410 };
 
 /** Error de una función SQL de reservas → respuesta HTTP (el mensaje es el de la función). */
 export function webOrderRpcError(error: { code: string; message: string }) {

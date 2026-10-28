@@ -60,13 +60,70 @@ function subscribe(listener: () => void) {
   };
 }
 
+// Cupón aplicado en el carrito: el porcentaje es solo para mostrarlo; al reservar
+// el servidor lo vuelve a validar y es el que fija el descuento.
+export type CartCoupon = { code: string; percent: number };
+
+const COUPON_KEY = "lf-cart-coupon";
+let couponCache: CartCoupon | null | undefined;
+const couponListeners = new Set<() => void>();
+
+function readCoupon(): CartCoupon | null {
+  if (couponCache !== undefined) return couponCache;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COUPON_KEY) ?? "null");
+    couponCache =
+      parsed && typeof parsed.code === "string" && typeof parsed.percent === "number" ? parsed : null;
+  } catch {
+    couponCache = null;
+  }
+  return couponCache ?? null;
+}
+
+function writeCoupon(next: CartCoupon | null) {
+  couponCache = next;
+  try {
+    if (next) localStorage.setItem(COUPON_KEY, JSON.stringify(next));
+    else localStorage.removeItem(COUPON_KEY);
+  } catch {
+    // Sin storage: el cupón vive mientras dure la pestaña.
+  }
+  couponListeners.forEach((l) => l());
+}
+
+function subscribeCoupon(listener: () => void) {
+  couponListeners.add(listener);
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === COUPON_KEY) {
+      couponCache = undefined;
+      listener();
+    }
+  };
+  window.addEventListener("storage", onStorage);
+  return () => {
+    couponListeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
 export function useCart() {
   const items = useSyncExternalStore(subscribe, read, () => EMPTY);
+  const coupon = useSyncExternalStore(subscribeCoupon, readCoupon, () => null);
+  const total = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+  // Mismo redondeo que el servidor: al peso más cercano.
+  const discount = coupon ? Math.round((total * coupon.percent) / 100) : 0;
 
   return {
     items,
     count: items.reduce((sum, i) => sum + i.quantity, 0),
-    total: items.reduce((sum, i) => sum + i.quantity * i.price, 0),
+    /** Suma de los productos, sin descuento. */
+    total,
+    coupon,
+    discount,
+    /** Lo que se paga: el total menos el descuento del cupón. */
+    payable: total - discount,
+    applyCoupon: writeCoupon,
+    removeCoupon: () => writeCoupon(null),
     quantityOf: (variantId: string) => items.find((i) => i.variantId === variantId)?.quantity ?? 0,
     add(item: Omit<CartItem, "quantity">) {
       const current = read();
@@ -89,6 +146,7 @@ export function useCart() {
     },
     clear() {
       write([]);
+      writeCoupon(null);
     },
   };
 }

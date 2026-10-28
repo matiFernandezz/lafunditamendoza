@@ -108,6 +108,12 @@ export default function ReservationView({ reservation: r }: { reservation: Publi
             <span className="font-mono text-[44px] font-medium leading-none tabular-nums text-ink">
               {formatPrice(r.total_amount)}
             </span>
+            {r.coupon_code && (
+              <span className="mt-2 block text-[15px] text-graphite">
+                Cupón <span className="font-mono">{r.coupon_code}</span> · {r.discount_percent}% de descuento (ahorrás{" "}
+                {formatPrice(r.discount_amount)})
+              </span>
+            )}
           </div>
 
           <div className="border-b border-rule">

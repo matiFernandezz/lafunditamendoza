@@ -751,6 +751,10 @@ export type WebOrder = {
   customer_phone: string;
   status: WebOrderStatus;
   total_amount: number;
+  subtotal_amount: number;
+  coupon_code: string | null;
+  discount_percent: number;
+  discount_amount: number;
   created_at: string;
   expires_at: string;
   paid_at: string | null;

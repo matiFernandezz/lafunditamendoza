@@ -25,7 +25,7 @@ function validateItems(items: unknown): items is ItemInput[] {
 // los campos esperados; los precios y el stock los fija la función SQL
 // create_web_order, nunca el navegador.
 export async function POST(request: NextRequest) {
-  const { customer_name, customer_phone, items } = await readJsonBody(request);
+  const { customer_name, customer_phone, items, coupon_code } = await readJsonBody(request);
 
   const name = typeof customer_name === "string" ? customer_name.trim() : "";
   const phone = typeof customer_phone === "string" ? customer_phone.trim() : "";
@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
     p_customer_name: name,
     p_customer_phone: phone,
     p_items: items.map(({ variant_id, quantity }) => ({ variant_id, quantity })),
+    p_coupon_code: typeof coupon_code === "string" && coupon_code.trim() !== "" ? coupon_code.trim().slice(0, 40) : null,
   });
 
   if (error) return webOrderRpcError(error);

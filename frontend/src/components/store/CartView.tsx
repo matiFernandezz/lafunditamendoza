@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import CouponBox from "@/components/store/CouponBox";
 import QuantityControl from "@/components/store/QuantityControl";
 import { useCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
@@ -64,10 +65,23 @@ export default function CartView() {
           </ul>
 
           <div className="flex flex-col gap-5 border-t border-ink pt-5">
+            <CouponBox />
+            {cart.coupon && (
+              <div className="flex flex-col gap-1.5 text-[15px] text-ink">
+                <div className="flex justify-between gap-3">
+                  <span className="text-graphite">Subtotal</span>
+                  <span className="font-mono tabular-nums">{formatPrice(cart.total)}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-graphite">Descuento {cart.coupon.percent}%</span>
+                  <span className="font-mono tabular-nums">− {formatPrice(cart.discount)}</span>
+                </div>
+              </div>
+            )}
             <div className="flex items-baseline justify-between gap-3">
               <span className={STORE_CAP}>Total</span>
               <span className="font-mono text-[32px] font-medium tabular-nums text-ink">
-                {formatPrice(cart.total)}
+                {formatPrice(cart.payable)}
               </span>
             </div>
             <p className="text-[15px] text-graphite">
