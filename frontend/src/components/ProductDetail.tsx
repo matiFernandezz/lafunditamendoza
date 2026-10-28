@@ -24,7 +24,6 @@ import {
 } from "@/lib/productColors";
 import { STORE_BUTTON, STORE_TEXT_LINK } from "@/lib/storeStyles";
 
-const LOW_STOCK = 3;
 
 /** Deja `?color=<slug>` (o `?motivo=`) en la URL sin recargar: el link queda compartible. */
 function writeToUrl(param: "color" | "motivo", slug: string | undefined) {
@@ -345,15 +344,7 @@ export default function ProductDetail({
           {selectedVariant && !needsModel && (
             <div className="space-y-1 border-t border-rule pt-6">
               <p className="font-mono text-3xl font-medium tabular-nums">{formatPrice(selectedVariant.price)}</p>
-              <p className="text-sm text-graphite">
-                {selectedVariant.stock_quantity <= LOW_STOCK
-                  ? selectedVariant.stock_quantity === 1
-                    ? "Última unidad"
-                    : `Quedan ${selectedVariant.stock_quantity}`
-                  : "En stock"}
-                <span aria-hidden="true"> · </span>
-                <span className="font-mono text-xs">{selectedVariant.sku}</span>
-              </p>
+              <p className="text-sm text-graphite">En stock</p>
             </div>
           )}
 
