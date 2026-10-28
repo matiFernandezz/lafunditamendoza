@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, ImagePlus, Trash2 } from "lucide-react";
+import { ExternalLink, Eye, EyeOff, ImagePlus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   AdminApiError,
@@ -59,7 +59,7 @@ function errorMessage(err: unknown) {
 /** Tienda › Nosotros: el texto, las fotos de al lado y las publicaciones de las redes. */
 export default function NosotrosAdminPage() {
   const [page, setPage] = useState<AboutPage | null>(null);
-  const [draft, setDraft] = useState<AboutPage>({ title: "", body: "" });
+  const [draft, setDraft] = useState<AboutPage>({ title: "", body: "", show_tiktok: false });
   const [photos, setPhotos] = useState<AboutPhoto[]>([]);
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [links, setLinks] = useState({ instagram: "", tiktok: "" });
@@ -206,7 +206,7 @@ export default function NosotrosAdminPage() {
                   disabled={busy}
                   onClick={() =>
                     run(async () => {
-                      const res = await updateAbout(draft);
+                      const res = await updateAbout({ title: draft.title, body: draft.body });
                       setPage(res.data);
                       setDraft(res.data);
                       setNotice("Texto guardado.");
@@ -304,6 +304,34 @@ export default function NosotrosAdminPage() {
                   <h2 className={ADMIN_SECTION_TITLE}>Publicaciones de {network.label}</h2>
                   <p className={ADMIN_TEXT_MUTED}>{network.auto}</p>
                 </div>
+                {network.value === "tiktok" && (
+                  <div className="flex flex-col gap-2 rounded-md border border-admin-border bg-admin-bg p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-[15px] text-admin-text">
+                      {page.show_tiktok
+                        ? "La sección de TikTok se ve en la página Nosotros."
+                        : "La sección de TikTok está oculta: no se ve en la página Nosotros."}
+                    </p>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          const res = await updateAbout({ show_tiktok: !page.show_tiktok });
+                          setPage(res.data);
+                          setNotice(res.data.show_tiktok ? "TikTok vuelve a mostrarse en Nosotros." : "TikTok quedó oculto en Nosotros.");
+                        })
+                      }
+                      className={adminButton(page.show_tiktok ? "secondary" : "primary", "sm")}
+                    >
+                      {page.show_tiktok ? (
+                        <EyeOff aria-hidden="true" className="size-4" />
+                      ) : (
+                        <Eye aria-hidden="true" className="size-4" />
+                      )}
+                      {page.show_tiktok ? "Ocultar" : "Mostrar"}
+                    </button>
+                  </div>
+                )}
                 <form
                   className="flex flex-col gap-2 sm:flex-row"
                   onSubmit={(e) => {

@@ -10,7 +10,7 @@ export async function GET() {
 
   const supabase = supabaseAdmin();
   const [page, photos, posts] = await Promise.all([
-    supabase.from("about_page").select("title, body").eq("id", 1).single(),
+    supabase.from("about_page").select("title, body, show_tiktok").eq("id", 1).single(),
     supabase.from("about_photos").select("id, sort_order, image_url").order("sort_order").order("created_at"),
     supabase.from("social_posts").select("id, network, url, sort_order").order("sort_order").order("created_at"),
   ]);
@@ -24,8 +24,8 @@ export async function PATCH(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
 
-  const { title, body } = await readJsonBody(request);
-  const fields: Record<string, string> = {};
+  const { title, body, show_tiktok } = await readJsonBody(request);
+  const fields: Record<string, string | boolean> = {};
   if (title !== undefined) {
     if (typeof title !== "string" || title.trim() === "" || title.trim().length > 60) {
       return jsonError(400, "El título no puede quedar vacío y va hasta 60 caracteres.");
@@ -38,9 +38,13 @@ export async function PATCH(request: NextRequest) {
     }
     fields.body = body.trim();
   }
+  if (show_tiktok !== undefined) {
+    if (typeof show_tiktok !== "boolean") return jsonError(400, "show_tiktok debe ser true o false");
+    fields.show_tiktok = show_tiktok;
+  }
   if (Object.keys(fields).length === 0) return jsonError(400, "No hay nada para cambiar");
 
-  const { data, error } = await supabaseAdmin().from("about_page").update(fields).eq("id", 1).select("title, body").single();
+  const { data, error } = await supabaseAdmin().from("about_page").update(fields).eq("id", 1).select("title, body, show_tiktok").single();
   if (error || !data) return jsonError(500, error?.message ?? "No se pudo guardar");
   return jsonData(data);
 }

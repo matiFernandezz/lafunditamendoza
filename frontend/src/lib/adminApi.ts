@@ -1033,7 +1033,7 @@ export async function reorderLatestProducts(ids: string[]): Promise<void> {
 // Tienda › Nosotros: el texto, las fotos de al lado y las publicaciones.
 // ---------------------------------------------------------------------------
 
-export type AboutPage = { title: string; body: string };
+export type AboutPage = { title: string; body: string; show_tiktok: boolean };
 export type AboutPhoto = { id: string; sort_order: number; image_url: string };
 export type SocialPost = { id: string; network: "instagram" | "tiktok"; url: string; sort_order: number };
 

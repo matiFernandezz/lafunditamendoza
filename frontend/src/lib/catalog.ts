@@ -448,12 +448,14 @@ export type AboutContent = {
   paragraphs: string[];
   photos: string[];
   posts: { network: "instagram" | "tiktok"; url: string }[];
+  /** Si la sección de TikTok se muestra en Nosotros (se cambia en el panel). */
+  showTiktok: boolean;
 };
 
 /** Página Nosotros: texto, fotos y publicaciones, como las dejó el panel › Tienda › Nosotros. */
 export async function getAboutContent(): Promise<AboutContent> {
   const [page, photos, posts] = await Promise.all([
-    supabase.from("about_page").select("title, body").eq("id", 1).single(),
+    supabase.from("about_page").select("title, body, show_tiktok").eq("id", 1).single(),
     supabase.from("about_photos").select("image_url").order("sort_order").order("created_at"),
     supabase.from("social_posts").select("network, url").order("sort_order").order("created_at"),
   ]);
@@ -467,6 +469,7 @@ export async function getAboutContent(): Promise<AboutContent> {
       .filter(Boolean),
     photos: (photos.data ?? []).map((p) => p.image_url as string),
     posts: (posts.data ?? []) as AboutContent["posts"],
+    showTiktok: page.data.show_tiktok,
   };
 }
 

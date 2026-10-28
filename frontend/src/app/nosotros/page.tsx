@@ -57,7 +57,8 @@ export default async function NosotrosPage() {
   ]);
   const fundas = groups.find((g) => g.children.length > 0);
   const fundasHref = fundas ? `/categoria/${fundas.slug}` : "/";
-  const networks = SOCIAL.map((s) => ({
+  // TikTok se muestra solo si el panel › Tienda › Nosotros lo tiene activado.
+  const networks = SOCIAL.filter((s) => s.network !== "tiktok" || about.showTiktok).map((s) => ({
     ...s,
     urls: about.posts.filter((p) => p.network === s.network).map((p) => p.url),
   }));
