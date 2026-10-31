@@ -5,6 +5,9 @@ import { formatPrice } from "@/lib/format";
 import { adminBadge } from "../adminStyles";
 import { ACCOUNT_LABEL } from "./CashDialogs";
 
+// Categorías que el sistema asigna solo a cada tipo: repiten la etiqueta, así que no se muestran.
+const DEFAULT_CATEGORIES = new Set(["Ventas", "Aportes", "Retiros", "Transferencia entre cuentas", "Ajuste de caja"]);
+
 export const KIND_LABEL: Record<CashKind, string> = {
   aporte: "Aporte",
   retiro: "Retiro",
@@ -42,7 +45,7 @@ export default function MovementRow({
   const otherAccount: CashAccount = m.account === "efectivo" ? "banco" : "efectivo";
   const canChangeAccount = !voided && m.kind === "compra";
   const canVoid = !voided && m.kind !== "venta" && m.kind !== "compra";
-  const category = m.category && m.category !== KIND_LABEL[m.kind] ? m.category : null;
+  const category = m.category && !DEFAULT_CATEGORIES.has(m.category) ? m.category : null;
   const description = m.description || KIND_LABEL[m.kind];
 
   const amountColor = voided ? "text-admin-muted line-through" : m.direction === "ingreso" ? "text-admin-ok" : "text-admin-text";
@@ -77,22 +80,23 @@ export default function MovementRow({
 
   return (
     <li>
-      {/* Celular */}
+      {/* Celular: descripción; etiqueta y cuenta con el monto a la derecha; fecha con la acción a la derecha. */}
       <div className="flex flex-col gap-2 py-4 md:hidden">
-        <div className="flex items-start justify-between gap-3">
-          <p className={`min-w-0 flex-1 text-base ${descriptionClass}`}>{description}</p>
+        <p className={`text-base ${descriptionClass}`}>{description}</p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-muted">
+            {badge}
+            {category && <span>{category}</span>}
+            <span aria-hidden="true">·</span>
+            <span>{ACCOUNT_LABEL[m.account]}</span>
+          </p>
           <span className={`shrink-0 whitespace-nowrap font-mono text-lg font-semibold tabular-nums ${amountColor}`}>
             {sign} {formatPrice(m.amount)}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-muted">
-          {badge}
-          {category && <span>{category}</span>}
-          <span aria-hidden="true">·</span>
-          <span>{ACCOUNT_LABEL[m.account]}</span>
-          <span aria-hidden="true">·</span>
-          <span className="font-mono text-xs">{when}</span>
-          {(canChangeAccount || canVoid) && <span className="ml-auto flex items-center">{action}</span>}
+        <div className="flex min-h-9 items-center justify-between gap-3">
+          <span className="font-mono text-xs text-admin-muted">{when}</span>
+          {(canChangeAccount || canVoid) && <span className="flex items-center">{action}</span>}
         </div>
         {voided && m.void_reason && <p className="text-[13px] text-admin-muted">Motivo: {m.void_reason}</p>}
       </div>

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import FilterPopover, { optionPill } from "./FilterPopover";
-import HScroll from "./HScroll";
 
 export type PickerModel = { id: string; name: string; sort_order: number };
 
@@ -74,7 +73,11 @@ export default function ProductModelPicker({
             {/* Con muchos números se reparten de punta a punta (la fila ocupa el ancho
                 de la tarjeta, igual que los modelos); con pocos (14 y 15) van juntos a
                 la izquierda, para que no queden separados por un hueco. */}
-            <HScroll className={`h-12 gap-2 justify-start ${lines.length >= 6 ? "md:justify-between" : ""}`}>
+            <div
+              className={`grid grid-cols-4 justify-items-center gap-y-1 md:flex md:h-12 md:items-center md:gap-2 ${
+                lines.length >= 6 ? "md:justify-between" : "md:justify-start"
+              }`}
+            >
               {lines.map((l) => (
                 <button
                   key={l.key}
@@ -86,7 +89,6 @@ export default function ProductModelPicker({
                   }}
                   aria-expanded={lineKey === l.key}
                   aria-label={`iPhone ${l.key}`}
-                  data-active={selectedLine === l.key ? "true" : undefined}
                   className={number(
                     lineKey === l.key,
                     l.models.some((m) => availableIds.has(m.id)),
@@ -95,7 +97,7 @@ export default function ProductModelPicker({
                   {l.key}
                 </button>
               ))}
-            </HScroll>
+            </div>
 
             {/* Los modelos de la línea, debajo de los números, en columnas iguales y
                 separados por una línea suave. */}

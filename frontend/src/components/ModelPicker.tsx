@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import FilterPopover, { optionPill } from "./FilterPopover";
-import HScroll from "./HScroll";
 
 export type ModelPickerLine = {
   key: string;
@@ -50,7 +49,7 @@ export default function ModelPicker({
     >
       {(close) => (
         <>
-          <HScroll className="h-11 gap-1.5">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             <Link
               href={allHref}
               scroll={false}
@@ -70,7 +69,6 @@ export default function ModelPicker({
                   onClick={close}
                   aria-label={l.models[0].name}
                   aria-current={selected?.slug === l.models[0].slug ? "true" : undefined}
-                  data-active={selected?.slug === l.models[0].slug ? "true" : undefined}
                   className={number(selected?.slug === l.models[0].slug)}
                 >
                   {l.key}
@@ -82,14 +80,13 @@ export default function ModelPicker({
                   onClick={() => setLineKey(lineKey === l.key ? null : l.key)}
                   aria-expanded={lineKey === l.key}
                   aria-label={`iPhone ${l.key}`}
-                  data-active={selectedLine === l.key ? "true" : undefined}
                   className={number(lineKey === l.key)}
                 >
                   {l.key}
                 </button>
               ),
             )}
-          </HScroll>
+          </div>
 
           {/* Los modelos de la línea, debajo de los números y a su mismo ancho (columnas
               iguales), separados por una línea muy suave. */}
