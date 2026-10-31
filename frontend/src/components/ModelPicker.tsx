@@ -49,22 +49,12 @@ export default function ModelPicker({
     >
       {(close) => (
         <>
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <Link
-              href={allHref}
-              scroll={false}
-              onClick={close}
-              aria-current={selected ? undefined : "true"}
-              className={`${optionPill(!selected)} mr-1`}
-            >
-              Todos
-            </Link>
-
+          <div className="grid grid-cols-4 justify-items-center gap-y-1 md:flex md:items-center md:gap-1.5">
             {lines.map((l) =>
               l.models.length === 1 ? (
                 <Link
                   key={l.key}
-                  href={l.models[0].href}
+                  href={selected?.slug === l.models[0].slug ? allHref : l.models[0].href}
                   scroll={false}
                   onClick={close}
                   aria-label={l.models[0].name}
@@ -101,7 +91,7 @@ export default function ModelPicker({
                 return (
                   <Link
                     key={model.slug}
-                    href={model.href}
+                    href={isSelected ? allHref : model.href}
                     scroll={false}
                     onClick={close}
                     aria-current={isSelected ? "true" : undefined}
@@ -113,6 +103,7 @@ export default function ModelPicker({
               })}
             </div>
           )}
+          {selected && <p className="text-[13px] text-graphite">Tocá de nuevo el modelo elegido para ver todos.</p>}
         </>
       )}
     </FilterPopover>
