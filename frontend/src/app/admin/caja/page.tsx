@@ -21,14 +21,15 @@ import {
   ADMIN_PAGE_SUBTITLE,
   ADMIN_PAGE_TITLE,
   ADMIN_TEXT_MUTED,
-  adminBadge,
   adminButton,
+  adminChip,
 } from "../adminStyles";
 import PeriodSwitch from "../PeriodSwitch";
 import { customRange, describeRange, presetRange, spansSeveralDays, toDayValue, type PeriodKind, type Range } from "../periods";
 import StatCard, { Panel } from "../StatCard";
 import CashChart from "./CashChart";
 import { ACCOUNT_LABEL, MovementDialog, VoidMovementDialog, type DialogKind } from "./CashDialogs";
+import MovementRow from "./MovementRow";
 
 const PERIODS = [
   { value: "today", label: "Hoy" },
@@ -36,16 +37,6 @@ const PERIODS = [
   { value: "month", label: "Mes" },
   { value: "custom", label: "Fechas" },
 ] as const satisfies readonly { value: PeriodKind; label: string }[];
-
-const KIND_LABEL: Record<CashKind, string> = {
-  aporte: "Aporte",
-  retiro: "Retiro",
-  gasto: "Gasto",
-  transferencia: "Transferencia",
-  venta: "Venta",
-  compra: "Pedido",
-  ajuste: "Ajuste",
-};
 
 const NEW_BUTTONS: { kind: DialogKind; label: string; icon: typeof Plus }[] = [
   { kind: "gasto", label: "Gasto", icon: Receipt },
@@ -55,10 +46,21 @@ const NEW_BUTTONS: { kind: DialogKind; label: string; icon: typeof Plus }[] = [
   { kind: "conteo", label: "Contar caja", icon: Calculator },
 ];
 
+// Filtro de la lista de movimientos, por tipo.
+type MovementFilter = "todos" | "ventas" | "aportes" | "gastos" | "pedidos" | "retiros" | "otros";
+
+const FILTERS: { value: MovementFilter; label: string; kinds: CashKind[] | null }[] = [
+  { value: "todos", label: "Todos", kinds: null },
+  { value: "ventas", label: "Ventas", kinds: ["venta"] },
+  { value: "aportes", label: "Aportes", kinds: ["aporte"] },
+  { value: "gastos", label: "Gastos", kinds: ["gasto"] },
+  { value: "pedidos", label: "Pedidos", kinds: ["compra"] },
+  { value: "retiros", label: "Retiros", kinds: ["retiro"] },
+  { value: "otros", label: "Otros", kinds: ["transferencia", "ajuste"] },
+];
+
 type Loaded = { key: string; summary: CashSummary; movements: CashMovement[]; categories: string[] };
 
-const dayTime = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-const timeOnly = new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" });
 
 function sumKind(summary: CashSummary, kinds: CashKind[], direction: "ingreso" | "egreso") {
   return summary.by_kind
@@ -82,6 +84,7 @@ export default function CajaPage() {
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [dialogId, setDialogId] = useState(0);
   const [voiding, setVoiding] = useState<CashMovement | null>(null);
+  const [filter, setFilter] = useState<MovementFilter>("todos");
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [balanceNow, setBalanceNow] = useState<CashSummary["balance"] | null>(null);
@@ -159,6 +162,18 @@ export default function CajaPage() {
   const adjustments = summary ? sumKind(summary, ["ajuste"], "ingreso") - sumKind(summary, ["ajuste"], "egreso") : 0;
   const maxCategory = Math.max(0, ...(summary?.by_category.map((c) => c.total) ?? []));
   const balance = summary?.balance ?? balanceNow;
+
+  // Movimientos del tipo elegido, con cuántos hay de cada uno y lo que suman (sin contar los anulados).
+  const allMovements = loaded?.movements ?? [];
+  const activeFilter = FILTERS.find((f) => f.value === filter) ?? FILTERS[0];
+  const shownMovements = activeFilter.kinds
+    ? allMovements.filter((m) => activeFilter.kinds?.includes(m.kind))
+    : allMovements;
+  const countOf = (kinds: CashKind[] | null) =>
+    kinds ? allMovements.filter((m) => kinds.includes(m.kind)).length : allMovements.length;
+  const shownTotal = shownMovements
+    .filter((m) => m.voided_at === null)
+    .reduce((sum, m) => sum + (m.direction === "ingreso" ? m.amount : -m.amount), 0);
 
   return (
     <div className="flex flex-col gap-5">
@@ -296,78 +311,51 @@ export default function CajaPage() {
           </div>
 
           <Panel title="Movimientos">
+            {loaded.movements.length > 0 && (
+              <div className="mb-3 flex flex-col gap-2">
+                <div role="radiogroup" aria-label="Tipo de movimiento" className="flex flex-wrap gap-2">
+                  {FILTERS.filter((f) => f.value === "todos" || f.value === filter || countOf(f.kinds) > 0).map((f) => (
+                    <button
+                      key={f.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={f.value === filter}
+                      onClick={() => setFilter(f.value)}
+                      className={adminChip(f.value === filter)}
+                    >
+                      {f.label} <span className="font-mono text-[13px] opacity-70">{countOf(f.kinds)}</span>
+                    </button>
+                  ))}
+                </div>
+                {activeFilter.kinds && (
+                  <p className={ADMIN_TEXT_MUTED}>
+                    {shownMovements.length === 1 ? "1 movimiento" : `${shownMovements.length} movimientos`} · suman{" "}
+                    <span className="font-mono font-semibold text-admin-text">
+                      {shownTotal < 0 ? "−" : "+"} {formatPrice(Math.abs(shownTotal))}
+                    </span>
+                    {shownMovements.some((m) => m.voided_at !== null) && " (sin contar los anulados)"}
+                  </p>
+                )}
+              </div>
+            )}
             {loaded.movements.length === 0 ? (
               <p className={ADMIN_EMPTY}>
                 No hay movimientos en este período. Las ventas y los pedidos pagados aparecen solos; lo demás se carga
                 con los botones de arriba.
               </p>
+            ) : shownMovements.length === 0 ? (
+              <p className={ADMIN_EMPTY}>No hay movimientos de este tipo en el período.</p>
             ) : (
               <ol className="flex flex-col divide-y divide-admin-border">
-                {loaded.movements.map((m) => {
-                  const void_ = m.voided_at !== null;
-                  const sign = m.direction === "ingreso" ? "+" : "−";
-                  const date = new Date(m.occurred_at);
-                  return (
-                    <li
-                      key={m.id}
-                      className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 py-3.5 md:flex md:flex-wrap md:items-center md:gap-x-4 md:py-3"
-                    >
-                      <div className="min-w-0 md:order-2 md:flex-1 md:basis-56">
-                        <p className={`break-words text-[15px] font-medium text-admin-text ${void_ ? "line-through opacity-60" : ""}`}>
-                          {m.description || KIND_LABEL[m.kind]}
-                        </p>
-                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-muted">
-                          <span className={adminBadge(void_ ? "danger" : m.direction === "ingreso" ? "ok" : "neutral")}>
-                            {void_ ? "Anulado" : KIND_LABEL[m.kind]}
-                          </span>
-                          {m.category && m.category !== KIND_LABEL[m.kind] && <span>{m.category}</span>}
-                          {void_ && m.void_reason && <span>· {m.void_reason}</span>}
-                        </p>
-                      </div>
-                      <span
-                        className={`whitespace-nowrap text-right font-mono text-[17px] font-semibold tabular-nums md:order-4 md:w-[120px] md:shrink-0 md:text-[15px] ${
-                          void_
-                            ? "text-admin-muted line-through"
-                            : m.direction === "ingreso"
-                              ? "text-admin-ok"
-                              : "text-admin-text"
-                        }`}
-                      >
-                        {sign} {formatPrice(m.amount)}
-                      </span>
-                      {/* En el celular: fecha y cuenta en un renglón de abajo; en la compu, cada uno en su columna. */}
-                      <p className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-admin-muted md:contents">
-                        <span className="font-mono text-xs md:order-1 md:w-[92px] md:shrink-0">
-                          {severalDays ? dayTime.format(date) : timeOnly.format(date)}
-                        </span>
-                        <span aria-hidden="true" className="md:hidden">
-                          ·
-                        </span>
-                        <span className="md:order-3 md:shrink-0 md:text-sm">{ACCOUNT_LABEL[m.account]}</span>
-                      </p>
-                      <span className="flex items-center justify-end gap-2 md:order-5 md:w-[130px] md:shrink-0">
-                        {!void_ && m.kind === "compra" && (
-                          <button
-                            type="button"
-                            onClick={() => changeAccount(m, m.account === "efectivo" ? "banco" : "efectivo")}
-                            className="min-h-9 text-sm font-semibold text-admin-text underline-offset-2 hover:underline"
-                          >
-                            Pasar a {m.account === "efectivo" ? "banco" : "efectivo"}
-                          </button>
-                        )}
-                        {!void_ && m.kind !== "venta" && m.kind !== "compra" && (
-                          <button
-                            type="button"
-                            onClick={() => setVoiding(m)}
-                            className="min-h-9 text-sm font-semibold text-admin-danger underline-offset-2 hover:underline"
-                          >
-                            Anular
-                          </button>
-                        )}
-                      </span>
-                    </li>
-                  );
-                })}
+                {shownMovements.map((m) => (
+                  <MovementRow
+                    key={m.id}
+                    movement={m}
+                    showDay={severalDays}
+                    onVoid={setVoiding}
+                    onChangeAccount={changeAccount}
+                  />
+                ))}
               </ol>
             )}
             {loaded.movements.length >= 500 && (

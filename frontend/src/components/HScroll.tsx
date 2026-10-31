@@ -20,8 +20,14 @@ export default function HScroll({ children, className = "" }: { children: React.
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
+    // Si el elegido queda fuera de la vista, se lo trae al centro; sin pasarse de los extremos
+    // (un scroll negativo, en Safari de iPhone, deja un hueco en blanco a la izquierda).
     const active = track.querySelector<HTMLElement>('[data-active="true"]');
-    if (active) track.scrollLeft = active.offsetLeft - (track.clientWidth - active.offsetWidth) / 2;
+    const max = Math.max(0, track.scrollWidth - track.clientWidth);
+    if (active) {
+      const hidden = active.offsetLeft < track.scrollLeft || active.offsetLeft + active.offsetWidth > track.scrollLeft + track.clientWidth;
+      if (hidden) track.scrollLeft = Math.min(max, Math.max(0, active.offsetLeft - (track.clientWidth - active.offsetWidth) / 2));
+    }
 
     const update = () =>
       setEdges({

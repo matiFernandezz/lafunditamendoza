@@ -74,7 +74,7 @@ export default function ProductModelPicker({
             {/* Con muchos números se reparten de punta a punta (la fila ocupa el ancho
                 de la tarjeta, igual que los modelos); con pocos (14 y 15) van juntos a
                 la izquierda, para que no queden separados por un hueco. */}
-            <HScroll className={`h-12 gap-2 ${lines.length >= 6 ? "justify-between" : "justify-start"}`}>
+            <HScroll className={`h-12 gap-2 justify-start ${lines.length >= 6 ? "md:justify-between" : ""}`}>
               {lines.map((l) => (
                 <button
                   key={l.key}
