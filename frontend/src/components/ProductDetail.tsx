@@ -39,8 +39,11 @@ export default function ProductDetail({
   initialColorSlug,
   initialMotifSlug,
   related = [],
+  allModels = [],
 }: {
   product: Product;
+  /** Todos los modelos de iPhone, en orden: el selector los muestra y atenúa los que no tienen stock. */
+  allModels?: PickerModel[];
   /** Candidatos para "Completá tu compra", ya ordenados (los arma la página). */
   related?: Product[];
   initialModelId?: string;
@@ -246,7 +249,12 @@ export default function ProductDetail({
           </h1>
 
           {modelOptions.length > 0 && (
-            <ProductModelPicker models={modelOptions} value={modelId} onChange={handleModelChange} />
+            <ProductModelPicker
+              models={allModels.length > 0 ? allModels : modelOptions}
+              availableIds={new Set(modelOptions.map((m) => m.id))}
+              value={modelId}
+              onChange={handleModelChange}
+            />
           )}
 
           {swatches ? (

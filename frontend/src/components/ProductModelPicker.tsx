@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import FilterPopover, { optionPill } from "./FilterPopover";
+import HScroll from "./HScroll";
 
 export type PickerModel = { id: string; name: string; sort_order: number };
 
@@ -12,14 +13,19 @@ const lineOf = (name: string) => name.match(/^iPhone (\d+)/i)?.[1] ?? name;
  * "Elegí tu modelo" de la ficha de producto, igual que el filtro de Fundas (sin
  * "Todos"): una píldora con el modelo elegido que abre debajo los números de línea en una fila y, al tocar uno, sus
  * modelos abajo en columnas iguales; se abre siempre, aunque la línea tenga uno
- * solo. Solo los modelos que el producto tiene.
+ * solo. Salen todos los modelos: los que el producto no tiene en stock se ven
+ * grises y tachados, y no se pueden elegir (así quien tiene un 15 Pro entiende
+ * que no hay para su modelo, en vez de creer que solo existe el 15).
  */
 export default function ProductModelPicker({
   models,
+  availableIds,
   value,
   onChange,
 }: {
   models: PickerModel[];
+  /** Los modelos con stock; el resto se muestra sin poder elegirse. */
+  availableIds: ReadonlySet<string>;
   value: string;
   onChange: (modelId: string) => void;
 }) {
@@ -34,10 +40,11 @@ export default function ProductModelPicker({
   const [lineKey, setLineKey] = useState<string | null>(selectedLine);
   const line = lines.find((l) => l.key === lineKey);
 
-  const number = (isActive: boolean) =>
-    `flex size-12 shrink-0 items-center justify-center rounded-full font-display text-xl font-semibold leading-none tracking-tight text-ink transition-colors duration-200 ${
-      isActive ? "bg-ink/10" : "hover:bg-ink/5"
-    }`;
+  // Un número sin ningún modelo con stock va atenuado (se puede abrir y ver cuáles faltan).
+  const number = (isActive: boolean, hasStock: boolean) =>
+    `flex size-12 shrink-0 items-center justify-center rounded-full font-display text-xl font-semibold leading-none tracking-tight transition-colors duration-200 ${
+      hasStock ? "text-ink" : "text-ink/35"
+    } ${isActive ? "bg-ink/10" : "hover:bg-ink/5"}`;
 
   return (
     <div>
@@ -67,28 +74,28 @@ export default function ProductModelPicker({
             {/* Con muchos números se reparten de punta a punta (la fila ocupa el ancho
                 de la tarjeta, igual que los modelos); con pocos (14 y 15) van juntos a
                 la izquierda, para que no queden separados por un hueco. */}
-            <div
-              className={`flex h-12 min-w-0 items-center gap-2 overflow-x-auto ${
-                lines.length >= 6 ? "justify-between" : "justify-start"
-              }`}
-            >
+            <HScroll className={`h-12 gap-2 ${lines.length >= 6 ? "justify-between" : "justify-start"}`}>
               {lines.map((l) => (
                 <button
                   key={l.key}
                   type="button"
                   onClick={() => {
                     setLineKey(l.key);
-                    // Con un solo modelo en la línea, queda elegido (y se ve abajo).
-                    if (l.models.length === 1) onChange(l.models[0].id);
+                    // Con un solo modelo en la línea, y con stock, queda elegido (y se ve abajo).
+                    if (l.models.length === 1 && availableIds.has(l.models[0].id)) onChange(l.models[0].id);
                   }}
                   aria-expanded={lineKey === l.key}
                   aria-label={`iPhone ${l.key}`}
-                  className={number(lineKey === l.key)}
+                  data-active={selectedLine === l.key ? "true" : undefined}
+                  className={number(
+                    lineKey === l.key,
+                    l.models.some((m) => availableIds.has(m.id)),
+                  )}
                 >
                   {l.key}
                 </button>
               ))}
-            </div>
+            </HScroll>
 
             {/* Los modelos de la línea, debajo de los números, en columnas iguales y
                 separados por una línea suave. */}
@@ -104,21 +111,37 @@ export default function ProductModelPicker({
                   gridTemplateColumns: `repeat(${line.models.length > 3 ? 2 : line.models.length}, minmax(0, 1fr))`,
                 }}
               >
-                {line.models.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(m.id);
-                      close();
-                    }}
-                    aria-pressed={m.id === value}
-                    className={optionPill(m.id === value, { cell: true })}
-                  >
-                    {m.name}
-                  </button>
-                ))}
+                {line.models.map((m) =>
+                  availableIds.has(m.id) ? (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        onChange(m.id);
+                        close();
+                      }}
+                      aria-pressed={m.id === value}
+                      className={optionPill(m.id === value, { cell: true })}
+                    >
+                      {m.name}
+                    </button>
+                  ) : (
+                    <button
+                      key={m.id}
+                      type="button"
+                      disabled
+                      aria-label={`${m.name}, sin stock`}
+                      title="Sin stock por ahora"
+                      className="inline-flex min-h-9 cursor-not-allowed items-center justify-center rounded-full border border-transparent bg-ink/[0.07] px-3 py-1.5 text-center text-sm font-medium leading-tight text-graphite/60 line-through"
+                    >
+                      {m.name}
+                    </button>
+                  ),
+                )}
               </div>
+            )}
+            {line && line.models.some((m) => !availableIds.has(m.id)) && (
+              <p className="text-[13px] text-graphite">Los modelos tachados no tienen stock por ahora.</p>
             )}
           </>
         )}

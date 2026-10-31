@@ -1,7 +1,15 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import ProductDetail from "@/components/ProductDetail";
-import { categoryHref, getCategoryGroups, getFeaturedProducts, getProduct, isUuid, type Product } from "@/lib/catalog";
+import {
+  categoryHref,
+  getCategoryGroups,
+  getFeaturedProducts,
+  getIphoneModels,
+  getProduct,
+  isUuid,
+  type Product,
+} from "@/lib/catalog";
 
 /** Cuántos candidatos se le pasan a "Completá tu compra" (después se filtran por modelo y se muestran 4). */
 const RELATED_CANDIDATES = 16;
@@ -43,7 +51,12 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   const initialColorSlug = typeof color === "string" ? color : undefined;
   const initialMotifSlug = typeof motivo === "string" ? motivo : undefined;
 
-  const [product, groups, pool] = await Promise.all([getProduct(id), getCategoryGroups(), getFeaturedProducts(80)]);
+  const [product, groups, pool, models] = await Promise.all([
+    getProduct(id),
+    getCategoryGroups(),
+    getFeaturedProducts(80),
+    getIphoneModels(),
+  ]);
   if (!product) notFound();
 
   // Migas: Inicio / Fundas / Diseño / Producto. El tipo lleva al listado de su
@@ -78,6 +91,8 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
         initialColorSlug={initialColorSlug}
         initialMotifSlug={initialMotifSlug}
         related={relatedFor(product, pool)}
+        // Ya vienen en el orden del catálogo: el índice hace de sort_order.
+        allModels={models.map((m, index) => ({ id: m.id, name: m.name, sort_order: index }))}
       />
     </div>
   );

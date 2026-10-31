@@ -308,15 +308,15 @@ export default function CajaPage() {
                   const sign = m.direction === "ingreso" ? "+" : "−";
                   const date = new Date(m.occurred_at);
                   return (
-                    <li key={m.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-                      <span className="w-[92px] shrink-0 font-mono text-xs text-admin-muted">
-                        {severalDays ? dayTime.format(date) : timeOnly.format(date)}
-                      </span>
-                      <div className="min-w-0 flex-1 basis-56">
-                        <p className={`text-[15px] text-admin-text ${void_ ? "line-through opacity-60" : ""}`}>
+                    <li
+                      key={m.id}
+                      className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 py-3.5 md:flex md:flex-wrap md:items-center md:gap-x-4 md:py-3"
+                    >
+                      <div className="min-w-0 md:order-2 md:flex-1 md:basis-56">
+                        <p className={`break-words text-[15px] font-medium text-admin-text ${void_ ? "line-through opacity-60" : ""}`}>
                           {m.description || KIND_LABEL[m.kind]}
                         </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-muted">
+                        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-admin-muted">
                           <span className={adminBadge(void_ ? "danger" : m.direction === "ingreso" ? "ok" : "neutral")}>
                             {void_ ? "Anulado" : KIND_LABEL[m.kind]}
                           </span>
@@ -324,20 +324,33 @@ export default function CajaPage() {
                           {void_ && m.void_reason && <span>· {m.void_reason}</span>}
                         </p>
                       </div>
-                      <span className="shrink-0 text-sm text-admin-muted">{ACCOUNT_LABEL[m.account]}</span>
                       <span
-                        className={`w-[110px] shrink-0 text-right font-mono text-[15px] font-semibold tabular-nums ${
-                          void_ ? "text-admin-muted line-through" : "text-admin-text"
+                        className={`whitespace-nowrap text-right font-mono text-[17px] font-semibold tabular-nums md:order-4 md:w-[120px] md:shrink-0 md:text-[15px] ${
+                          void_
+                            ? "text-admin-muted line-through"
+                            : m.direction === "ingreso"
+                              ? "text-admin-ok"
+                              : "text-admin-text"
                         }`}
                       >
                         {sign} {formatPrice(m.amount)}
                       </span>
-                      <span className="flex w-[130px] shrink-0 justify-end gap-2">
+                      {/* En el celular: fecha y cuenta en un renglón de abajo; en la compu, cada uno en su columna. */}
+                      <p className="flex flex-wrap items-center gap-x-1.5 text-[13px] text-admin-muted md:contents">
+                        <span className="font-mono text-xs md:order-1 md:w-[92px] md:shrink-0">
+                          {severalDays ? dayTime.format(date) : timeOnly.format(date)}
+                        </span>
+                        <span aria-hidden="true" className="md:hidden">
+                          ·
+                        </span>
+                        <span className="md:order-3 md:shrink-0 md:text-sm">{ACCOUNT_LABEL[m.account]}</span>
+                      </p>
+                      <span className="flex items-center justify-end gap-2 md:order-5 md:w-[130px] md:shrink-0">
                         {!void_ && m.kind === "compra" && (
                           <button
                             type="button"
                             onClick={() => changeAccount(m, m.account === "efectivo" ? "banco" : "efectivo")}
-                            className="text-sm font-semibold text-admin-text underline-offset-2 hover:underline"
+                            className="min-h-9 text-sm font-semibold text-admin-text underline-offset-2 hover:underline"
                           >
                             Pasar a {m.account === "efectivo" ? "banco" : "efectivo"}
                           </button>
@@ -346,7 +359,7 @@ export default function CajaPage() {
                           <button
                             type="button"
                             onClick={() => setVoiding(m)}
-                            className="text-sm font-semibold text-admin-danger underline-offset-2 hover:underline"
+                            className="min-h-9 text-sm font-semibold text-admin-danger underline-offset-2 hover:underline"
                           >
                             Anular
                           </button>
