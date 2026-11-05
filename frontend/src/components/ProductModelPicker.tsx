@@ -148,6 +148,11 @@ export default function ProductModelPicker({
           </>
         )}
       </FilterPopover>
+      {/* Aclara dos dudas frecuentes: la foto no cambia con el modelo, y por qué se puede elegir uno. */}
+      <p className="mt-2.5 text-[13px] leading-snug text-graphite">
+        La foto es ilustrativa: muestra cómo queda la funda puesta en un teléfono y no cambia con el modelo que elijas.
+        Si te dejamos elegir tu modelo, es porque tenemos esa funda en stock para él.
+      </p>
     </div>
   );
 }
