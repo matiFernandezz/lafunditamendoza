@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/SafeImage";
 import { useRef, useState } from "react";
 import type { ProductImage } from "@/lib/catalog";
 

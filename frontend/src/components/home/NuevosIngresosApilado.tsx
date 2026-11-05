@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/SafeImage";
 import Link from "next/link";
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import ArrowMark from "@/components/ArrowMark";

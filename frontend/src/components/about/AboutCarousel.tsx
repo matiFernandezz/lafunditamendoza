@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image from "@/components/SafeImage";
 import { useEffect, useState } from "react";
 
 const AUTO_ADVANCE_MS = 5000;

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "@/components/SafeImage";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import ArrowMark from "@/components/ArrowMark";
