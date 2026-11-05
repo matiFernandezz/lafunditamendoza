@@ -39,6 +39,15 @@ function relatedFor(product: Product, pool: Product[]): Product[] {
   return [...complements, ...similar].slice(0, RELATED_CANDIDATES);
 }
 
+// Aviso bajo el selector de modelo: solo para fundas y lentes de cámara, donde la foto muestra
+// un teléfono que no es el del cliente. El resto de los accesorios no lleva aviso.
+const MODEL_NOTES = {
+  funda:
+    "La foto es ilustrativa: muestra cómo queda la funda puesta en un teléfono y no cambia con el modelo que elijas. Si te dejamos elegir tu modelo, es porque tenemos esa funda en stock para él.",
+  lentes:
+    "La foto es ilustrativa: muestra cómo quedan los lentes puestos en un teléfono y no cambia con el modelo que elijas. Si te dejamos elegir tu modelo, es porque tenemos esos lentes en stock para él.",
+};
+
 export const dynamic = "force-dynamic";
 
 export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
@@ -62,6 +71,8 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
   // Migas: Inicio / Fundas / Diseño / Producto. El tipo lleva al listado de su
   // categoría ya filtrado.
   const group = groups.find((g) => g.id === product.category?.parent_id);
+  const modelNote =
+    group?.slug === "fundas" ? MODEL_NOTES.funda : product.category?.slug === "lentes-de-camara" ? MODEL_NOTES.lentes : undefined;
   const crumbs = [
     ...(group ? [{ label: group.name, href: categoryHref(group) }] : []),
     ...(product.category ? [{ label: product.category.name, href: categoryHref(product.category, group) }] : []),
@@ -92,6 +103,7 @@ export default async function ProductoPage(props: PageProps<"/producto/[id]">) {
         initialMotifSlug={initialMotifSlug}
         related={relatedFor(product, pool)}
         // Ya vienen en el orden del catálogo: el índice hace de sort_order.
+        modelNote={modelNote}
         allModels={models.map((m, index) => ({ id: m.id, name: m.name, sort_order: index }))}
       />
     </div>

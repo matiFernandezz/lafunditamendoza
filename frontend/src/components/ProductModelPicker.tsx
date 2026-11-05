@@ -19,12 +19,15 @@ const lineOf = (name: string) => name.match(/^iPhone (\d+)/i)?.[1] ?? name;
 export default function ProductModelPicker({
   models,
   availableIds,
+  note,
   value,
   onChange,
 }: {
   models: PickerModel[];
   /** Los modelos con stock; el resto se muestra sin poder elegirse. */
   availableIds: ReadonlySet<string>;
+  /** Aviso informativo debajo del selector (según el tipo de producto); sin texto, no se muestra. */
+  note?: string;
   value: string;
   onChange: (modelId: string) => void;
 }) {
@@ -149,10 +152,7 @@ export default function ProductModelPicker({
         )}
       </FilterPopover>
       {/* Aclara dos dudas frecuentes: la foto no cambia con el modelo, y por qué se puede elegir uno. */}
-      <p className="mt-2.5 text-[13px] leading-snug text-graphite">
-        La foto es ilustrativa: muestra cómo queda la funda puesta en un teléfono y no cambia con el modelo que elijas.
-        Si te dejamos elegir tu modelo, es porque tenemos esa funda en stock para él.
-      </p>
+      {note && <p className="mt-2.5 text-[13px] leading-snug text-graphite">{note}</p>}
     </div>
   );
 }
