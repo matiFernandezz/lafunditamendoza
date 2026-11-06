@@ -11,6 +11,11 @@ const parsedSupabaseUrl = supabaseUrl ? new URL(supabaseUrl) : undefined;
 
 const nextConfig: NextConfig = {
   images: {
+    // Sin el optimizador de Vercel: las fotos se piden tal cual están guardadas en Storage. El
+    // optimizador tiene un cupo mensual por plan y, al agotarse, responde 402 y las fotos quedan
+    // rotas (pasó el 5/11/2026: carrusel de la home negro y miniaturas del panel sin cargar).
+    // Para que igual pesen poco, las fotos se achican y pasan a WebP al subirlas (compressImage).
+    unoptimized: true,
     // Next 16 solo permite calidad 75 por default y baja a 75 cualquier otra.
     // 90 es para las fotos de producto en los listados y las miniaturas (la
     // foto grande de la ficha va sin optimizar: ver ProductGallery).

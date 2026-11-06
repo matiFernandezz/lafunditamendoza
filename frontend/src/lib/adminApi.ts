@@ -3,6 +3,7 @@
 // con la secret key, que nunca sale del servidor.
 
 import type { SlideLayout } from "./slideLayout";
+import { compressImage } from "@/lib/compressImage";
 import { PRODUCT_IMAGE_BUCKET } from "@/lib/productImages";
 import { createClient } from "@/lib/supabase/client";
 
@@ -489,17 +490,19 @@ export async function addProductImage(
   file: File,
   group: { colorId?: string | null; motifId?: string | null } = {},
 ): Promise<{ data: AdminProductImage }> {
+  // Se achica y pasa a WebP antes de subir: la tienda sirve la foto tal cual se guarda.
+  const prepared = await compressImage(file);
   const signed = await adminFetch<{ data: { path: string; token: string } }>(
     `/api/products/${productId}/images/upload-url`,
     {
       method: "POST",
-      body: JSON.stringify({ content_type: file.type, size: file.size }),
+      body: JSON.stringify({ content_type: prepared.type, size: prepared.size }),
     },
   );
 
   const { error } = await createClient()
     .storage.from(PRODUCT_IMAGE_BUCKET)
-    .uploadToSignedUrl(signed.data.path, signed.data.token, file, { contentType: file.type });
+    .uploadToSignedUrl(signed.data.path, signed.data.token, prepared, { contentType: prepared.type });
 
   if (error) {
     throw new AdminApiError(500, "No se pudo subir la imagen. Probá de nuevo.");
@@ -900,13 +903,16 @@ export function getDashboard(params: DateRange & { prev_from: string; prev_to: s
 
 /** Sube una foto de la tienda directo a Storage y devuelve su URL pública. */
 export async function uploadStoreImage(file: Blob, contentType: string): Promise<string> {
+  // Se achica y pasa a WebP antes de subir: la tienda sirve la foto tal cual se guarda
+  // (una foto sin comprimir pesa varios MB y tarda en cargar).
+  const prepared = await compressImage(file instanceof File ? file : new File([file], "foto", { type: contentType }));
   const signed = await adminFetch<{ data: { path: string; token: string; public_url: string } }>(
     "/api/store/upload-url",
-    { method: "POST", body: JSON.stringify({ content_type: contentType, size: file.size }) },
+    { method: "POST", body: JSON.stringify({ content_type: prepared.type, size: prepared.size }) },
   );
   const { error } = await createClient()
     .storage.from(PRODUCT_IMAGE_BUCKET)
-    .uploadToSignedUrl(signed.data.path, signed.data.token, file, { contentType });
+    .uploadToSignedUrl(signed.data.path, signed.data.token, prepared, { contentType: prepared.type });
   if (error) throw new AdminApiError(500, "No se pudo subir la imagen. Probá de nuevo.");
   return signed.data.public_url;
 }
